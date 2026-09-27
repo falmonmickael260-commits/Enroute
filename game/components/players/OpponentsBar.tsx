@@ -2,7 +2,7 @@
 
 import clsx from "clsx";
 import type { GameState, PlayerState } from "@/game/types/game";
-import { hazardLabel } from "@/game/lib/engine/rules";
+import { displayHazard, hazardLabel } from "@/game/lib/engine/rules";
 
 const COLOR_VAR: Record<PlayerState["color"], string> = {
   crimson: "var(--color-player-crimson)",
@@ -16,6 +16,7 @@ export function OpponentsBar({ state }: { state: GameState }) {
     <div className="flex gap-2 overflow-x-auto no-scrollbar px-1 py-1 w-full">
       {state.players.map((p, i) => {
         const isCurrent = i === state.currentPlayerIndex;
+        const hazard = displayHazard(p);
         return (
           <div
             key={p.id}
@@ -36,10 +37,13 @@ export function OpponentsBar({ state }: { state: GameState }) {
                 {p.distance}/{state.target} km · {p.hand.length} cartes
               </p>
             </div>
-            {p.hazard ? (
+            {hazard ? (
               <span
-                title={hazardLabel(p.hazard)}
-                className="ml-1 w-6 h-6 rounded-full bg-[var(--color-brand-crimson)]/90 flex items-center justify-center text-[0.65rem] shrink-0"
+                title={hazardLabel(hazard)}
+                className={clsx(
+                  "ml-1 w-6 h-6 rounded-full flex items-center justify-center text-[0.65rem] shrink-0",
+                  p.hazard ? "bg-[var(--color-brand-crimson)]/90" : "bg-[var(--color-brand-gold)]/90 text-[var(--color-brand-ink)]",
+                )}
               >
                 !
               </span>

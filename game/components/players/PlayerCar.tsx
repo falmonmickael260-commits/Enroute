@@ -3,6 +3,7 @@
 import { motion } from "framer-motion";
 import type { PlayerState } from "@/game/types/game";
 import { roadPoint } from "@/game/components/board/roadPath";
+import { displayHazard } from "@/game/lib/engine/rules";
 import { HazardBadge } from "./HazardBadge";
 
 const COLOR_VAR: Record<PlayerState["color"], string> = {
@@ -47,6 +48,7 @@ export function PlayerCar({
   const t = Math.min(1, player.distance / target);
   const { x, y, angle } = roadPoint(t);
   const color = COLOR_VAR[player.color];
+  const hazard = displayHazard(player);
 
   return (
     <>
@@ -70,9 +72,9 @@ export function PlayerCar({
 
       {/* Label layer kept upright (not rotated with the car) so tags stay legible on slopes. */}
       <motion.g animate={{ x, y: y + laneOffset }} initial={false} transition={{ type: "spring", stiffness: 70, damping: 16, mass: 1 }}>
-        {player.hazard ? (
+        {hazard ? (
           <g transform="translate(0 -30)">
-            <HazardBadge hazard={player.hazard} />
+            <HazardBadge hazard={hazard} />
           </g>
         ) : null}
         <g transform="translate(0 24)">

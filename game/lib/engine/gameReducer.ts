@@ -207,8 +207,13 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
       removeFromHand(player, action.cardUid);
       draft.discard.push(card);
-      victim.hazard = def.hazard;
-      if (def.hazard === "radar") victim.limited = true;
+      if (def.hazard === "radar") {
+        // RADAR is a speed cap, not a full stop — it must not block distance
+        // play outright (that's what the `hazard` field does elsewhere).
+        victim.limited = true;
+      } else {
+        victim.hazard = def.hazard;
+      }
       player.cardsPlayed += 1;
       player.attacksSent += 1;
       victim.attacksSurvived += 1;
@@ -292,12 +297,12 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
           removeFromHand(player, action.cardUid);
           draft.discard.push(card);
           player.cardsPlayed += 1;
-          if (player.hazard) {
-            const clearedHazard = player.hazard;
+          if (player.hazard || player.limited) {
+            const clearedHazard: HazardType = player.hazard ?? "radar";
             player.hazard = null;
             player.limited = false;
             log(draft, player.id, `${player.name} utilise le GPS STRATÉGIQUE pour repartir aussitôt.`, "special");
-            pushAnim(draft, { kind: "shield", playerId: player.id, defense: HAZARD_TO_DEFENSE[clearedHazard as HazardType] });
+            pushAnim(draft, { kind: "shield", playerId: player.id, defense: HAZARD_TO_DEFENSE[clearedHazard] });
             endTurnIfNeeded(draft, player);
           } else {
             player.extraTurn = true;
