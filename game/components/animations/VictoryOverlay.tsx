@@ -77,7 +77,7 @@ export function VictoryOverlay({
         initial={{ scale: 0.85, y: 30, opacity: 0 }}
         animate={{ scale: 1, y: 0, opacity: 1 }}
         transition={{ type: "spring", stiffness: 220, damping: 20, delay: 0.15 }}
-        className="relative z-10 w-full max-w-md rounded-3xl border-2 p-6 sm:p-8 text-center panel-wood"
+        className="panel-leather relative z-10 w-full max-w-md rounded-3xl border-2 p-6 text-center sm:p-8"
         style={{ borderColor: COLOR_VAR[winner.color] }}
       >
         <div className="flex justify-center gap-1 mb-3 text-2xl">🏁</div>

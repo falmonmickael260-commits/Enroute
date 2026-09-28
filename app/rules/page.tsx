@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { Logo } from "@/game/components/ui/Logo";
 import { Card } from "@/game/components/cards/Card";
 import { CARD_CATALOG } from "@/game/lib/engine/cardCatalog";
+import { InnerPage } from "@/game/components/ui/InnerPage";
 
 const HAZARD_PAIRS: [string, string][] = [
   ["collision", "reparation"],
@@ -11,97 +11,85 @@ const HAZARD_PAIRS: [string, string][] = [
   ["barrage", "passageLibre"],
 ];
 
+function H2({ children }: { children: React.ReactNode }) {
+  return <h2 className="text-brass mb-3 font-display text-3xl tracking-wide">{children}</h2>;
+}
+
 export default function RulesPage() {
   return (
-    <main className="min-h-screen bg-[var(--color-asphalt-900)] px-4 sm:px-8 py-10">
-      <div className="max-w-3xl mx-auto flex flex-col gap-10">
-        <header className="flex items-center justify-between">
-          <Link href="/">
-            <Logo size="sm" />
-          </Link>
-          <Link href="/" className="btn-enroute-ghost !text-sm !py-2 !px-4">
-            Retour
-          </Link>
-        </header>
+    <InnerPage backHref="/" backLabel="Accueil" title="Règles du jeu" wide>
+      <section>
+        <H2>Le principe</H2>
+        <p className="leading-relaxed text-white/80">
+          EN ROUTE se joue de 2 à 4 joueurs. Chacun pilote son véhicule sur une route qui traverse la campagne, la ville, la
+          montagne et la côte. Le premier à parcourir la distance choisie (400, 700 ou 1000 km) franchit la ligne
+          d&apos;arrivée et remporte la partie.
+        </p>
+      </section>
 
-        <section>
-          <h2 className="font-display text-3xl text-[var(--color-brand-gold)] mb-3">Le principe</h2>
-          <p className="text-white/80 leading-relaxed">
-            EN ROUTE se joue de 2 à 4 joueurs. Chacun pilote son véhicule sur la route et tente
-            d&apos;atteindre le premier <strong className="text-white">1000 km</strong>. À tour de rôle,
-            un joueur pioche une carte puis doit en jouer une (ou la défausser) : avancer sur la
-            route, envoyer un obstacle à un adversaire, réparer son propre véhicule ou déclencher
-            une action spéciale. Le premier à parcourir la distance totale remporte la partie.
-          </p>
-        </section>
+      <section>
+        <H2>Déroulement d&apos;un tour</H2>
+        <ol className="list-inside list-decimal space-y-2 text-white/80">
+          <li>Piochez une carte (la pioche se reconstitue automatiquement avec la défausse).</li>
+          <li>Jouez une carte de votre main, ou défaussez-en une si rien n&apos;est jouable.</li>
+          <li>Le tour passe au joueur suivant — sauf tour bonus (voir Défense).</li>
+        </ol>
+      </section>
 
-        <section>
-          <h2 className="font-display text-3xl text-[var(--color-brand-gold)] mb-3">Déroulement d&apos;un tour</h2>
-          <ol className="list-decimal list-inside space-y-2 text-white/80">
-            <li>Piochez une carte (la pioche se reconstitue automatiquement avec la défausse si besoin).</li>
-            <li>Jouez une carte de votre main, ou défaussez-en une si aucune n&apos;est jouable.</li>
-            <li>Le tour passe au joueur suivant — sauf bonus de tour supplémentaire (voir Défense).</li>
-          </ol>
-        </section>
+      <section>
+        <H2>Cartes de distance</H2>
+        <p className="mb-4 text-white/80">Jouables si la route est libre. Sous RADAR, seules les cartes de 50 km ou moins passent.</p>
+        <div className="flex flex-wrap gap-3">
+          {["dist25", "dist50", "dist75", "dist100", "dist200"].map((id) => (
+            <Card key={id} defId={id} size="md" />
+          ))}
+        </div>
+      </section>
 
-        <section>
-          <h2 className="font-display text-3xl text-[var(--color-brand-gold)] mb-3">Cartes de distance</h2>
-          <p className="text-white/80 mb-4">
-            Jouables si la route est libre. Sous RADAR, seules les cartes de 50 km ou moins sont
-            autorisées.
-          </p>
-          <div className="flex gap-3 flex-wrap">
-            {["dist25", "dist50", "dist75", "dist100", "dist200"].map((id) => (
-              <Card key={id} defId={id} size="sm" />
-            ))}
-          </div>
-        </section>
+      <section>
+        <H2>Attaque &amp; défense</H2>
+        <p className="mb-4 text-white/80">
+          Une attaque arrête un adversaire (ou le limite à 50 km pour le RADAR) jusqu&apos;à ce qu&apos;il joue la défense
+          correspondante. Arrêté, on ne peut que réparer ou défausser. Une défense jouée <em>avant</em> d&apos;être attaqué
+          devient un bouclier permanent contre ce danger — et offre un tour bonus.
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {HAZARD_PAIRS.map(([hazardId, defenseId]) => (
+            <div key={hazardId} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/25 p-3">
+              <Card defId={hazardId} size="sm" />
+              <span className="font-display text-2xl text-[var(--color-brass-300)]">→</span>
+              <Card defId={defenseId} size="sm" />
+              <p className="ml-1 text-sm text-white/65">
+                {CARD_CATALOG[hazardId].title} est neutralisé par {CARD_CATALOG[defenseId].title}.
+              </p>
+            </div>
+          ))}
+        </div>
+      </section>
 
-        <section>
-          <h2 className="font-display text-3xl text-[var(--color-brand-gold)] mb-3">Attaque &amp; Défense</h2>
-          <p className="text-white/80 mb-4">
-            Une carte d&apos;attaque bloque un adversaire jusqu&apos;à ce qu&apos;il joue la carte de
-            défense correspondante. Une défense jouée <em>avant</em> d&apos;être attaqué agit comme un
-            bouclier permanent contre ce danger — et offre un tour bonus immédiat.
-          </p>
-          <div className="flex flex-col gap-3">
-            {HAZARD_PAIRS.map(([hazardId, defenseId]) => (
-              <div key={hazardId} className="flex items-center gap-3 rounded-xl bg-white/5 border border-white/10 p-3">
-                <Card defId={hazardId} size="xs" />
-                <span className="text-white/40 font-display text-lg">→</span>
-                <Card defId={defenseId} size="xs" />
-                <p className="text-sm text-white/60 ml-2">
-                  {CARD_CATALOG[hazardId].title} est neutralisée par {CARD_CATALOG[defenseId].title}.
-                </p>
+      <section>
+        <H2>Cartes spéciales EN ROUTE</H2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {["turbo", "raccourci", "depassement", "gpsStrategique", "derniereLigneDroite"].map((id) => (
+            <div key={id} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/25 p-3">
+              <Card defId={id} size="sm" />
+              <div>
+                <p className="font-display text-lg tracking-wide">{CARD_CATALOG[id].title}</p>
+                <p className="text-sm text-white/65">{CARD_CATALOG[id].subtitle}</p>
               </div>
-            ))}
-          </div>
-        </section>
+            </div>
+          ))}
+        </div>
+      </section>
 
-        <section>
-          <h2 className="font-display text-3xl text-[var(--color-brand-gold)] mb-3">Cartes spéciales EN ROUTE</h2>
-          <div className="grid sm:grid-cols-2 gap-3">
-            {["turbo", "raccourci", "depassement", "gpsStrategique", "derniereLigneDroite"].map((id) => (
-              <div key={id} className="flex items-center gap-3 rounded-xl bg-white/5 border border-white/10 p-3">
-                <Card defId={id} size="xs" />
-                <p className="text-sm text-white/70">{CARD_CATALOG[id].subtitle}</p>
-              </div>
-            ))}
-          </div>
-        </section>
+      <section>
+        <H2>Victoire</H2>
+        <p className="text-white/80">Le premier à atteindre la distance cible franchit la ligne d&apos;arrivée et gagne immédiatement.</p>
+      </section>
 
-        <section>
-          <h2 className="font-display text-3xl text-[var(--color-brand-gold)] mb-3">Victoire</h2>
-          <p className="text-white/80">
-            Le premier joueur à atteindre 1000 km franchit la ligne d&apos;arrivée et remporte
-            immédiatement la partie.
-          </p>
-        </section>
-
-        <Link href="/play/create" className="btn-enroute-primary self-center">
-          À toi de prendre la route
-        </Link>
-      </div>
-    </main>
+      <Link href="/play/create" className="btn-enroute-primary self-center">
+        À toi de prendre la route
+      </Link>
+    </InnerPage>
   );
 }

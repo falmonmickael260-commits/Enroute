@@ -12,34 +12,33 @@ export function DrawPile({
   canDraw: boolean;
   onDraw: () => void;
 }) {
-  const stackDepth = Math.min(4, Math.max(1, Math.ceil(count / 15)));
+  const stackDepth = Math.min(5, Math.max(1, Math.ceil(count / 16)));
 
   return (
-    <div className="flex flex-col items-center gap-2">
-      <div className="relative w-16 h-24 sm:w-20 sm:h-28">
-        {Array.from({ length: stackDepth }).map((_, i) => (
-          <div
-            key={i}
-            className="absolute inset-0"
-            style={{ transform: `translate(${i * 1.5}px, ${-i * 1.5}px)` }}
-          >
-            <Card size="sm" faceDown className="w-full h-full !shrink" />
-          </div>
-        ))}
-        {canDraw ? (
-          <motion.button
-            aria-label="Piocher une carte"
-            onClick={onDraw}
-            className="absolute inset-0 rounded-lg"
-            animate={{ boxShadow: ["0 0 0 0 rgba(242,194,48,0.55)", "0 0 0 10px rgba(242,194,48,0)"] }}
-            transition={{ duration: 1.4, repeat: Infinity }}
-            whileHover={{ y: -6 }}
-            whileTap={{ scale: 0.95 }}
-          />
-        ) : null}
+    <div className="flex flex-col items-center gap-1 sm:gap-2">
+      <div className="panel-leather rounded-2xl p-1.5 sm:p-2.5">
+        <div className="relative h-[5.25rem] w-14 sm:h-[6.75rem] sm:w-[4.5rem] lg:h-36 lg:w-24">
+          {Array.from({ length: stackDepth }).map((_, i) => (
+            <div key={i} className="absolute inset-0" style={{ transform: `translate(${i * 1.6}px, ${-i * 2}px)` }}>
+              <Card size="md" faceDown className="!h-full !w-full" />
+            </div>
+          ))}
+          {canDraw ? (
+            <motion.button
+              aria-label="Piocher une carte"
+              onClick={onDraw}
+              className="absolute inset-0 rounded-xl"
+              style={{ transform: `translate(${(stackDepth - 1) * 1.6}px, ${-(stackDepth - 1) * 2}px)` }}
+              animate={{ boxShadow: ["0 0 0 0 rgba(242,194,48,0.7)", "0 0 0 14px rgba(242,194,48,0)"] }}
+              transition={{ duration: 1.4, repeat: Infinity }}
+              whileHover={{ y: -8 }}
+              whileTap={{ scale: 0.95 }}
+            />
+          ) : null}
+        </div>
       </div>
-      <span className="font-hud text-xs tracking-widest uppercase text-[var(--color-paper)]/60">
-        Pioche · {count}
+      <span className="font-hud text-[0.7rem] font-bold uppercase tracking-[0.25em] text-[var(--color-brass-300)] drop-shadow">
+        {canDraw ? "Piochez ↑" : `Pioche · ${count}`}
       </span>
     </div>
   );

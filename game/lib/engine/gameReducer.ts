@@ -2,7 +2,7 @@ import type {
   AnimationEvent,
   CardInstance,
   DistributiveOmit,
-  EnvironmentId,
+  AmbianceId,
   GameState,
   HazardType,
   PlayerColor,
@@ -23,7 +23,7 @@ export interface NewGameOptions {
   id: string;
   players: { id: string; name: string; color: PlayerColor; isBot?: boolean }[];
   target?: number;
-  environment?: EnvironmentId;
+  ambiance?: AmbianceId;
 }
 
 export function createGame(options: NewGameOptions): GameState {
@@ -73,7 +73,7 @@ export function createGame(options: NewGameOptions): GameState {
         kind: "system",
       },
     ],
-    environment: options.environment ?? "campagne",
+    ambiance: options.ambiance ?? "jour",
     startedAt: Date.now(),
     animationQueue: [],
   };

@@ -79,12 +79,14 @@ export interface GameState {
   turn: number;
   winnerId: string | null;
   log: LogEntry[];
-  environment: EnvironmentId;
+  ambiance: AmbianceId;
   startedAt: number;
   animationQueue: AnimationEvent[];
 }
 
-export type EnvironmentId = 'campagne' | 'ville' | 'montagne' | 'cote' | 'nuit';
+/** Lighting mood of the board. The route itself always crosses every zone
+ * (campagne, ville, montagne, côte…). */
+export type AmbianceId = 'jour' | 'crepuscule' | 'nuit';
 
 export type DistributiveOmit<T, K extends keyof never> = T extends unknown ? Omit<T, K> : never;
 

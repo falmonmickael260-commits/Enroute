@@ -35,14 +35,16 @@ export function PlayerHand({
   const count = player.hand.length;
 
   return (
-    <div className="relative w-full flex flex-col items-center pb-2 md:pb-4">
+    <div className="relative flex w-full flex-col items-center">
+      {/* Floats above the fan so selecting a card never shifts the layout. */}
+      <div className="pointer-events-none absolute inset-x-0 bottom-full z-[60] mb-1 flex justify-center">
       <AnimatePresence>
         {selectedCard ? (
           <motion.div
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 12 }}
-            className="relative mb-3 flex items-center gap-3 z-[60]"
+            className="panel-leather pointer-events-auto flex items-center gap-2 rounded-2xl p-2 sm:gap-3"
           >
             <button
               className="btn-enroute-primary !text-base !py-2 !px-6"
@@ -74,14 +76,15 @@ export function PlayerHand({
           </motion.div>
         ) : null}
       </AnimatePresence>
+      </div>
 
-      <div className="relative flex items-end justify-center h-32 sm:h-40 md:h-48 w-full max-w-3xl mx-auto">
+      <div className="relative mx-auto flex h-40 w-full max-w-3xl origin-bottom scale-[0.74] items-end justify-center pb-2 sm:h-[13rem] sm:scale-100 sm:pb-4">
         {player.hand.map((c, i) => {
           const mid = (count - 1) / 2;
           const offset = i - mid;
-          const rotate = offset * 6;
-          const translateY = Math.abs(offset) * 6;
-          const translateX = offset * (count > 6 ? 26 : 34);
+          const rotate = offset * 5;
+          const translateY = offset * offset * 0.9;
+          const translateX = offset * (count > 7 ? 44 : 54);
           const isSelected = selectedUid === c.uid;
           const playable = playability.get(c.uid) ?? false;
 

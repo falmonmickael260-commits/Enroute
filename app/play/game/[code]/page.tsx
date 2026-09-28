@@ -1,26 +1,26 @@
 "use client";
 
-import { use, useEffect, useMemo, useState } from "react";
+import { use, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import type { CardInstance } from "@/game/types/game";
+import type { CardInstance, GameState } from "@/game/types/game";
 import { useSetupStore } from "@/game/lib/store/setupStore";
 import { useGameEngine } from "@/game/hooks/useGameEngine";
 import { useAnimationQueue } from "@/game/hooks/useAnimationQueue";
 import { useSound } from "@/game/hooks/useSound";
 import type { NewGameOptions } from "@/game/lib/engine/gameReducer";
-import { Table } from "@/game/components/board/Table";
 import { Board } from "@/game/components/board/Board";
 import { PlayerHand } from "@/game/components/cards/PlayerHand";
 import { DrawPile } from "@/game/components/cards/DrawPile";
 import { DiscardPile } from "@/game/components/cards/DiscardPile";
-import { OpponentsBar } from "@/game/components/players/OpponentsBar";
+import { PlayerPanel } from "@/game/components/players/PlayerPanel";
+import { PLAYER_COLOR } from "@/game/components/players/PlayerPiece";
 import { TurnBanner } from "@/game/components/animations/TurnBanner";
 import { EventToast } from "@/game/components/animations/EventToast";
 import { VictoryOverlay } from "@/game/components/animations/VictoryOverlay";
 import { TargetPicker } from "@/game/components/ui/TargetPicker";
 import { SoundToggle } from "@/game/components/ui/SoundToggle";
-import { Logo } from "@/game/components/ui/Logo";
+import { TableBackdrop } from "@/game/components/ui/TableBackdrop";
 
 export default function GamePage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = use(params);
@@ -34,7 +34,7 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
       ? {
           id: code,
           players: setup.players.map((p) => ({ id: p.id, name: p.name, color: p.color })),
-          environment: setup.environment,
+          ambiance: setup.ambiance,
           target: setup.target,
         }
       : null,
@@ -42,20 +42,56 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
 
   if (!initialOptions) {
     return (
-      <main className="min-h-screen flex flex-col items-center justify-center gap-6 p-6 text-center">
-        <Logo size="sm" />
-        <p className="text-white/70 max-w-sm">
-          Aucune partie active pour le code <span className="font-hud">{code}</span>. Créez une nouvelle
-          partie pour prendre la route.
-        </p>
-        <Link href="/play/create" className="btn-enroute-primary">
-          Créer une partie
-        </Link>
+      <main className="relative isolate flex min-h-dvh flex-col items-center justify-center p-6 text-center">
+        <TableBackdrop />
+        <div className="panel-leather relative z-10 flex max-w-sm flex-col items-center gap-5 rounded-3xl p-8">
+          <p className="text-white/75">
+            Aucune partie active pour le code <span className="font-hud font-bold text-[var(--color-brass-300)]">{code}</span>. Créez
+            une nouvelle partie pour prendre la route.
+          </p>
+          <Link href="/play/create" className="btn-enroute-primary">
+            Créer une partie
+          </Link>
+        </div>
       </main>
     );
   }
 
   return <GameRunner options={initialOptions} onExit={() => router.push("/")} onNewGame={() => router.push("/play/create")} />;
+}
+
+function nextPlayer(state: GameState) {
+  const n = state.players.length;
+  for (let i = 1; i <= n; i++) {
+    const candidate = state.players[(state.currentPlayerIndex + i) % n];
+    if (!candidate.finished) return candidate;
+  }
+  return null;
+}
+
+/** Brass plate hanging from the board's bottom edge: whose turn, what to do. */
+function TurnPlate({ state }: { state: GameState }) {
+  const current = state.players[state.currentPlayerIndex];
+  const next = nextPlayer(state);
+  const remaining = Math.max(0, state.target - current.distance);
+  return (
+    <div className="brass-plate flex items-center gap-2.5 rounded-xl px-3 py-1.5 sm:gap-3 sm:px-4">
+      <span
+        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-display text-sm text-white shadow-[inset_0_-2px_0_rgba(0,0,0,0.3)] sm:h-7 sm:w-7"
+        style={{ background: PLAYER_COLOR[current.color], textShadow: "none" }}
+      >
+        {state.currentPlayerIndex + 1}
+      </span>
+      <div className="leading-tight">
+        <p className="font-display text-[0.95rem] tracking-[0.08em] sm:text-lg">
+          {current.name.toUpperCase()} — {state.phase === "draw" ? "PIOCHEZ UNE CARTE" : "JOUEZ OU DÉFAUSSEZ"}
+        </p>
+        <p className="font-hud text-[0.62rem] font-bold uppercase tracking-[0.18em] opacity-75">
+          Reste {remaining} km{next && next.id !== current.id ? ` · prochain : ${next.name}` : ""}
+        </p>
+      </div>
+    </div>
+  );
 }
 
 function GameRunner({
@@ -97,70 +133,51 @@ function GameRunner({
     discard(card);
   };
 
-  const handleDraw = () => {
-    draw();
-  };
-
-  const environmentGradient = useMemo(
-    () => ({ background: "radial-gradient(120% 90% at 50% -10%, rgba(255,255,255,0.06), transparent 60%)" }),
-    [],
-  );
-
   return (
-    <main className="min-h-screen flex flex-col bg-[var(--color-asphalt-900)]" style={environmentGradient}>
-      <header className="flex items-center justify-between px-4 sm:px-6 py-3">
-        <button onClick={onExit} className="flex items-center gap-2">
-          <Logo size="sm" className="scale-[0.5] origin-left -my-3" />
-        </button>
-        <div className="flex items-center gap-3">
-          <span className="font-hud text-xs tracking-widest text-white/50 hidden sm:inline">
-            PARTIE {state.id}
-          </span>
-          <SoundToggle enabled={soundOn} onToggle={toggleSound} />
-          <button onClick={onExit} className="btn-enroute-ghost !text-sm !py-2 !px-4">
-            Quitter
-          </button>
+    <main className="relative isolate min-h-dvh overflow-x-hidden text-[var(--color-paper)] lg:h-dvh lg:overflow-hidden">
+      <TableBackdrop />
+      <div className="relative z-10 flex min-h-dvh flex-col lg:h-full lg:min-h-0">
+        {/* The top band is left clear: it's where the EN ROUTE inlay sits on the table. */}
+        <header className="flex shrink-0 items-start justify-between gap-3 px-3 pt-3 sm:px-5" style={{ height: "var(--logo-band)" }}>
+          <div className="panel-leather hidden rounded-full px-3 py-1.5 font-hud text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-white/70 sm:block">
+            {state.id} · Tour {state.turn}
+          </div>
+          {/* On phones the logo spans most of the width: keep controls small and in the corner. */}
+          <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+            <SoundToggle enabled={soundOn} onToggle={toggleSound} />
+            <button onClick={onExit} aria-label="Quitter la partie" className="btn-enroute-ghost panel-leather !h-9 !w-9 !p-0 !text-sm sm:!h-10 sm:!w-auto sm:!px-4">
+              <span className="sm:hidden">✕</span>
+              <span className="hidden sm:inline">Quitter</span>
+            </button>
+          </div>
+        </header>
+
+        <div className="grid grid-cols-1 items-start gap-3 px-2 sm:px-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[14.5rem_minmax(0,1fr)_10rem] lg:gap-6 lg:px-6">
+          <aside className="no-scrollbar lg:max-h-full lg:overflow-y-auto">
+            <PlayerPanel state={state} />
+          </aside>
+
+          <section className="relative mx-auto w-full pb-6" style={{ maxWidth: "max(30rem, calc((100dvh - var(--logo-band) - 18rem) * 1.6))" }}>
+            <EventToast event={currentEvent} state={state} />
+            <Board state={state} caption={<TurnPlate state={state} />} />
+          </section>
+
+          <aside className="flex items-center justify-center gap-6 pb-1 lg:flex-col lg:gap-8 lg:pt-2">
+            <DrawPile count={state.deck.length} canDraw={state.phase === "draw"} onDraw={draw} />
+            <DiscardPile pile={state.discard} />
+          </aside>
         </div>
-      </header>
 
-      <div className="px-4 sm:px-6">
-        <OpponentsBar state={state} />
-      </div>
-
-      <div className="flex-1 flex flex-col justify-center px-3 sm:px-6 py-3 gap-3 max-w-5xl mx-auto w-full relative">
-        <div className="relative">
-          <EventToast event={currentEvent} state={state} />
-          <Table>
-            <Board state={state} />
-          </Table>
-        </div>
-
-        <div className="flex items-center justify-center gap-8 sm:gap-16">
-          <DrawPile count={state.deck.length} canDraw={state.phase === "draw"} onDraw={handleDraw} />
-          <DiscardPile pile={state.discard} />
-        </div>
-
-        <p className="text-center font-hud text-xs sm:text-sm tracking-widest uppercase text-white/50">
-          {state.phase === "draw"
-            ? `${currentPlayer.name}, piochez une carte`
-            : `${currentPlayer.name}, jouez ou défaussez une carte`}
-        </p>
-      </div>
-
-      <div className="px-2 sm:px-6">
-        <PlayerHand player={currentPlayer} state={state} isMyTurn={true} onPlay={handlePlay} onDiscard={handleDiscard} />
+        <footer className="relative shrink-0">
+          <PlayerHand player={currentPlayer} state={state} isMyTurn onPlay={handlePlay} onDiscard={handleDiscard} />
+        </footer>
       </div>
 
       <TurnBanner player={turnBannerPlayer} />
       <TargetPicker pending={pendingTarget} state={state} onPick={resolveTarget} onCancel={cancelTarget} />
 
       {state.phase === "gameover" ? (
-        <VictoryOverlay
-          state={state}
-          onReplay={() => newGame(options)}
-          onNewGame={onNewGame}
-          onMenu={onExit}
-        />
+        <VictoryOverlay state={state} onReplay={() => newGame(options)} onNewGame={onNewGame} onMenu={onExit} />
       ) : null}
     </main>
   );

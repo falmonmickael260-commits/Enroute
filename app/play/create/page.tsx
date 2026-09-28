@@ -1,13 +1,13 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import clsx from "clsx";
-import { Logo } from "@/game/components/ui/Logo";
-import { useSetupStore } from "@/game/lib/store/setupStore";
-import { ENVIRONMENT_LIST } from "@/game/lib/environments";
-import type { EnvironmentId } from "@/game/types/game";
+import { useSetupStore, PLAYER_COLORS } from "@/game/lib/store/setupStore";
+import { AMBIANCE_LIST } from "@/game/lib/ambiances";
+import type { AmbianceId } from "@/game/types/game";
+import { PLAYER_COLOR } from "@/game/components/players/PlayerPiece";
+import { InnerPage, SectionLabel } from "@/game/components/ui/InnerPage";
 
 const DURATIONS: { label: string; value: number; hint: string }[] = [
   { label: "Courte", value: 400, hint: "~15 min" },
@@ -15,119 +15,98 @@ const DURATIONS: { label: string; value: number; hint: string }[] = [
   { label: "Longue", value: 1000, hint: "~40 min" },
 ];
 
+const choice = (active: boolean) =>
+  clsx(
+    "rounded-xl border transition-all",
+    active
+      ? "border-[var(--color-brass-300)] bg-[var(--color-brass-300)]/15 shadow-[0_0_18px_rgba(230,191,92,0.25)]"
+      : "border-white/10 bg-black/25 hover:border-white/30",
+  );
+
 export default function CreateGamePage() {
   const router = useRouter();
   const createLocalGame = useSetupStore((s) => s.createLocalGame);
 
   const [playerCount, setPlayerCount] = useState(2);
   const [names, setNames] = useState<string[]>(["Joueur 1", "Joueur 2", "Joueur 3", "Joueur 4"]);
-  const [environment, setEnvironment] = useState<EnvironmentId>("campagne");
+  const [ambiance, setAmbiance] = useState<AmbianceId>("jour");
   const [target, setTarget] = useState(1000);
 
-  const handleNameChange = (index: number, value: string) => {
-    setNames((prev) => prev.map((n, i) => (i === index ? value : n)));
-  };
-
   const handleStart = () => {
-    const code = createLocalGame(names.slice(0, playerCount), environment, target);
+    const code = createLocalGame(names.slice(0, playerCount), ambiance, target);
     router.push(`/play/lobby/${code}`);
   };
 
   return (
-    <main className="min-h-screen bg-[var(--color-asphalt-900)] px-4 sm:px-8 py-10 flex flex-col items-center">
-      <div className="w-full max-w-lg flex flex-col gap-8">
-        <header className="flex items-center justify-between">
-          <Link href="/">
-            <Logo size="sm" />
-          </Link>
-          <Link href="/" className="btn-enroute-ghost !text-sm !py-2 !px-4">
-            Annuler
-          </Link>
-        </header>
+    <InnerPage backHref="/" backLabel="Accueil" title="Créer une partie">
+      <section>
+        <SectionLabel>Nombre de joueurs</SectionLabel>
+        <div className="grid grid-cols-3 gap-3">
+          {[2, 3, 4].map((n) => (
+            <button key={n} onClick={() => setPlayerCount(n)} className={clsx(choice(playerCount === n), "py-3 font-display text-3xl")}>
+              {n}
+            </button>
+          ))}
+        </div>
+      </section>
 
-        <h1 className="font-display text-3xl text-center text-[var(--color-paper)]">Créer une partie</h1>
-
-        <section>
-          <p className="font-hud text-xs uppercase tracking-widest text-white/50 mb-3">Nombre de joueurs</p>
-          <div className="grid grid-cols-3 gap-3">
-            {[2, 3, 4].map((n) => (
-              <button
-                key={n}
-                onClick={() => setPlayerCount(n)}
-                className={clsx(
-                  "rounded-xl py-3 font-display text-2xl border transition-colors",
-                  playerCount === n
-                    ? "bg-[var(--color-brand-crimson)] border-[var(--color-brand-crimson)] text-white"
-                    : "bg-white/5 border-white/10 text-white/70 hover:border-white/30",
-                )}
+      <section>
+        <SectionLabel>Pilotes</SectionLabel>
+        <div className="flex flex-col gap-2">
+          {names.slice(0, playerCount).map((name, i) => (
+            <label key={i} className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/30 px-3 focus-within:border-[var(--color-brass-300)]">
+              <span
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-display text-white"
+                style={{ background: PLAYER_COLOR[PLAYER_COLORS[i]] }}
               >
-                {n}
-              </button>
-            ))}
-          </div>
-        </section>
-
-        <section>
-          <p className="font-hud text-xs uppercase tracking-widest text-white/50 mb-3">Noms des joueurs</p>
-          <div className="flex flex-col gap-2">
-            {names.slice(0, playerCount).map((name, i) => (
+                {i + 1}
+              </span>
               <input
-                key={i}
                 value={name}
-                onChange={(e) => handleNameChange(i, e.target.value)}
-                maxLength={16}
-                className="rounded-xl bg-white/5 border border-white/10 focus:border-[var(--color-brand-gold)] outline-none px-4 py-2.5 text-white placeholder-white/30"
+                onChange={(e) => setNames((prev) => prev.map((n, j) => (j === i ? e.target.value : n)))}
+                maxLength={14}
+                className="w-full bg-transparent py-2.5 font-hud text-lg font-semibold text-white outline-none placeholder-white/30"
                 placeholder={`Joueur ${i + 1}`}
+                aria-label={`Nom du joueur ${i + 1}`}
               />
-            ))}
-          </div>
-        </section>
+            </label>
+          ))}
+        </div>
+      </section>
 
-        <section>
-          <p className="font-hud text-xs uppercase tracking-widest text-white/50 mb-3">Environnement</p>
-          <div className="grid grid-cols-5 gap-2">
-            {ENVIRONMENT_LIST.map((env) => (
-              <button
-                key={env.id}
-                onClick={() => setEnvironment(env.id)}
-                className={clsx(
-                  "rounded-xl py-3 flex flex-col items-center gap-1 border transition-colors",
-                  environment === env.id ? "border-[var(--color-brand-gold)] bg-white/10" : "border-white/10 bg-white/5 hover:border-white/30",
-                )}
-              >
-                <span
-                  className="w-6 h-6 rounded-full"
-                  style={{ background: `linear-gradient(135deg, ${env.sky[0]}, ${env.ground[1]})` }}
-                />
-                <span className="text-[0.6rem] font-hud text-white/70">{env.label}</span>
-              </button>
-            ))}
-          </div>
-        </section>
+      <section>
+        <SectionLabel>Ambiance du plateau</SectionLabel>
+        <div className="grid grid-cols-3 gap-2">
+          {AMBIANCE_LIST.map((a) => (
+            <button key={a.id} onClick={() => setAmbiance(a.id)} className={clsx(choice(ambiance === a.id), "flex flex-col items-center gap-1.5 px-1 py-3")}>
+              <span
+                className="h-9 w-14 rounded-md shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)]"
+                style={{ background: `linear-gradient(160deg, ${a.swatch[0]}, ${a.swatch[1]})` }}
+              />
+              <span className="font-hud text-xs font-bold text-white/90">{a.label}</span>
+              <span className="text-[0.6rem] text-white/45">{a.hint}</span>
+            </button>
+          ))}
+        </div>
+      </section>
 
-        <section>
-          <p className="font-hud text-xs uppercase tracking-widest text-white/50 mb-3">Durée de la partie</p>
-          <div className="grid grid-cols-3 gap-3">
-            {DURATIONS.map((d) => (
-              <button
-                key={d.value}
-                onClick={() => setTarget(d.value)}
-                className={clsx(
-                  "rounded-xl py-3 border transition-colors flex flex-col items-center",
-                  target === d.value ? "border-[var(--color-brand-gold)] bg-white/10" : "border-white/10 bg-white/5 hover:border-white/30",
-                )}
-              >
-                <span className="font-hud font-semibold text-white">{d.label}</span>
-                <span className="text-[0.65rem] text-white/50">{d.value} km · {d.hint}</span>
-              </button>
-            ))}
-          </div>
-        </section>
+      <section>
+        <SectionLabel>Durée de la partie</SectionLabel>
+        <div className="grid grid-cols-3 gap-2">
+          {DURATIONS.map((d) => (
+            <button key={d.value} onClick={() => setTarget(d.value)} className={clsx(choice(target === d.value), "flex flex-col items-center py-3")}>
+              <span className="font-hud font-bold text-white">{d.label}</span>
+              <span className="text-[0.65rem] text-white/50">
+                {d.value} km · {d.hint}
+              </span>
+            </button>
+          ))}
+        </div>
+      </section>
 
-        <button onClick={handleStart} className="btn-enroute-primary w-full mt-2">
-          Générer le code de partie
-        </button>
-      </div>
-    </main>
+      <button onClick={handleStart} className="btn-enroute-primary mt-1 w-full">
+        Générer le code de partie
+      </button>
+    </InnerPage>
   );
 }

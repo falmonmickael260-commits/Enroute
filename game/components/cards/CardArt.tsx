@@ -1,244 +1,240 @@
-import type { CardDef } from "@/game/types/game";
+import type { CardDef, DefenseType } from "@/game/types/game";
 
-const STROKE = "currentColor";
-
-function Badge({ children, tint }: { children: React.ReactNode; tint: string }) {
+/** Line-art glyphs (64x64) drawn in currentColor, with a few fixed accents. */
+function Glyph({ children }: { children: React.ReactNode }) {
   return (
-    <svg viewBox="0 0 64 64" className="w-full h-full">
-      <circle cx="32" cy="32" r="30" fill={tint} opacity={0.14} />
-      <circle cx="32" cy="32" r="23" fill={tint} opacity={0.12} />
-      <g stroke={STROKE} strokeWidth={2.4} strokeLinecap="round" strokeLinejoin="round" fill="none">
+    <svg viewBox="0 0 64 64" className="h-full w-full overflow-visible">
+      <g stroke="currentColor" strokeWidth={2.8} strokeLinecap="round" strokeLinejoin="round" fill="none">
         {children}
       </g>
     </svg>
   );
 }
 
-function RoadArt({ tier }: { tier: number }) {
-  // tier 1..5 controls how "big" the stretch of road feels
+const ACCENT = "#ffd35a";
+
+function RoadGlyph({ tier }: { tier: number }) {
   const dashes = Math.min(5, Math.max(1, tier));
   return (
-    <Badge tint="var(--color-brand-gold)">
-      <path d="M14 46 L26 16 H38 L50 46 Z" fill="var(--color-asphalt-700)" opacity={0.9} stroke="none" />
+    <Glyph>
+      <path d="M8 56 L25 10 H39 L56 56 Z" fill="#23262e" stroke="none" />
+      <path d="M8 56 L25 10 M39 10 L56 56" />
       {Array.from({ length: dashes }).map((_, i) => (
-        <line
-          key={i}
-          x1={32}
-          y1={40 - i * 5.4}
-          x2={32}
-          y2={37 - i * 5.4}
-          stroke="var(--color-brand-gold)"
-          strokeWidth={2.2}
-        />
+        <line key={i} x1={32} y1={50 - i * 8} x2={32} y2={46 - i * 8} stroke={ACCENT} strokeWidth={3} />
       ))}
-      <path d="M14 46 L26 16 H38 L50 46" />
-    </Badge>
+      <path d="M14 8 h-6 M58 8 h-6" opacity={0.5} />
+    </Glyph>
   );
 }
 
-function CollisionArt() {
+function CollisionGlyph() {
   return (
-    <Badge tint="var(--color-brand-crimson)">
-      <path d="M14 34 h12 l4 -6 h6 l4 6 h10" />
-      <circle cx="21" cy="38" r="3" />
-      <circle cx="43" cy="38" r="3" />
-      <path d="M30 22 L34 30 L26 30 Z" fill="var(--color-brand-gold)" stroke="none" />
-      <path d="M32 16 L34 22 M40 20 L36 25 M24 20 L28 25" />
-    </Badge>
+    <Glyph>
+      <path d="M32 8 L37 22 L51 16 L43 29 L57 34 L42 38 L47 52 L34 43 L27 56 L25 41 L10 44 L20 32 L8 22 L23 23 Z" fill="currentColor" fillOpacity={0.18} />
+      <path d="M32 20 L35 28 L42 27 L37 33 L41 39 L33 37 L29 43 L28 36 L21 34 L27 30 L24 23 L30 27 Z" fill={ACCENT} stroke="none" />
+    </Glyph>
   );
 }
 
-function CrevaisonArt() {
+function CrevaisonGlyph() {
   return (
-    <Badge tint="var(--color-brand-crimson)">
-      <circle cx="32" cy="32" r="14" />
-      <circle cx="32" cy="32" r="6" />
-      <path d="M32 18 V26 M32 38 V46 M18 32 H26 M38 32 H46" />
-      <path d="M42 22 L46 18 M45 25 L50 22" stroke="var(--color-brand-gold)" />
-    </Badge>
+    <Glyph>
+      <circle cx={30} cy={34} r={20} />
+      <circle cx={30} cy={34} r={8} />
+      <path d="M30 14 v6 M30 48 v6 M10 34 h6 M44 34 h6" />
+      <path d="M46 10 L50 18 L44 20 L52 28" stroke={ACCENT} strokeWidth={3} />
+    </Glyph>
   );
 }
 
-function PanneArt() {
+function PanneGlyph() {
   return (
-    <Badge tint="var(--color-brand-crimson)">
-      <path d="M20 44 V26 h16 l6 6 v12 z" />
-      <path d="M20 32 h22" />
-      <circle cx="26" cy="44" r="2.4" />
-      <circle cx="36" cy="44" r="2.4" />
-      <path d="M44 22 L50 16 M50 22 L44 16" stroke="var(--color-brand-gold)" />
-    </Badge>
+    <Glyph>
+      <rect x={12} y={18} width={24} height={36} rx={3} />
+      <rect x={17} y={24} width={14} height={10} rx={1} fill="currentColor" fillOpacity={0.2} />
+      <path d="M36 26 h5 a4 4 0 0 1 4 4 v14 a3 3 0 0 0 6 0 v-18 l-5 -5" />
+      <path d="M44 6 l10 10 M54 6 l-10 10" stroke={ACCENT} strokeWidth={3.2} />
+    </Glyph>
   );
 }
 
-function RadarArt() {
+function RadarGlyph() {
   return (
-    <Badge tint="var(--color-brand-crimson)">
-      <rect x="24" y="34" width="16" height="12" rx="2" />
-      <circle cx="32" cy="26" r="7" />
-      <path d="M32 26 h9" stroke="var(--color-brand-gold)" />
-      <path d="M44 16 a14 14 0 0 1 0 20" opacity={0.7} />
-      <path d="M48 12 a20 20 0 0 1 0 28" opacity={0.4} />
-    </Badge>
+    <Glyph>
+      <circle cx={30} cy={34} r={18} fill="#fff" stroke="#d6372d" strokeWidth={5} />
+      <text x={30} y={41} textAnchor="middle" fontFamily="var(--font-display)" fontSize={20} fill="#14161c" stroke="none">
+        50
+      </text>
+      <path d="M50 18 a14 14 0 0 1 0 20" opacity={0.8} />
+      <path d="M55 12 a22 22 0 0 1 0 32" opacity={0.5} />
+    </Glyph>
   );
 }
 
-function BarrageArt() {
+function BarrageGlyph() {
   return (
-    <Badge tint="var(--color-brand-crimson)">
-      <rect x="12" y="28" width="40" height="8" rx="2" transform="rotate(-8 32 32)" />
-      <rect x="12" y="28" width="6" height="8" fill="var(--color-brand-gold)" stroke="none" transform="rotate(-8 32 32)" />
-      <rect x="30" y="28" width="6" height="8" fill="var(--color-brand-gold)" stroke="none" transform="rotate(-8 32 32)" />
-      <path d="M18 46 V22 M46 46 V22" />
-    </Badge>
+    <Glyph>
+      <path d="M14 56 V26 M50 56 V26" />
+      <rect x={6} y={22} width={52} height={12} rx={2} fill="#fff" stroke="none" />
+      {[6, 22, 38].map((x) => (
+        <path key={x} d={`M${x + 4} 22 h8 l-8 12 h-8 z`} fill="#d6372d" stroke="none" />
+      ))}
+      <rect x={6} y={22} width={52} height={12} rx={2} />
+    </Glyph>
   );
 }
 
-function ReparationArt() {
+function ReparationGlyph() {
   return (
-    <Badge tint="var(--color-player-emerald)">
-      <path d="M40 18 a8 8 0 1 0 6 13 l-6 -6 3 -3 6 6 a8 8 0 0 0 -9 -10z" />
-      <path d="M20 44 L34 30" />
-      <circle cx="18" cy="46" r="3" />
-    </Badge>
+    <Glyph>
+      <path d="M44 10 a11 11 0 1 0 8 17 l-8 -8 4 -4 8 8 a11 11 0 0 0 -12 -13 z" fill="currentColor" fillOpacity={0.2} />
+      <path d="M36 28 L14 50" strokeWidth={6} />
+      <circle cx={12} cy={52} r={3} fill={ACCENT} stroke="none" />
+    </Glyph>
   );
 }
 
-function RoueSecoursArt() {
+function RoueSecoursGlyph() {
   return (
-    <Badge tint="var(--color-player-emerald)">
-      <circle cx="32" cy="32" r="14" />
-      <circle cx="32" cy="32" r="5" />
-      <path d="M32 18 V22 M32 42 V46 M18 32 H22 M42 32 H46" />
-      <path d="M24 44 L20 50 M40 44 L44 50" stroke="var(--color-brand-gold)" />
-    </Badge>
+    <Glyph>
+      <circle cx={32} cy={32} r={20} />
+      <circle cx={32} cy={32} r={7} fill="currentColor" fillOpacity={0.25} />
+      <path d="M32 12 v8 M32 44 v8 M12 32 h8 M44 32 h8" />
+      <path d="M45 50 h10 M50 45 v10" stroke={ACCENT} strokeWidth={3.4} />
+    </Glyph>
   );
 }
 
-function PleinEssenceArt() {
+function PleinEssenceGlyph() {
   return (
-    <Badge tint="var(--color-player-emerald)">
-      <rect x="18" y="20" width="16" height="26" rx="2" />
-      <rect x="21" y="24" width="10" height="7" />
-      <path d="M34 26 h4 a4 4 0 0 1 4 4 v10 a3 3 0 0 0 6 0 v-14 l-4 -4" />
-      <path d="M22 46 h10" />
-    </Badge>
+    <Glyph>
+      <rect x={12} y={16} width={24} height={38} rx={3} fill="currentColor" fillOpacity={0.15} />
+      <rect x={17} y={22} width={14} height={10} rx={1} />
+      <path d="M36 24 h5 a4 4 0 0 1 4 4 v14 a3 3 0 0 0 6 0 v-18 l-5 -5" />
+      <path d="M24 38 c-5 6 -5 9 0 10 c5 -1 5 -4 0 -10 z" fill={ACCENT} stroke="none" />
+    </Glyph>
   );
 }
 
-function GpsArt() {
+function GpsGlyph() {
   return (
-    <Badge tint="var(--color-player-azure)">
-      <path d="M32 14 c8 0 13 6 13 13 c0 9 -13 23 -13 23 s-13 -14 -13 -23 c0 -7 5 -13 13 -13z" />
-      <circle cx="32" cy="27" r="4.5" />
-    </Badge>
+    <Glyph>
+      <path d="M32 6 c11 0 18 8 18 18 c0 13 -18 32 -18 32 s-18 -19 -18 -32 c0 -10 7 -18 18 -18 z" fill="currentColor" fillOpacity={0.18} />
+      <circle cx={32} cy={24} r={6} fill={ACCENT} stroke="none" />
+    </Glyph>
   );
 }
 
-function PassageLibreArt() {
+function PassageLibreGlyph() {
   return (
-    <Badge tint="var(--color-player-emerald)">
-      <rect x="26" y="14" width="12" height="30" rx="4" />
-      <circle cx="32" cy="21" r="2.2" fill="var(--color-brand-crimson)" stroke="none" opacity={0.35} />
-      <circle cx="32" cy="29" r="2.2" fill="var(--color-brand-gold)" stroke="none" opacity={0.35} />
-      <circle cx="32" cy="37" r="2.2" fill="var(--color-player-emerald)" stroke="none" />
-      <path d="M40 32 L50 32 M45 27 L50 32 L45 37" />
-    </Badge>
+    <Glyph>
+      <rect x={20} y={6} width={18} height={44} rx={6} fill="#14161c" stroke="currentColor" />
+      <circle cx={29} cy={16} r={4} fill="#5a1d1a" stroke="none" />
+      <circle cx={29} cy={28} r={4} fill="#5a4a1a" stroke="none" />
+      <circle cx={29} cy={40} r={4.5} fill="#5cff8f" stroke="none" />
+      <path d="M29 50 v8" />
+      <path d="M44 28 h12 M50 22 l6 6 -6 6" />
+    </Glyph>
   );
 }
 
-function TurboArt() {
+function TurboGlyph() {
   return (
-    <Badge tint="var(--color-brand-gold)">
-      <path d="M28 14 L20 34 h8 l-4 16 20 -24 h-9 l6 -12z" fill="var(--color-brand-gold)" opacity={0.25} stroke="none" />
-      <path d="M28 14 L20 34 h8 l-4 16 20 -24 h-9 l6 -12z" />
-      <path d="M12 40 h4 M10 32 h5 M12 24 h4" opacity={0.6} />
-    </Badge>
+    <Glyph>
+      <path d="M36 4 L18 34 h12 l-6 26 26 -34 h-13 l9 -22 z" fill={ACCENT} stroke="currentColor" />
+      <path d="M6 30 h8 M4 40 h10 M8 50 h8" opacity={0.7} />
+    </Glyph>
   );
 }
 
-function RaccourciArt() {
+function RaccourciGlyph() {
   return (
-    <Badge tint="var(--color-brand-gold)">
-      <path d="M14 46 C 22 46 22 32 30 32 C 22 32 22 18 14 18" opacity={0.5} />
-      <path d="M14 46 C 26 46 24 20 40 20 H48" />
-      <path d="M43 15 L50 20 L43 25" />
-    </Badge>
+    <Glyph>
+      <path d="M8 56 C 20 56 20 34 32 34 C 20 34 20 12 8 12" opacity={0.45} strokeDasharray="4 5" />
+      <path d="M8 56 C 26 56 22 18 46 18 H56" strokeWidth={4} />
+      <path d="M48 10 L57 18 L48 26" strokeWidth={4} />
+    </Glyph>
   );
 }
 
-function DepassementArt() {
+function DepassementGlyph() {
   return (
-    <Badge tint="var(--color-brand-gold)">
-      <path d="M14 40 h14 l4 -6 h6" />
-      <circle cx="19" cy="42" r="2.6" />
-      <circle cx="35" cy="42" r="2.6" />
-      <path d="M28 24 h14 l4 -6 h6" opacity={0.55} />
-      <circle cx="33" cy="26" r="2.2" opacity={0.55} />
-      <circle cx="47" cy="26" r="2.2" opacity={0.55} />
-      <path d="M46 34 L52 30 M46 34 L52 38" />
-    </Badge>
+    <Glyph>
+      <rect x={6} y={36} width={24} height={13} rx={5} fill="currentColor" fillOpacity={0.25} />
+      <rect x={30} y={16} width={24} height={13} rx={5} fill={ACCENT} stroke="currentColor" />
+      <path d="M18 34 C 20 24 26 22 30 22" strokeDasharray="3 4" />
+      <path d="M52 40 l6 4 -6 4" />
+    </Glyph>
   );
 }
 
-function GpsStrategiqueArt() {
+function GpsStrategiqueGlyph() {
   return (
-    <Badge tint="var(--color-brand-gold)">
-      <rect x="22" y="14" width="20" height="12" rx="2" transform="rotate(-18 32 20)" />
-      <path d="M32 30 V48" />
-      <path d="M24 40 L32 48 L40 40" />
-      <path d="M18 20 L14 16 M46 20 L50 16" opacity={0.6} />
-    </Badge>
+    <Glyph>
+      <rect x={20} y={8} width={24} height={14} rx={2} transform="rotate(-18 32 15)" fill="currentColor" fillOpacity={0.2} />
+      <path d="M10 14 l-6 -4 M54 14 l6 -4" />
+      <path d="M32 28 V54" />
+      <path d="M22 44 L32 54 L42 44" />
+      <circle cx={32} cy={28} r={3.5} fill={ACCENT} stroke="none" />
+    </Glyph>
   );
 }
 
-function DerniereLigneDroiteArt() {
+function DerniereLigneDroiteGlyph() {
   return (
-    <Badge tint="var(--color-brand-crimson)">
-      <path d="M20 14 V50" />
-      <path d="M20 16 h18 v6 h-9 v6 h9 v6 H20z" fill="var(--color-asphalt-800)" stroke="none" />
-      <path d="M20 16 h18 v6 h-9 v6 h9 v6 H20z" />
-    </Badge>
+    <Glyph>
+      <path d="M16 6 V58" />
+      <g stroke="none">
+        {[0, 1, 2, 3].map((r) =>
+          [0, 1, 2, 3].map((c) => (
+            <rect key={`${r}-${c}`} x={18 + c * 8} y={8 + r * 7} width={8} height={7} fill={(r + c) % 2 === 0 ? "#14161c" : "#fff"} />
+          )),
+        )}
+      </g>
+      <rect x={18} y={8} width={32} height={28} />
+    </Glyph>
   );
+}
+
+const DEFENSE_GLYPHS: Record<DefenseType, () => React.ReactElement> = {
+  reparation: ReparationGlyph,
+  roueSecours: RoueSecoursGlyph,
+  pleinEssence: PleinEssenceGlyph,
+  gps: GpsGlyph,
+  passageLibre: PassageLibreGlyph,
+};
+
+export function DefenseGlyph({ defense }: { defense: DefenseType }) {
+  const G = DEFENSE_GLYPHS[defense];
+  return <G />;
 }
 
 export function CardArt({ def }: { def: CardDef }) {
-  if (def.category === "distance" || (def.category === "special" && def.value && def.special !== "depassement" && def.special !== "gpsStrategique")) {
-    if (def.special === "turbo") return <TurboArt />;
-    if (def.special === "raccourci") return <RaccourciArt />;
-    if (def.special === "derniereLigneDroite") return <DerniereLigneDroiteArt />;
-    const tier = def.value ? Math.min(5, Math.ceil(def.value / 40)) : 2;
-    return <RoadArt tier={tier} />;
+  switch (def.special) {
+    case "turbo":
+      return <TurboGlyph />;
+    case "raccourci":
+      return <RaccourciGlyph />;
+    case "derniereLigneDroite":
+      return <DerniereLigneDroiteGlyph />;
+    case "depassement":
+      return <DepassementGlyph />;
+    case "gpsStrategique":
+      return <GpsStrategiqueGlyph />;
   }
   switch (def.hazard) {
     case "collision":
-      return <CollisionArt />;
+      return <CollisionGlyph />;
     case "crevaison":
-      return <CrevaisonArt />;
+      return <CrevaisonGlyph />;
     case "panne":
-      return <PanneArt />;
+      return <PanneGlyph />;
     case "radar":
-      return <RadarArt />;
+      return <RadarGlyph />;
     case "barrage":
-      return <BarrageArt />;
+      return <BarrageGlyph />;
   }
-  switch (def.defense) {
-    case "reparation":
-      return <ReparationArt />;
-    case "roueSecours":
-      return <RoueSecoursArt />;
-    case "pleinEssence":
-      return <PleinEssenceArt />;
-    case "gps":
-      return <GpsArt />;
-    case "passageLibre":
-      return <PassageLibreArt />;
-  }
-  switch (def.special) {
-    case "depassement":
-      return <DepassementArt />;
-    case "gpsStrategique":
-      return <GpsStrategiqueArt />;
-  }
-  return <RoadArt tier={2} />;
+  if (def.defense) return <DefenseGlyph defense={def.defense} />;
+  const tier = def.value ? Math.min(5, Math.ceil(def.value / 40)) : 2;
+  return <RoadGlyph tier={tier} />;
 }

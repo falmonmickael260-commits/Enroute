@@ -47,7 +47,7 @@ export function TargetPicker({
           initial={{ y: 40, opacity: 0, scale: 0.95 }}
           animate={{ y: 0, opacity: 1, scale: 1 }}
           exit={{ y: 20, opacity: 0, scale: 0.95 }}
-          className="w-full max-w-sm rounded-2xl panel-wood border border-white/10 p-5"
+          className="panel-leather w-full max-w-sm rounded-3xl p-5"
           onClick={(e) => e.stopPropagation()}
         >
           <p className="font-hud text-xs uppercase tracking-widest text-white/60 mb-1">

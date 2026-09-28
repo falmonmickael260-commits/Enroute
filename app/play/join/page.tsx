@@ -3,8 +3,8 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Logo } from "@/game/components/ui/Logo";
 import { useSetupStore } from "@/game/lib/store/setupStore";
+import { InnerPage } from "@/game/components/ui/InnerPage";
 
 export default function JoinGamePage() {
   const router = useRouter();
@@ -23,32 +23,28 @@ export default function JoinGamePage() {
       return;
     }
     setError(
-      "Partie introuable sur cet appareil. Le multijoueur en ligne arrive bientôt — pour l'instant, EN ROUTE se joue à plusieurs sur le même appareil.",
+      "Partie introuvable sur cet appareil. Le multijoueur en ligne arrive bientôt — pour l'instant, EN ROUTE se joue à plusieurs sur le même appareil.",
     );
   };
 
   return (
-    <main className="min-h-screen bg-[var(--color-asphalt-900)] px-4 sm:px-8 py-10 flex flex-col items-center justify-center">
-      <div className="w-full max-w-sm flex flex-col gap-6 text-center">
-        <Link href="/" className="self-center">
-          <Logo size="sm" />
-        </Link>
-        <h1 className="font-display text-3xl text-[var(--color-paper)]">Rejoindre une partie</h1>
-        <input
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          placeholder="ENR-XXXX"
-          maxLength={9}
-          className="text-center tracking-[0.3em] font-display text-2xl rounded-xl bg-white/5 border border-white/10 focus:border-[var(--color-brand-gold)] outline-none px-4 py-3 text-white placeholder-white/30 uppercase"
-        />
-        {error ? <p className="text-sm text-[var(--color-brand-crimson)]">{error}</p> : null}
-        <button onClick={handleJoin} className="btn-enroute-primary w-full">
-          Rejoindre
-        </button>
-        <Link href="/play/create" className="btn-enroute-ghost w-full">
-          Créer une partie à la place
-        </Link>
-      </div>
-    </main>
+    <InnerPage backHref="/" backLabel="Accueil" title="Rejoindre">
+      <input
+        value={code}
+        onChange={(e) => setCode(e.target.value)}
+        onKeyDown={(e) => e.key === "Enter" && handleJoin()}
+        placeholder="ENR-XXXX"
+        maxLength={9}
+        aria-label="Code de partie"
+        className="rounded-xl border border-white/10 bg-black/35 px-4 py-3 text-center font-display text-3xl uppercase tracking-[0.3em] text-white outline-none placeholder-white/25 focus:border-[var(--color-brass-300)]"
+      />
+      {error ? <p className="text-center text-sm text-[#ff8a7e]">{error}</p> : null}
+      <button onClick={handleJoin} className="btn-enroute-primary w-full">
+        Rejoindre
+      </button>
+      <Link href="/play/create" className="btn-enroute-ghost w-full">
+        Créer une partie à la place
+      </Link>
+    </InnerPage>
   );
 }

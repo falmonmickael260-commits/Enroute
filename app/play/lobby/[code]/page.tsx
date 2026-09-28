@@ -4,105 +4,83 @@ import { use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
-import { Logo } from "@/game/components/ui/Logo";
 import { useSetupStore } from "@/game/lib/store/setupStore";
-import { ENVIRONMENTS } from "@/game/lib/environments";
-
-const COLOR_VAR: Record<string, string> = {
-  crimson: "var(--color-player-crimson)",
-  azure: "var(--color-player-azure)",
-  amber: "var(--color-player-amber)",
-  emerald: "var(--color-player-emerald)",
-};
+import { AMBIANCES } from "@/game/lib/ambiances";
+import { PLAYER_COLOR } from "@/game/components/players/PlayerPiece";
+import { InnerPage, SectionLabel } from "@/game/components/ui/InnerPage";
 
 export default function LobbyPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = use(params);
   const router = useRouter();
-  const { code: storeCode, players, environment, target, toggleReady } = useSetupStore();
+  const { code: storeCode, players, ambiance, target, toggleReady } = useSetupStore();
 
   if (storeCode !== code || players.length === 0) {
     return (
-      <main className="min-h-screen flex flex-col items-center justify-center gap-6 p-6 text-center">
-        <Logo size="sm" />
-        <p className="text-white/70 max-w-sm">
-          Ce salon n&apos;existe plus sur cet appareil. Créez une nouvelle partie pour continuer.
-        </p>
+      <InnerPage backHref="/" backLabel="Accueil" title="Salon introuvable">
+        <p className="text-center text-white/70">Ce salon n&apos;existe plus sur cet appareil. Créez une nouvelle partie pour continuer.</p>
         <Link href="/play/create" className="btn-enroute-primary">
           Créer une partie
         </Link>
-      </main>
+      </InnerPage>
     );
   }
 
   const allReady = players.every((p) => p.ready);
-  const theme = ENVIRONMENTS[environment];
+  const readyCount = players.filter((p) => p.ready).length;
 
   return (
-    <main className="min-h-screen bg-[var(--color-asphalt-900)] px-4 sm:px-8 py-10 flex flex-col items-center">
-      <div className="w-full max-w-md flex flex-col gap-8">
-        <header className="flex items-center justify-between">
-          <Link href="/">
-            <Logo size="sm" />
-          </Link>
-          <Link href="/play/create" className="btn-enroute-ghost !text-sm !py-2 !px-4">
-            Quitter
-          </Link>
-        </header>
+    <InnerPage backHref="/play/create" backLabel="Retour" title="Salon">
+      <div className="text-center">
+        <SectionLabel>Code de partie</SectionLabel>
+        <p className="brass-plate mx-auto inline-block rounded-lg px-5 py-1 font-display text-4xl tracking-[0.18em]">{code}</p>
+        <p className="mt-3 font-hud text-sm text-white/55">
+          {AMBIANCES[ambiance].label} · {target} km · {readyCount}/{players.length} prêts
+        </p>
+      </div>
 
-        <div className="text-center">
-          <p className="font-hud text-xs uppercase tracking-widest text-white/50">Code de partie</p>
-          <p className="font-display text-4xl text-[var(--color-brand-gold)] tracking-[0.15em]">{code}</p>
-          <p className="text-white/50 text-sm mt-1">
-            {theme.label} · {target} km · {players.length} joueurs
-          </p>
-        </div>
-
-        <div className="flex flex-col gap-3">
-          {players.map((p, i) => (
-            <motion.div
-              key={p.id}
-              initial={{ opacity: 0, x: -16 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: i * 0.06 }}
-              className="flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-4 py-3"
-            >
-              <div className="flex items-center gap-3">
-                <span
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-sm"
-                  style={{ background: COLOR_VAR[p.color] }}
-                >
-                  🚗
-                </span>
-                <span className="font-hud font-semibold text-[var(--color-paper)]">{p.name}</span>
-              </div>
-              <button
-                onClick={() => toggleReady(p.id)}
-                className={
-                  "text-xs font-hud font-semibold tracking-wide px-3 py-1.5 rounded-full border transition-colors " +
-                  (p.ready
-                    ? "bg-[var(--color-player-emerald)]/90 border-transparent text-white"
-                    : "bg-transparent border-white/30 text-white/60 hover:border-white/60")
-                }
+      <div className="flex flex-col gap-2.5">
+        {players.map((p, i) => (
+          <motion.div
+            key={p.id}
+            initial={{ opacity: 0, x: -16 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: i * 0.06 }}
+            className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/30 px-4 py-3"
+          >
+            <div className="flex items-center gap-3">
+              <span
+                className="flex h-9 w-9 items-center justify-center rounded-full font-display text-lg text-white shadow-[inset_0_-2px_0_rgba(0,0,0,0.3)]"
+                style={{ background: PLAYER_COLOR[p.color] }}
               >
-                {p.ready ? "PRÊT ✓" : "PRÊT"}
-              </button>
-            </motion.div>
-          ))}
-        </div>
+                {i + 1}
+              </span>
+              <span className="font-hud text-lg font-bold">{p.name}</span>
+            </div>
+            <button
+              onClick={() => toggleReady(p.id)}
+              className={
+                "rounded-full border px-4 py-1.5 font-hud text-xs font-bold tracking-widest transition-colors " +
+                (p.ready
+                  ? "border-transparent bg-[var(--color-player-emerald)] text-white shadow-[0_0_14px_rgba(62,171,111,0.5)]"
+                  : "border-white/30 text-white/70 hover:border-white/60")
+              }
+            >
+              {p.ready ? "PRÊT ✓" : "PRÊT"}
+            </button>
+          </motion.div>
+        ))}
+      </div>
 
+      <div className="flex flex-col items-center gap-2">
         <button
           disabled={!allReady}
           onClick={() => router.push(`/play/game/${code}`)}
-          className="btn-enroute-primary w-full disabled:opacity-40 disabled:pointer-events-none"
+          className="btn-enroute-primary w-full disabled:pointer-events-none disabled:opacity-40"
         >
           LANCER LA PARTIE
         </button>
-        {!allReady ? (
-          <p className="text-center text-white/40 text-xs -mt-4">
-            Chaque joueur doit se déclarer prêt avant le départ.
-          </p>
-        ) : null}
+        {!allReady ? <p className="text-xs text-white/45">Chaque pilote doit se déclarer prêt avant le départ.</p> : null}
       </div>
-    </main>
+    </InnerPage>
   );
 }

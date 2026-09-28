@@ -34,6 +34,23 @@
   --color-player-azure: #3e8fe0;
   --color-player-amber: #e0a93e;
   --color-player-emerald: #3eab6f;
+
+  /* Brass trim */
+  --color-brass-100: #fff1b8;
+  --color-brass-300: #e6bf5c;
+  --color-brass-500: #b9862a;
+  --color-brass-700: #7a5413;
+
+  /* Height of the inlaid logo at the top of the table image. The backdrop is
+     `cover`-scaled from 2560x1440 (portrait: 1170x2532), so the logo's on-screen
+     height is whichever axis wins the cover scale. */
+  --logo-band: max(13.4vh, 7.6vw);
+}
+
+@media (orientation: portrait) {
+  :root {
+    --logo-band: max(8.4vh, 17.8vw);
+  }
 }
 
 @theme inline {
@@ -174,10 +191,81 @@ body {
     pointer-events: none;
   }
 
-  .panel-wood {
+  .table-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    background: #24160c url("/images/table-landscape.webp") center top / cover no-repeat;
+  }
+  @media (orientation: portrait) {
+    .table-backdrop {
+      background-image: url("/images/table-portrait.webp");
+    }
+  }
+
+  /* Dark leather panel for content laid over the wood. */
+  .panel-leather {
     background:
-      radial-gradient(120% 140% at 50% -20%, rgba(255, 255, 255, 0.06), transparent 60%),
-      linear-gradient(160deg, var(--color-wood-700), var(--color-wood-900));
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      radial-gradient(120% 90% at 50% 0%, rgba(255, 214, 150, 0.07), transparent 60%),
+      linear-gradient(180deg, rgba(30, 19, 11, 0.9), rgba(18, 11, 6, 0.92));
+    border: 1px solid rgba(230, 191, 92, 0.22);
+    box-shadow:
+      0 24px 60px rgba(0, 0, 0, 0.55),
+      inset 0 1px 0 rgba(255, 230, 170, 0.08),
+      inset 0 0 0 1px rgba(0, 0, 0, 0.4);
+    backdrop-filter: blur(6px);
+  }
+
+  .text-brass {
+    background: linear-gradient(180deg, var(--color-brass-100), var(--color-brass-300) 45%, var(--color-brass-500));
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+
+  /* The physical game board: lacquered frame, brass inlay, visible thickness. */
+  .board-frame {
+    position: relative;
+    border-radius: 26px;
+    padding: clamp(10px, 1.6vw, 20px);
+    background:
+      linear-gradient(180deg, rgba(255, 255, 255, 0.07), transparent 30%),
+      linear-gradient(135deg, #3b1f12 0%, #22120a 45%, #140a05 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 220, 170, 0.18),
+      inset 0 0 0 1px rgba(0, 0, 0, 0.6),
+      0 2px 0 #4a2a17,
+      0 12px 0 #120904,
+      0 13px 0 rgba(230, 191, 92, 0.15),
+      0 30px 50px rgba(0, 0, 0, 0.6),
+      0 60px 90px rgba(0, 0, 0, 0.45);
+  }
+  .board-frame::before {
+    content: "";
+    position: absolute;
+    inset: clamp(4px, 0.7vw, 8px);
+    border-radius: 20px;
+    border: 1.5px solid rgba(230, 191, 92, 0.55);
+    box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 0, 0, 0.4);
+    pointer-events: none;
+  }
+  .board-surface {
+    position: relative;
+    overflow: hidden;
+    border-radius: 12px;
+    box-shadow:
+      0 0 0 2px #0d0703,
+      0 0 0 3.5px rgba(230, 191, 92, 0.6),
+      inset 0 0 30px rgba(0, 0, 0, 0.35);
+  }
+  .brass-plate {
+    background: linear-gradient(180deg, #fff1b8 0%, #e6bf5c 30%, #b9862a 70%, #8a6015 100%);
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.7),
+      inset 0 -1px 0 rgba(0, 0, 0, 0.35),
+      0 3px 8px rgba(0, 0, 0, 0.5);
+    color: #3a2408;
+    text-shadow: 0 1px 0 rgba(255, 240, 200, 0.6);
   }
 }
