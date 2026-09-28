@@ -92,7 +92,7 @@ function PlayerPlaque({
         {offline ? (
           <span
             title="Déconnecté"
-            className="plaque-tag shrink-0 rounded bg-black/50 px-1.5 py-px font-hud text-[0.55rem] font-bold uppercase tracking-widest text-[#ff8a7e]"
+            className="plaque-offline shrink-0 rounded bg-black/50 px-1.5 py-px font-hud text-[0.55rem] font-bold uppercase tracking-widest text-[#ff8a7e]"
           >
             Hors ligne
           </span>

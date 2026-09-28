@@ -1,10 +1,56 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { CardInstance, GameState, PlayerState } from "@/game/types/game";
 import { isCardPlayable } from "@/game/lib/engine/rules";
 import { Card } from "./Card";
+
+// "lg" card box, in CSS px before the fan's scale.
+const CARD_W = 128;
+const CARD_H = 192;
+
+/**
+ * Width of the fan container and the scale CSS applies to it (--fan-scale),
+ * which together give the room the cards have, in unscaled pixels.
+ */
+function useFanRoom() {
+  const [room, setRoom] = useState(0);
+  const observerRef = useRef<ResizeObserver | null>(null);
+  const ref = useCallback((node: HTMLDivElement | null) => {
+    observerRef.current?.disconnect();
+    observerRef.current = null;
+    if (!node) return;
+    const measure = () => {
+      const scale = parseFloat(getComputedStyle(node).getPropertyValue("--fan-scale")) || 1;
+      const next = Math.round(node.clientWidth / scale);
+      setRoom((prev) => (prev === next ? prev : next));
+    };
+    const ro = new ResizeObserver(measure);
+    ro.observe(node);
+    observerRef.current = ro;
+  }, []);
+  return [ref, room] as const;
+}
+
+/**
+ * Spacing and tilt of the fan so the outermost cards, rotated, still fit the
+ * screen: a full desktop fan, a tighter and flatter one on narrow phones.
+ */
+function fanGeometry(count: number, room: number) {
+  const mid = (count - 1) / 2;
+  let rotStep = 5;
+  let step = count > 7 ? 44 : 54;
+  if (count > 1 && room > 0) {
+    rotStep = Math.min(5, 24 / (count - 1));
+    const tilt = (mid * rotStep * Math.PI) / 180;
+    // Outer cards swing out by their height × sin(tilt) around the bottom pivot.
+    const swing = CARD_H * Math.sin(tilt) + (CARD_W / 2) * (1 - Math.cos(tilt));
+    const fit = (room - CARD_W - 2 * swing - 12) / (count - 1);
+    step = Math.max(16, Math.min(step, fit));
+  }
+  return { mid, rotStep, step };
+}
 
 export function PlayerHand({
   player,
@@ -33,6 +79,8 @@ export function PlayerHand({
   const selectedCard = player.hand.find((c) => c.uid === selectedUid) ?? null;
   const selectedPlayable = selectedCard ? (playability.get(selectedCard.uid) ?? false) : false;
   const count = player.hand.length;
+  const [fanRef, room] = useFanRoom();
+  const { mid, rotStep, step } = fanGeometry(count, room);
 
   return (
     <div className="relative flex w-full flex-col items-center">
@@ -78,13 +126,12 @@ export function PlayerHand({
       </AnimatePresence>
       </div>
 
-      <div className="hand-fan relative mx-auto flex w-full max-w-3xl items-end justify-center pb-3">
+      <div ref={fanRef} className="hand-fan relative mx-auto flex w-full max-w-3xl items-end justify-center pb-6">
         {player.hand.map((c, i) => {
-          const mid = (count - 1) / 2;
           const offset = i - mid;
-          const rotate = offset * 5;
-          const translateY = offset * offset * 0.9;
-          const translateX = offset * (count > 7 ? 44 : 54);
+          const rotate = offset * rotStep;
+          const translateY = offset * offset * 0.9 * (rotStep / 5);
+          const translateX = offset * step;
           const isSelected = selectedUid === c.uid;
           const playable = playability.get(c.uid) ?? false;
 

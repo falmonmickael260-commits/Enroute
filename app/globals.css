@@ -295,9 +295,10 @@ body {
     gap: 0.5rem;
     overflow-x: auto;
   }
+  /* Two players share the row; with three or four it scrolls sideways. */
   .player-panel > * {
-    flex: none;
-    min-width: 10.5rem;
+    flex: 1 0 10.5rem;
+    min-width: 0;
   }
   .pile-tray {
     position: relative;
@@ -324,11 +325,17 @@ body {
   }
   .hand-fan {
     --fan-scale: 0.74;
-    height: 13rem;
+    height: 14rem;
     transform: scale(var(--fan-scale));
     transform-origin: bottom center;
     /* transforms don't shrink layout: give back the space the scale saves */
-    margin-top: calc(-13rem * (1 - var(--fan-scale)));
+    margin-top: calc(-14rem * (1 - var(--fan-scale)));
+  }
+  /* Tall portrait phones have height to spare: bigger, more readable cards. */
+  @media (max-width: 639px) and (orientation: portrait) and (min-height: 760px) {
+    .hand-fan {
+      --fan-scale: 0.82;
+    }
   }
   @media (min-width: 640px) {
     .hand-fan {
@@ -363,7 +370,7 @@ body {
       overflow: visible;
     }
     .player-panel > * {
-      min-width: 0;
+      flex: none;
     }
   }
 
@@ -387,6 +394,13 @@ body {
     }
     .hand-fan {
       --fan-scale: 0.5;
+    }
+  }
+
+  /* Narrow phones: the lit border already marks the driver; keep the room for names. */
+  @media (max-width: 479px) {
+    .player-plaque .plaque-tag {
+      display: none;
     }
   }
 

@@ -25,9 +25,11 @@ export function BoardFit({ className, children }: { className?: string; children
   }
 
   return (
-    <div ref={ref} className={clsx("flex min-h-0 min-w-0 justify-center", className)}>
+    // Centered in its slot (phones leave spare height when the width is the limit);
+    // the bottom margin keeps the hanging turn plate inside the slot.
+    <div ref={ref} className={clsx("flex min-h-0 min-w-0 items-center justify-center", className)}>
       {width > 0 ? (
-        <div className="relative" style={{ width }}>
+        <div className="relative" style={{ width, marginBottom: BELOW_FRAME }}>
           {children}
         </div>
       ) : null}
