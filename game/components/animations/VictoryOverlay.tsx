@@ -50,11 +50,14 @@ function Confetti() {
 export function VictoryOverlay({
   state,
   onReplay,
+  replayHint,
   onNewGame,
   onMenu,
 }: {
   state: GameState;
-  onReplay: () => void;
+  /** Omitted when this device can't restart the game (online, not the host). */
+  onReplay?: () => void;
+  replayHint?: string;
   onNewGame: () => void;
   onMenu: () => void;
 }) {
@@ -97,9 +100,13 @@ export function VictoryOverlay({
         </div>
 
         <div className="flex flex-col gap-3">
-          <button className="btn-enroute-primary w-full" onClick={onReplay}>
-            REJOUER
-          </button>
+          {onReplay ? (
+            <button className="btn-enroute-primary w-full" onClick={onReplay}>
+              REJOUER
+            </button>
+          ) : replayHint ? (
+            <p className="rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 font-hud text-sm text-white/70">{replayHint}</p>
+          ) : null}
           <div className="flex gap-3">
             <button className="btn-enroute-secondary flex-1 !text-base" onClick={onNewGame}>
               NOUVELLE PARTIE

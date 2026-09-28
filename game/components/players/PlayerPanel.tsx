@@ -51,14 +51,29 @@ function StatusChip({ player }: { player: PlayerState }) {
   );
 }
 
-function PlayerPlaque({ player, number, state, active }: { player: PlayerState; number: number; state: GameState; active: boolean }) {
+function PlayerPlaque({
+  player,
+  number,
+  state,
+  active,
+  isViewer,
+  offline,
+}: {
+  player: PlayerState;
+  number: number;
+  state: GameState;
+  active: boolean;
+  isViewer: boolean;
+  offline: boolean;
+}) {
   const color = PLAYER_COLOR[player.color];
   const pct = Math.min(100, (player.distance / state.target) * 100);
   return (
     <motion.div
       layout
       className={clsx(
-        "player-plaque panel-leather relative rounded-2xl px-3 py-2",
+        "player-plaque panel-leather relative rounded-2xl px-3 py-2 transition-opacity",
+        offline && "opacity-60",
         active && "ring-2 ring-[var(--color-brass-300)]/80",
       )}
       style={active ? { boxShadow: `0 0 0 1px rgba(0,0,0,0.5), 0 0 28px ${color}55, 0 18px 40px rgba(0,0,0,0.5)` } : undefined}
@@ -70,7 +85,18 @@ function PlayerPlaque({ player, number, state, active }: { player: PlayerState; 
         >
           {number}
         </span>
-        <span className="min-w-0 flex-1 truncate font-hud text-[0.95rem] font-bold text-[var(--color-paper)]">{player.name}</span>
+        <span className="min-w-0 flex-1 truncate font-hud text-[0.95rem] font-bold text-[var(--color-paper)]">
+          {player.name}
+          {isViewer ? <span className="ml-1 font-semibold text-white/45">(vous)</span> : null}
+        </span>
+        {offline ? (
+          <span
+            title="Déconnecté"
+            className="plaque-tag shrink-0 rounded bg-black/50 px-1.5 py-px font-hud text-[0.55rem] font-bold uppercase tracking-widest text-[#ff8a7e]"
+          >
+            Hors ligne
+          </span>
+        ) : null}
         {active ? (
           <span className="plaque-tag brass-plate shrink-0 rounded px-1.5 py-px font-hud text-[0.55rem] font-bold uppercase tracking-widest">
             Au volant
@@ -124,12 +150,28 @@ function PlayerPlaque({ player, number, state, active }: { player: PlayerState; 
   );
 }
 
-export function PlayerPanel({ state }: { state: GameState }) {
+export function PlayerPanel({
+  state,
+  viewerId,
+  offlineIds,
+}: {
+  state: GameState;
+  viewerId?: string;
+  offlineIds?: readonly string[];
+}) {
   const activeId = state.phase === "gameover" ? state.winnerId : state.players[state.currentPlayerIndex]?.id;
   return (
     <div className="player-panel no-scrollbar w-full px-1 py-1">
       {state.players.map((p, i) => (
-        <PlayerPlaque key={p.id} player={p} number={i + 1} state={state} active={p.id === activeId} />
+        <PlayerPlaque
+          key={p.id}
+          player={p}
+          number={i + 1}
+          state={state}
+          active={p.id === activeId}
+          isViewer={p.id === viewerId}
+          offline={offlineIds?.includes(p.id) ?? false}
+        />
       ))}
     </div>
   );

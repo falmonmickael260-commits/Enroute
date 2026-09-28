@@ -90,6 +90,7 @@ export type GameAction =
   | { type: "PLAY_DEFENSE"; cardUid: string }
   | { type: "PLAY_SPECIAL"; cardUid: string; targetId?: string }
   | { type: "DISCARD_CARD"; cardUid: string }
+  | { type: "SKIP_TURN" }
   | { type: "CLEAR_ANIMATION" }
   | { type: "NEW_GAME"; options: NewGameOptions };
 
@@ -324,6 +325,18 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
       log(draft, player.id, `${player.name} défausse une carte.`, "info");
       pushAnim(draft, { kind: "discard", playerId: player.id, cardUid: card.uid });
       endTurnIfNeeded(draft, player);
+      return draft;
+    }
+
+    case "SKIP_TURN": {
+      // Online only: an absent player's turn is passed. If they had already
+      // drawn, the extra card goes to the discard so the hand stays at 7.
+      if (draft.phase === "action" && player.hand.length > HAND_LIMIT) {
+        draft.discard.push(player.hand.pop()!);
+      }
+      player.extraTurn = false;
+      log(draft, "system", `${player.name} est absent — son tour est passé.`, "system");
+      advanceTurn(draft);
       return draft;
     }
 

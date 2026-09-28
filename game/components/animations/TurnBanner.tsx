@@ -10,7 +10,7 @@ const COLOR_VAR: Record<PlayerState["color"], string> = {
   emerald: "var(--color-player-emerald)",
 };
 
-export function TurnBanner({ player }: { player: PlayerState | null }) {
+export function TurnBanner({ player, subtitle }: { player: PlayerState | null; subtitle?: string }) {
   return (
     <AnimatePresence>
       {player ? (
@@ -30,7 +30,7 @@ export function TurnBanner({ player }: { player: PlayerState | null }) {
             }}
           >
             <p className="font-hud text-[0.65rem] sm:text-xs tracking-[0.35em] uppercase text-white/60 text-center">
-              Au volant
+              {subtitle ?? "Au volant"}
             </p>
             <p
               className="font-display text-2xl sm:text-4xl tracking-wide text-center"
