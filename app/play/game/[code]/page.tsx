@@ -10,6 +10,7 @@ import { useAnimationQueue } from "@/game/hooks/useAnimationQueue";
 import { useSound } from "@/game/hooks/useSound";
 import type { NewGameOptions } from "@/game/lib/engine/gameReducer";
 import { Board } from "@/game/components/board/Board";
+import { BoardFit } from "@/game/components/board/BoardFit";
 import { PlayerHand } from "@/game/components/cards/PlayerHand";
 import { DrawPile } from "@/game/components/cards/DrawPile";
 import { DiscardPile } from "@/game/components/cards/DiscardPile";
@@ -134,11 +135,11 @@ function GameRunner({
   };
 
   return (
-    <main className="relative isolate min-h-dvh overflow-x-hidden text-[var(--color-paper)] lg:h-dvh lg:overflow-hidden">
+    <main className="relative isolate h-dvh overflow-hidden text-[var(--color-paper)]">
       <TableBackdrop />
-      <div className="relative z-10 flex min-h-dvh flex-col lg:h-full lg:min-h-0">
+      <div className="relative z-10 flex h-full flex-col">
         {/* The top band is left clear: it's where the EN ROUTE inlay sits on the table. */}
-        <header className="flex shrink-0 items-start justify-between gap-3 px-3 pt-3 sm:px-5" style={{ height: "var(--logo-band)" }}>
+        <header className="game-header flex shrink-0 items-start justify-between gap-3 px-3 pt-3 sm:px-5">
           <div className="panel-leather hidden rounded-full px-3 py-1.5 font-hud text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-white/70 sm:block">
             {state.id} · Tour {state.turn}
           </div>
@@ -152,17 +153,17 @@ function GameRunner({
           </div>
         </header>
 
-        <div className="grid grid-cols-1 items-start gap-3 px-2 sm:px-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[14.5rem_minmax(0,1fr)_10rem] lg:gap-6 lg:px-6">
-          <aside className="no-scrollbar lg:max-h-full lg:overflow-y-auto">
+        <div className="game-middle">
+          <aside className="game-players no-scrollbar">
             <PlayerPanel state={state} />
           </aside>
 
-          <section className="relative mx-auto w-full pb-6" style={{ maxWidth: "max(30rem, calc((100dvh - var(--logo-band) - 18rem) * 1.6))" }}>
+          <BoardFit className="game-board">
             <EventToast event={currentEvent} state={state} />
             <Board state={state} caption={<TurnPlate state={state} />} />
-          </section>
+          </BoardFit>
 
-          <aside className="flex items-center justify-center gap-6 pb-1 lg:flex-col lg:gap-8 lg:pt-2">
+          <aside className="game-piles">
             <DrawPile count={state.deck.length} canDraw={state.phase === "draw"} onDraw={draw} />
             <DiscardPile pile={state.discard} />
           </aside>

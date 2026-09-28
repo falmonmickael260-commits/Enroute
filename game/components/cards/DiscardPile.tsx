@@ -11,7 +11,7 @@ export function DiscardPile({ pile }: { pile: CardInstance[] }) {
   return (
     <div className="flex flex-col items-center gap-1 sm:gap-2">
       <div className="panel-leather rounded-2xl p-1.5 sm:p-2.5">
-        <div className="relative h-[5.25rem] w-14 sm:h-[6.75rem] sm:w-[4.5rem] lg:h-36 lg:w-24">
+        <div className="pile-tray">
           <div className="absolute inset-0 rounded-xl border-2 border-dashed border-[var(--color-brass-300)]/25" />
           {under.map((c, i) => (
             <div

@@ -2,7 +2,7 @@
 
 import clsx from "clsx";
 import { motion } from "framer-motion";
-import type { DefenseType, GameState, PlayerState } from "@/game/types/game";
+import type { DefenseType, GameState, HazardType, PlayerState } from "@/game/types/game";
 import { hazardLabel } from "@/game/lib/engine/rules";
 import { DefenseGlyph } from "@/game/components/cards/CardArt";
 import { PLAYER_COLOR } from "./PlayerPiece";
@@ -15,22 +15,40 @@ const DEFENSES: { id: DefenseType; label: string }[] = [
   { id: "passageLibre", label: "Passage libre" },
 ];
 
+const SHORT_HAZARD: Record<HazardType, string> = {
+  collision: "Collision",
+  crevaison: "Crevé",
+  panne: "Panne",
+  radar: "Radar",
+  barrage: "Barrage",
+};
+
 function StatusChip({ player }: { player: PlayerState }) {
   if (player.hazard) {
     return (
-      <span className="rounded-full bg-[var(--color-brand-crimson)] px-2 py-0.5 font-hud text-[0.62rem] font-bold uppercase tracking-wide text-white">
-        {hazardLabel(player.hazard)}
+      <span
+        title={hazardLabel(player.hazard)}
+        className="rounded-full bg-[var(--color-brand-crimson)] px-1.5 py-px font-hud text-[0.6rem] font-bold uppercase tracking-wide text-white"
+      >
+        {SHORT_HAZARD[player.hazard]}
       </span>
     );
   }
   if (player.limited) {
     return (
-      <span className="rounded-full border-2 border-[var(--color-brand-crimson)] bg-white px-1.5 py-0 font-hud text-[0.62rem] font-bold uppercase tracking-wide text-[#14161c]">
-        Limité 50
+      <span
+        title="Limité à 50 km par carte"
+        className="rounded-full border-2 border-[var(--color-brand-crimson)] bg-white px-1 font-hud text-[0.6rem] font-bold text-[#14161c]"
+      >
+        50
       </span>
     );
   }
-  return <span className="font-hud text-[0.62rem] font-semibold uppercase tracking-wide text-emerald-300/90">Route libre</span>;
+  return (
+    <span title="Route libre" className="font-hud text-[0.7rem] font-bold text-emerald-300">
+      ✓
+    </span>
+  );
 }
 
 function PlayerPlaque({ player, number, state, active }: { player: PlayerState; number: number; state: GameState; active: boolean }) {
@@ -40,27 +58,27 @@ function PlayerPlaque({ player, number, state, active }: { player: PlayerState; 
     <motion.div
       layout
       className={clsx(
-        "panel-leather relative min-w-[11.5rem] shrink-0 rounded-2xl px-3 py-2.5 lg:min-w-0",
+        "player-plaque panel-leather relative rounded-2xl px-3 py-2",
         active && "ring-2 ring-[var(--color-brass-300)]/80",
       )}
       style={active ? { boxShadow: `0 0 0 1px rgba(0,0,0,0.5), 0 0 28px ${color}55, 0 18px 40px rgba(0,0,0,0.5)` } : undefined}
     >
       <div className="flex items-center gap-2">
         <span
-          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-display text-base text-white shadow-[inset_0_-2px_0_rgba(0,0,0,0.3)]"
+          className="plaque-num flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-display text-base text-white shadow-[inset_0_-2px_0_rgba(0,0,0,0.3)]"
           style={{ background: color }}
         >
           {number}
         </span>
         <span className="min-w-0 flex-1 truncate font-hud text-[0.95rem] font-bold text-[var(--color-paper)]">{player.name}</span>
         {active ? (
-          <span className="brass-plate shrink-0 rounded px-1.5 py-px font-hud text-[0.55rem] font-bold uppercase tracking-widest">
+          <span className="plaque-tag brass-plate shrink-0 rounded px-1.5 py-px font-hud text-[0.55rem] font-bold uppercase tracking-widest">
             Au volant
           </span>
         ) : null}
       </div>
 
-      <div className="mt-2 h-2 overflow-hidden rounded-full bg-black/50 shadow-[inset_0_1px_2px_rgba(0,0,0,0.6)]">
+      <div className="plaque-bar mt-2 h-2 overflow-hidden rounded-full bg-black/50 shadow-[inset_0_1px_2px_rgba(0,0,0,0.6)]">
         <motion.div
           className="h-full rounded-full"
           style={{ background: `linear-gradient(90deg, ${color}, #fff5)` }}
@@ -69,17 +87,21 @@ function PlayerPlaque({ player, number, state, active }: { player: PlayerState; 
           transition={{ duration: 1.2, ease: [0.5, 0, 0.2, 1] }}
         />
       </div>
-      <div className="mt-1 flex items-center justify-between font-hud text-[0.7rem] text-white/60">
-        <span>
-          <span className="font-bold text-[var(--color-paper)]">{player.distance}</span> / {state.target} km
+      <div className="plaque-meta mt-1 flex items-center justify-between gap-2 font-hud text-[0.7rem] text-white/60">
+        <span className="whitespace-nowrap">
+          <span className="font-bold text-[var(--color-paper)]">{player.distance}</span>
+          <span className="plaque-target"> / {state.target}</span> km
         </span>
-        <span title="Cartes en main" className="flex items-center gap-1">
-          <span className="inline-block h-3 w-2 rounded-[2px] border border-[var(--color-brass-300)]/70 bg-[#2a1712]" />
-          {player.hand.length}
+        <span className="flex items-center gap-2">
+          <StatusChip player={player} />
+          <span title="Cartes en main" className="flex items-center gap-1">
+            <span className="inline-block h-3 w-2 rounded-[2px] border border-[var(--color-brass-300)]/70 bg-[#2a1712]" />
+            {player.hand.length}
+          </span>
         </span>
       </div>
 
-      <div className="mt-1.5 flex items-center justify-between gap-2">
+      <div className="plaque-shields mt-1.5">
         <div className="flex gap-1" aria-label="Protections">
           {DEFENSES.map((d) => {
             const owned = player.shields.includes(d.id);
@@ -97,7 +119,6 @@ function PlayerPlaque({ player, number, state, active }: { player: PlayerState; 
             );
           })}
         </div>
-        <StatusChip player={player} />
       </div>
     </motion.div>
   );
@@ -106,7 +127,7 @@ function PlayerPlaque({ player, number, state, active }: { player: PlayerState; 
 export function PlayerPanel({ state }: { state: GameState }) {
   const activeId = state.phase === "gameover" ? state.winnerId : state.players[state.currentPlayerIndex]?.id;
   return (
-    <div className="no-scrollbar flex w-full gap-2 overflow-x-auto px-1 py-1 lg:flex-col lg:overflow-visible">
+    <div className="player-panel no-scrollbar w-full px-1 py-1">
       {state.players.map((p, i) => (
         <PlayerPlaque key={p.id} player={p} number={i + 1} state={state} active={p.id === activeId} />
       ))}

@@ -151,17 +151,24 @@ export function PlayerPiece({
   slot,
   active,
   headlights,
+  scale,
 }: {
   player: PlayerState;
   number: number;
   slot: PieceSlot;
   active: boolean;
   headlights: number;
+  /** Visual size multiplier (see pieceScaleFor). */
+  scale: number;
 }) {
   const s = useMotionValue(slot.s);
   const lateral = useMotionValue(slot.lateral);
   const labelOffset = useMotionValue(slot.labelOffset);
   const squash = useMotionValue(0);
+  const scaleRef = useRef(scale);
+  useEffect(() => {
+    scaleRef.current = scale;
+  }, [scale]);
 
   const rootRef = useRef<SVGGElement>(null);
   const bodyRef = useRef<SVGGElement>(null);
@@ -176,7 +183,8 @@ export function PlayerPiece({
       const q = squash.get();
       rootRef.current?.setAttribute("transform", `translate(${p.x + p.nx * lat} ${p.y + p.ny * lat})`);
       bodyRef.current?.setAttribute("transform", `rotate(${p.angle}) scale(${1 + q * 0.07} ${1 - q * 0.1})`);
-      const d = labelOffset.get() - lat;
+      // Label and leader live inside the scaled group, so convert board units back.
+      const d = (labelOffset.get() - lat) / scaleRef.current;
       labelRef.current?.setAttribute("transform", `translate(${p.nx * d} ${p.ny * d})`);
       leaderRef.current?.setAttribute("x2", String(p.nx * d));
       leaderRef.current?.setAttribute("y2", String(p.ny * d));
@@ -213,6 +221,7 @@ export function PlayerPiece({
 
   return (
     <g ref={rootRef}>
+      <g transform={`scale(${scale})`}>
       {active ? (
         <circle r={40} fill={color} opacity={0.22} stroke={color} strokeWidth={2}>
           <animate attributeName="r" values="36;48;36" dur="1.6s" repeatCount="indefinite" />
@@ -233,6 +242,7 @@ export function PlayerPiece({
       {player.hazard ? <Smoke /> : null}
       <g ref={labelRef}>
         <Plaque player={player} number={number} active={active} />
+      </g>
       </g>
     </g>
   );

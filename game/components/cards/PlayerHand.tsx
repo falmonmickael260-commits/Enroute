@@ -78,7 +78,7 @@ export function PlayerHand({
       </AnimatePresence>
       </div>
 
-      <div className="relative mx-auto flex h-40 w-full max-w-3xl origin-bottom scale-[0.74] items-end justify-center pb-2 sm:h-[13rem] sm:scale-100 sm:pb-4">
+      <div className="hand-fan relative mx-auto flex w-full max-w-3xl items-end justify-center pb-3">
         {player.hand.map((c, i) => {
           const mid = (count - 1) / 2;
           const offset = i - mid;

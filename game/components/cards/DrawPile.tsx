@@ -17,7 +17,7 @@ export function DrawPile({
   return (
     <div className="flex flex-col items-center gap-1 sm:gap-2">
       <div className="panel-leather rounded-2xl p-1.5 sm:p-2.5">
-        <div className="relative h-[5.25rem] w-14 sm:h-[6.75rem] sm:w-[4.5rem] lg:h-36 lg:w-24">
+        <div className="pile-tray">
           {Array.from({ length: stackDepth }).map((_, i) => (
             <div key={i} className="absolute inset-0" style={{ transform: `translate(${i * 1.6}px, ${-i * 2}px)` }}>
               <Card size="md" faceDown className="!h-full !w-full" />
