@@ -91,10 +91,14 @@ export function PlayerHand({
           return (
             <motion.div
               key={c.uid}
-              layoutId={`hand-${c.uid}`}
+              // No layoutId/layout here: the fan sits in a CSS-scaled container, where
+              // framer's layout projection mis-measures and makes every card jump
+              // whenever anything on the page re-renders.
               className="absolute origin-bottom"
               style={{ zIndex: isSelected ? 50 : i }}
+              initial={{ opacity: 0, y: 90, rotate: 0 }}
               animate={{
+                opacity: 1,
                 rotate: isSelected ? 0 : rotate,
                 x: translateX,
                 y: isSelected ? translateY - 26 : translateY,

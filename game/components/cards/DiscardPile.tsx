@@ -26,9 +26,8 @@ export function DiscardPile({ pile }: { pile: CardInstance[] }) {
             {top ? (
               <motion.div
                 key={top.uid}
-                layoutId={`hand-${top.uid}`}
-                initial={{ rotate: -14, scale: 0.9, opacity: 0 }}
-                animate={{ rotate: 4, scale: 1, opacity: 1 }}
+                initial={{ rotate: -14, scale: 1.25, y: 40, opacity: 0 }}
+                animate={{ rotate: 4, scale: 1, y: 0, opacity: 1 }}
                 className="absolute inset-0"
                 transition={{ type: "spring", stiffness: 320, damping: 22 }}
               >
