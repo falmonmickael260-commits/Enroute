@@ -58,6 +58,41 @@ namespace Enroute.Board
 
         public bool IsMoving => _initialized && !Mathf.Approximately(CurrentS, _targetS);
 
+        private static readonly Color EffectCollision = new Color(1f, 0.35f, 0.08f);
+        private static readonly Color EffectCrevaison = new Color(0.08f, 0.08f, 0.08f);
+        private static readonly Color EffectPanne = new Color(0.65f, 0.65f, 0.65f, 0.7f);
+        private static readonly Color EffectShield = new Color(0.25f, 0.95f, 0.45f);
+
+        /// <summary>One-shot reaction for the moment a hazard lands on this car (called once
+        /// per AnimationEvent, not every frame the hazard stays active).</summary>
+        public void PlayHazardImpact(HazardType hazard)
+        {
+            switch (hazard)
+            {
+                case HazardType.Collision:
+                    EffectsBuilder.PlayBurst(transform, new Vector3(0f, 0.15f, 0.2f), EffectCollision, count: 18, speed: 2.2f, size: 0.06f, lifetime: 0.45f, gravityModifier: 0.7f);
+                    break;
+                case HazardType.Crevaison:
+                    EffectsBuilder.PlayBurst(transform, new Vector3(0.16f, 0.05f, 0.18f), EffectCrevaison, count: 10, speed: 0.9f, size: 0.035f, lifetime: 0.5f, gravityModifier: 1.3f);
+                    break;
+                case HazardType.Panne:
+                    EffectsBuilder.PlayBurst(transform, new Vector3(0f, 0.15f, -0.3f), EffectPanne, count: 8, speed: 0.5f, size: 0.09f, lifetime: 1.2f, gravityModifier: 0.05f);
+                    break;
+                case HazardType.Radar:
+                    EffectsBuilder.PlayBurst(transform, new Vector3(0f, 0.3f, 0f), HazardColorRadar, count: 6, speed: 0.8f, size: 0.05f, lifetime: 0.35f, gravityModifier: 0f);
+                    break;
+                case HazardType.Barrage:
+                    EffectsBuilder.PlayBurst(transform, new Vector3(0f, 0.1f, 0.25f), new Color(0.6f, 0.55f, 0.4f), count: 8, speed: 0.6f, size: 0.05f, lifetime: 0.5f, gravityModifier: 0.8f);
+                    break;
+            }
+        }
+
+        /// <summary>One-shot reaction for a repair (reactive defense) or a shield going up.</summary>
+        public void PlayShieldEffect() => EffectsBuilder.PlayBurst(transform, Vector3.up * 0.12f, EffectShield, count: 14, speed: 1.3f, size: 0.05f, lifetime: 0.5f, gravityModifier: 0.1f);
+
+        /// <summary>Victory confetti at the finish.</summary>
+        public void PlayVictoryEffect() => EffectsBuilder.PlayConfetti(transform, Vector3.up * 0.3f);
+
         /// <summary>Shows/hides a small floating marker above the car for the active hazard —
         /// makes an attack's effect legible at a glance instead of only in a log line.</summary>
         public void SetHazardVisual(HazardType? hazard)

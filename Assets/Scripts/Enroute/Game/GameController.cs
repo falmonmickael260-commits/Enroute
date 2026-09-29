@@ -45,6 +45,7 @@ namespace Enroute.Game
 
         private readonly Dictionary<string, VehicleAlongRoad> _vehicles = new();
         private readonly Dictionary<string, GameObject> _barriers = new();
+        private int _processedAnimCount;
 
         public void RegisterVehicle(string playerId, VehicleAlongRoad vehicle) => _vehicles[playerId] = vehicle;
 
@@ -71,6 +72,7 @@ namespace Enroute.Game
             State = GameReducer.CreateGame(new NewGameOptions { Id = "local", Players = players, Target = target, Ambiance = ambiance });
             foreach (var barrier in _barriers.Values) if (barrier != null) Destroy(barrier);
             _barriers.Clear();
+            _processedAnimCount = 0;
             SyncVehicles(snap: true);
             RefreshHazardVisuals();
             OnStateChanged?.Invoke(State);
@@ -82,7 +84,35 @@ namespace Enroute.Game
             State = GameReducer.Reduce(State, action);
             SyncVehicles(snap: false);
             RefreshHazardVisuals();
+            PlayNewAnimationEffects();
             OnStateChanged?.Invoke(State);
+        }
+
+        /// <summary>Plays a one-shot VFX for every AnimationEvent the reducer appended since
+        /// the last Dispatch (move itself is already handled by the smooth vehicle glide in
+        /// SyncVehicles — this covers the "something just happened" reactions: impacts,
+        /// repairs, victory).</summary>
+        private void PlayNewAnimationEffects()
+        {
+            for (var i = _processedAnimCount; i < State.AnimationQueue.Count; i++)
+            {
+                var evt = State.AnimationQueue[i];
+                if (!_vehicles.TryGetValue(evt.PlayerId ?? string.Empty, out var vehicle)) continue;
+
+                switch (evt.Kind)
+                {
+                    case AnimationKind.Hazard when evt.Hazard.HasValue:
+                        vehicle.PlayHazardImpact(evt.Hazard.Value);
+                        break;
+                    case AnimationKind.Shield:
+                        vehicle.PlayShieldEffect();
+                        break;
+                    case AnimationKind.Victory:
+                        vehicle.PlayVictoryEffect();
+                        break;
+                }
+            }
+            _processedAnimCount = State.AnimationQueue.Count;
         }
 
         private void SyncVehicles(bool snap)
