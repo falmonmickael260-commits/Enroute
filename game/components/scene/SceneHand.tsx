@@ -197,27 +197,34 @@ export function SceneHand({
           disabled={!mustDraw}
           onClick={onDraw}
           className={clsx(
-            "flex items-center gap-2 rounded-xl border px-2 py-1 transition-all",
-            mustDraw ? "animate-pulse border-[#ffd23f] bg-[#ffd23f]/20 shadow-[0_0_18px_rgba(255,210,63,0.5)]" : "border-white/15 bg-black/40",
+            "flex items-center gap-2.5 rounded-2xl border-2 px-2.5 py-1.5 transition-all",
+            mustDraw ? "animate-pulse border-[#ffd23f] bg-[#ffd23f]/20 shadow-[0_0_22px_rgba(255,210,63,0.55)]" : "border-white/15 bg-black/45",
           )}
         >
-          <span className="h-10 w-7 shrink-0">
-            <Card size="xs" faceDown className="!h-full !w-full" />
+          <span className="relative h-[3.6rem] w-[2.5rem] shrink-0">
+            <span className="absolute inset-0 translate-x-[3px] -translate-y-[3px] opacity-70">
+              <Card size="xs" faceDown className="!h-full !w-full" />
+            </span>
+            <span className="absolute inset-0">
+              <Card size="xs" faceDown className="!h-full !w-full" />
+            </span>
           </span>
           <span className="text-left leading-tight">
-            <span className="block font-display text-base text-white">{mustDraw ? "PIOCHER" : "Pioche"}</span>
-            <span className="block font-hud text-[0.65rem] text-white/60">{state.deck.length} cartes</span>
+            <span className="block font-display text-xl text-white">{mustDraw ? "PIOCHER" : "Pioche"}</span>
+            <span className="block font-hud text-xs text-white/65">{state.deck.length} cartes</span>
           </span>
         </button>
         <p className="mb-1 font-hud text-xs font-semibold text-white/70">
           {mustDraw ? "↖ Touchez la pioche" : canAct ? "Touchez une carte" : ""}
         </p>
-        <div className="flex items-center gap-2 rounded-xl border border-white/15 bg-black/40 px-2 py-1">
+        <div className="flex items-center gap-2 rounded-2xl border-2 border-white/15 bg-black/45 px-2.5 py-1.5">
           <span className="text-right leading-tight">
-            <span className="block font-display text-base text-white">Défausse</span>
-            <span className="block font-hud text-[0.65rem] text-white/60">{state.discard.length} cartes</span>
+            <span className="block font-display text-lg text-white">Défausse</span>
+            <span className="block font-hud text-xs text-white/65">{state.discard.length} cartes</span>
           </span>
-          <span className="h-10 w-7 shrink-0">{top ? <Card size="xs" defId={top.defId} className="!h-full !w-full" /> : null}</span>
+          <span className="h-[3.2rem] w-[2.2rem] shrink-0">
+            {top ? <Card size="xs" defId={top.defId} className="!h-full !w-full" /> : <span className="block h-full w-full rounded-md border-2 border-dashed border-white/25" />}
+          </span>
         </div>
       </div>
 

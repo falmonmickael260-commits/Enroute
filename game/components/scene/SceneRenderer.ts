@@ -21,6 +21,7 @@ import {
   createSpareWheel,
   createTriangle,
   drawFuel,
+  drawTyre,
   drawWarning,
   type CarModel,
 } from "./models";
@@ -449,14 +450,19 @@ export class SceneRenderer {
       const nails = createNails();
       nails.position.set(0, 0, 0.62);
       root.add(nails);
+      const badge = createBadge(drawTyre, "#e0392f");
+      badge.position.set(0, 1.05, 0);
+      root.add(badge);
       prop.update = (pr, t, c) => {
         const a = clamp01((t - pr.born) / 500);
         nails.scale.setScalar(1.5 * easeOutBack(a) + 0.001);
+        badge.scale.setScalar(0.44 * easeOutBack(clamp01((t - pr.born - 700) / 400)) + 0.025 * Math.sin(t / 180));
         let k = easeInOut(clamp01((t - pr.born - 250) / 450));
         if (pr.leaving !== null) {
           const b = clamp01((t - pr.leaving) / 700);
           k = 1 - easeInOut(b);
           nails.scale.setScalar(1.5 * (1 - b) + 0.001);
+          badge.scale.setScalar(0.44 * (1 - b) + 0.001);
           if (b >= 1) {
             c.model.body.rotation.z = 0;
             c.model.body.position.y = 0;

@@ -416,6 +416,29 @@ export const drawFuel = (x: CanvasRenderingContext2D) => {
   x.fillStyle = "#e0392f";
   x.fillRect(46, 44, 24, 14);
 };
+export const drawTyre = (x: CanvasRenderingContext2D) => {
+  // a flat tyre: squashed black ring with a hiss of air
+  x.fillStyle = "#1b1c1f";
+  x.beginPath();
+  x.ellipse(60, 72, 32, 24, 0, 0, Math.PI * 2);
+  x.fill();
+  x.fillStyle = "#d7dbe0";
+  x.beginPath();
+  x.ellipse(60, 72, 13, 10, 0, 0, Math.PI * 2);
+  x.fill();
+  x.strokeStyle = "#fff";
+  x.lineWidth = 6;
+  x.lineCap = "round";
+  for (const [a, b, c, d] of [
+    [92, 40, 104, 30],
+    [96, 54, 110, 50],
+  ]) {
+    x.beginPath();
+    x.moveTo(a, b);
+    x.lineTo(c, d);
+    x.stroke();
+  }
+};
 export const drawWarning = (x: CanvasRenderingContext2D) => {
   x.fillStyle = "#fff";
   x.font = "bold 80px Arial, sans-serif";
