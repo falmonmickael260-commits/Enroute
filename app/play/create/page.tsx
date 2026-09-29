@@ -10,6 +10,7 @@ import { PLAYER_COLOR } from "@/game/components/players/PlayerPiece";
 import { InnerPage, SectionLabel } from "@/game/components/ui/InnerPage";
 import { createOnlineRoom } from "@/game/lib/online/actions";
 import { OnlineError } from "@/game/lib/online/api";
+import { setBoardView, useBoardView } from "@/game/lib/store/boardViewStore";
 
 type Mode = "online" | "local";
 
@@ -41,6 +42,7 @@ export default function CreateGamePage() {
   const [ambiance, setAmbiance] = useState<AmbianceId>("jour");
   const [target, setTarget] = useState(1000);
   const [mode, setMode] = useState<Mode>("online");
+  const boardView = useBoardView();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -77,6 +79,23 @@ export default function CreateGamePage() {
             <button key={m.id} onClick={() => setMode(m.id)} className={clsx(choice(mode === m.id), "flex flex-col items-center gap-0.5 px-2 py-3")}>
               <span className="font-hud text-base font-bold text-white">{m.label}</span>
               <span className="text-[0.65rem] text-white/50">{m.hint}</span>
+            </button>
+          ))}
+        </div>
+      </section>
+
+      <section>
+        <SectionLabel>Plateau</SectionLabel>
+        <div className="grid grid-cols-2 gap-2">
+          {(
+            [
+              { id: "3d", label: "3D", hint: "Voitures et effets animés" },
+              { id: "classic", label: "Classique", hint: "Plateau vu de dessus" },
+            ] as const
+          ).map((b) => (
+            <button key={b.id} onClick={() => setBoardView(b.id)} className={clsx(choice(boardView === b.id), "flex flex-col items-center gap-0.5 px-2 py-3")}>
+              <span className="font-hud text-base font-bold text-white">{b.label}</span>
+              <span className="text-[0.65rem] text-white/50">{b.hint}</span>
             </button>
           ))}
         </div>

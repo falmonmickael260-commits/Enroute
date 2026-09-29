@@ -1,0 +1,216 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
+import clsx from "clsx";
+import type { GameTableProps } from "@/game/components/table/GameTable";
+import { useAnimationQueue } from "@/game/hooks/useAnimationQueue";
+import { useElementSize } from "@/game/hooks/useElementSize";
+import { useSound } from "@/game/hooks/useSound";
+import { EventToast } from "@/game/components/animations/EventToast";
+import { VictoryOverlay } from "@/game/components/animations/VictoryOverlay";
+import { TargetPicker } from "@/game/components/ui/TargetPicker";
+import { SoundToggle } from "@/game/components/ui/SoundToggle";
+import { ViewToggle } from "@/game/components/ui/ViewToggle";
+import { Logo } from "@/game/components/ui/Logo";
+import { SceneBoard, CAR_PAINT } from "./SceneBoard";
+import { SceneHand } from "./SceneHand";
+import type { SceneDef } from "./scenePath";
+import provisoire from "./scenes/provisoire.json";
+
+export const DEFAULT_SCENE = provisoire as SceneDef;
+
+const SOUND = {
+  draw: "cardDraw",
+  discard: "cardDiscard",
+  move: "move",
+  hazard: "hazard",
+  shield: "shield",
+  turnChange: "turnChange",
+  victory: "victory",
+} as const;
+
+/**
+ * The game screen on the illustrated 3D board. Same inputs as the classic
+ * GameTable, so local and online games can show either.
+ */
+export function SceneTable({
+  state,
+  controls,
+  consumeAnimation,
+  viewerId,
+  offlineIds,
+  headerExtra,
+  notice,
+  onExit,
+  onReplay,
+  replayHint,
+  onNewGame,
+  scene = DEFAULT_SCENE,
+  showViewToggle = true,
+}: GameTableProps & { scene?: SceneDef; showViewToggle?: boolean }) {
+  const currentEvent = useAnimationQueue(state.animationQueue, consumeAnimation);
+  const { enabled: soundOn, toggle: toggleSound, play } = useSound();
+  const [handRef, handBox] = useElementSize<HTMLDivElement>();
+
+  useEffect(() => {
+    if (currentEvent) play(SOUND[currentEvent.kind]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentEvent]);
+
+  const current = state.players[state.currentPlayerIndex];
+  // online: this device's player holds the hand; hotseat: whoever's turn it is
+  const handOwner = (viewerId && state.players.find((p) => p.id === viewerId)) || current;
+  const over = state.phase === "gameover";
+  const isMyTurn = !over && handOwner.id === current.id;
+  const leaderKm = Math.max(...state.players.map((p) => p.distance));
+
+  // let the fireworks play before the results panel covers the road
+  const [victoryReady, setVictoryReady] = useState(false);
+  const [prevOver, setPrevOver] = useState(over);
+  if (over !== prevOver) {
+    setPrevOver(over);
+    if (!over) setVictoryReady(false);
+  }
+  useEffect(() => {
+    if (!over) return;
+    const t = setTimeout(() => setVictoryReady(true), 3000);
+    return () => clearTimeout(t);
+  }, [over]);
+
+  const yourTurn = viewerId ? current.id === viewerId : true;
+
+  return (
+    <main className="relative isolate h-dvh overflow-hidden bg-[#0d1420] text-white">
+      {/* blurred copy of the scene behind the stage on wide screens */}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={scene.image} alt="" className="absolute inset-0 -z-10 h-full w-full scale-110 object-cover opacity-60 blur-2xl" />
+
+      <div className="absolute inset-0 mx-auto max-w-[min(100vw,calc(100dvh*0.78))]">
+        <SceneBoard state={state} event={currentEvent} def={scene} bottomInset={handBox.height} />
+
+        {/* top: players · logo · turn */}
+        <div className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-black/45 via-black/15 to-transparent pb-10">
+          <div className="flex items-start justify-between gap-2 px-2.5 pt-2.5">
+            <div className="pointer-events-auto flex w-[46%] max-w-[16rem] flex-col gap-1.5">
+              {state.players.map((p, i) => {
+                const active = p.id === current.id && !over;
+                const offline = offlineIds?.includes(p.id) ?? false;
+                return (
+                  <div
+                    key={p.id}
+                    className={clsx(
+                      "flex items-center gap-2 rounded-xl border px-2 py-1 backdrop-blur-md transition-all",
+                      active ? "border-white/60 bg-[#12305c]/85 shadow-[0_0_18px_rgba(80,160,255,0.55)]" : "border-white/10 bg-black/45",
+                      offline && "opacity-60",
+                    )}
+                  >
+                    <span
+                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-display text-sm text-white shadow-[inset_0_-2px_0_rgba(0,0,0,0.3)]"
+                      style={{ background: CAR_PAINT[p.color] }}
+                    >
+                      {i + 1}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate font-hud text-sm font-bold">
+                      {p.name}
+                      {p.id === viewerId ? <span className="ml-1 font-semibold text-white/50">(vous)</span> : null}
+                    </span>
+                    {offline ? (
+                      <span className="font-hud text-[0.55rem] font-bold uppercase tracking-wider text-[#ff8a7e]">Hors ligne</span>
+                    ) : (
+                      <span className="font-display text-lg leading-none text-[#ffd23f] drop-shadow">
+                        {p.distance}
+                        <span className="ml-0.5 text-[0.65em] text-white/70">km</span>
+                      </span>
+                    )}
+                    {p.distance === leaderKm && leaderKm > 0 && !offline ? <span className="text-xs">👑</span> : null}
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="flex flex-col items-center pt-0.5">
+              <Logo size="sm" />
+            </div>
+
+            <div className="pointer-events-auto flex w-[34%] max-w-[13rem] flex-col items-end gap-1.5">
+              <div className="flex gap-1.5">
+                {showViewToggle ? <ViewToggle /> : null}
+                <SoundToggle enabled={soundOn} onToggle={toggleSound} />
+                <button onClick={onExit} aria-label="Quitter" className="btn-enroute-ghost panel-leather !h-9 !w-9 !p-0 !text-sm">
+                  ✕
+                </button>
+              </div>
+              {!over ? (
+                <div className="w-full rounded-xl border border-white/15 bg-black/50 px-2.5 py-1.5 text-right backdrop-blur-md">
+                  <p className="font-hud text-[0.6rem] uppercase tracking-[0.2em] text-white/60">{yourTurn && viewerId ? "À vous" : "Tour de"}</p>
+                  <p className="truncate font-hud text-base font-bold" style={{ color: CAR_PAINT[current.color] }}>
+                    {current.name}
+                  </p>
+                  <p className="font-hud text-[0.62rem] font-semibold uppercase tracking-wider text-white/70">
+                    {!yourTurn ? "Réfléchit…" : state.phase === "draw" ? "Piochez" : "Jouez ou défaussez"}
+                  </p>
+                </div>
+              ) : null}
+              {headerExtra}
+            </div>
+          </div>
+          <div className="relative mx-auto mt-1 h-8 w-full max-w-md">
+            <EventToast event={currentEvent} state={state} />
+          </div>
+        </div>
+
+        {/* bottom: piles and the hand */}
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/55 to-transparent pt-10">
+          {notice ? <div className="pointer-events-none relative z-[55] mb-1 flex justify-center px-3">{notice}</div> : null}
+          <div ref={handRef}>
+            <SceneHand
+              player={handOwner}
+              state={state}
+              isMyTurn={isMyTurn}
+              onDraw={controls.draw}
+              onPlay={(card) => {
+                play("cardPlay");
+                controls.requestPlay(card);
+              }}
+              onDiscard={(card) => {
+                play("cardDiscard");
+                controls.discard(card);
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
+      <AnimatePresence>
+        {currentEvent?.kind === "turnChange" ? (
+          <motion.div
+            key={currentEvent.id}
+            // up top, under the players: the middle of the screen is where the action is
+            className="pointer-events-none fixed inset-x-0 top-[7.5rem] z-40 flex justify-center px-6"
+            initial={{ opacity: 0, scale: 0.8, y: -16 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: -12 }}
+            transition={{ type: "spring", stiffness: 320, damping: 24 }}
+          >
+            <div
+              className="flex items-baseline gap-3 rounded-2xl border-2 bg-[#0d1626]/85 px-5 py-1.5 shadow-[0_12px_30px_rgba(0,0,0,0.45)] backdrop-blur-md"
+              style={{ borderColor: CAR_PAINT[current.color] }}
+            >
+              <p className="font-hud text-[0.65rem] font-bold uppercase tracking-[0.3em] text-white/70">{yourTurn ? "À toi" : "Tour de"}</p>
+              <p className="font-display text-2xl tracking-wide" style={{ color: CAR_PAINT[current.color] }}>
+                {yourTurn && viewerId ? "À VOUS !" : current.name.toUpperCase()}
+              </p>
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+      {isMyTurn ? (
+        <TargetPicker pending={controls.pendingTarget} state={state} onPick={controls.resolveTarget} onCancel={controls.cancelTarget} />
+      ) : null}
+      {over && victoryReady ? (
+        <VictoryOverlay state={state} onReplay={onReplay} replayHint={replayHint} onNewGame={onNewGame} onMenu={onExit} />
+      ) : null}
+    </main>
+  );
+}

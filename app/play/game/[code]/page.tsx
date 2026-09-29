@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import { useSetupStore } from "@/game/lib/store/setupStore";
 import { useGameEngine } from "@/game/hooks/useGameEngine";
 import type { NewGameOptions } from "@/game/lib/engine/gameReducer";
-import { GameTable } from "@/game/components/table/GameTable";
+import { GameScreen } from "@/game/components/table/GameScreen";
 import { TableBackdrop } from "@/game/components/ui/TableBackdrop";
 
 export default function GamePage({ params }: { params: Promise<{ code: string }> }) {
@@ -58,7 +58,7 @@ function LocalGame({
 }) {
   const { state, controls, consumeAnimation, newGame } = useGameEngine(options);
   return (
-    <GameTable
+    <GameScreen
       state={state}
       controls={controls}
       consumeAnimation={consumeAnimation}

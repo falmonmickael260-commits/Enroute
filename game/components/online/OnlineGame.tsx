@@ -5,7 +5,7 @@ import type { GameState } from "@/game/types/game";
 import type { GameAction } from "@/game/lib/engine/gameReducer";
 import type { ConnectionState, RoomMeta } from "@/game/hooks/useOnlineRoom";
 import { useGameControls } from "@/game/hooks/useGameEngine";
-import { GameTable } from "@/game/components/table/GameTable";
+import { GameScreen } from "@/game/components/table/GameScreen";
 
 /** An absent player's turn is passed automatically after this long. */
 const AUTO_SKIP_MS = 45_000;
@@ -80,7 +80,7 @@ export function OnlineGame({
     );
 
   return (
-    <GameTable
+    <GameScreen
       state={game}
       controls={controls}
       consumeAnimation={consumeAnimation}
