@@ -750,8 +750,9 @@ export class WorldStage implements Stage {
       // the whole road from start to finish, seen from high above the coast
       const a = this.road.at(this.road.startLen).point;
       const b = this.road.at(this.road.finishLen).point;
-      const centre = a.clone().add(b).multiplyScalar(0.5);
-      const length = a.distanceTo(b) + 40;
+      // a little closer to the start: the cars begin there and the finish reads far off
+      const centre = a.clone().lerp(b, 0.44);
+      const length = a.distanceTo(b) + 60;
       const vHalf = THREE.MathUtils.degToRad(this.camera.fov / 2);
       const visible = Math.max(1, this.height - (this.virtualHeight - this.height));
       const hHalf = Math.atan(Math.tan(vHalf) * (this.width / visible));
