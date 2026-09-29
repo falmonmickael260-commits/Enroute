@@ -388,8 +388,17 @@ export class SceneRenderer {
     car.props.delete(prop.kind);
   }
 
+  /** +1 or -1: the car's side (local x) that faces the middle of the picture. */
+  private sideTowardCentre(car: CarEntity) {
+    const yaw = car.frame.rotation.y;
+    const worldDx = Math.cos(yaw); // where local +x points, horizontally
+    const towardCentre = this.path.def.width / 2 - car.frame.position.x;
+    return Math.sign(worldDx * towardCentre) || 1;
+  }
+
   private createProp(kind: HazardType, now: number, car: CarEntity): Prop {
     const root = new THREE.Group();
+    const side = this.sideTowardCentre(car);
     const prop: Prop = { kind, root, world: null, born: now, leaving: null, update: () => {} };
 
     if (kind === "barrage") {
@@ -419,15 +428,15 @@ export class SceneRenderer {
       world.rotation.copy(car.frame.rotation);
       world.scale.copy(car.frame.scale);
       const { root: radar, flash } = createRadar();
-      radar.position.set(1.15, 0, 0.35);
+      radar.position.set(1.05 * side, 0, 0.35);
       radar.scale.setScalar(1.7);
       world.add(radar);
       const flashSprite = createPuff("#ffffff", 0);
-      flashSprite.position.set(1.15, 1.22, 0.55);
+      flashSprite.position.set(1.05 * side, 1.22, 0.55);
       world.add(flashSprite);
       prop.world = world;
       const plate = createLimitPlate();
-      plate.position.set(0, 1.0, 0);
+      plate.position.set(0.62 * side, 0.75, 0);
       root.add(plate);
       prop.update = (pr, t) => {
         const a = clamp01((t - pr.born) / 600);
@@ -451,7 +460,7 @@ export class SceneRenderer {
       nails.position.set(0, 0, 0.62);
       root.add(nails);
       const badge = createBadge(drawTyre, "#e0392f");
-      badge.position.set(0, 1.05, 0);
+      badge.position.set(0.62 * side, 0.75, 0);
       root.add(badge);
       prop.update = (pr, t, c) => {
         const a = clamp01((t - pr.born) / 500);
@@ -484,7 +493,7 @@ export class SceneRenderer {
       tri.scale.setScalar(2);
       root.add(tri);
       const badge = createBadge(drawWarning);
-      badge.position.set(0, 1.05, 0);
+      badge.position.set(0.62 * side, 0.75, 0);
       root.add(badge);
       prop.update = (pr, t, c) => {
         const a = clamp01((t - pr.born) / 650);
@@ -512,7 +521,7 @@ export class SceneRenderer {
       };
     } else if (kind === "panne") {
       const badge = createBadge(drawFuel, "#f08a1c");
-      badge.position.set(0, 1.05, 0);
+      badge.position.set(0.62 * side, 0.75, 0);
       root.add(badge);
       prop.update = (pr, t, c) => {
         const a = clamp01((t - pr.born) / 900);

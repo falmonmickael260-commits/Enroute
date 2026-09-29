@@ -181,18 +181,19 @@ export function SceneGame({
         {currentEvent?.kind === "turnChange" ? (
           <motion.div
             key={currentEvent.id}
-            className="pointer-events-none fixed inset-x-0 top-[34%] z-40 flex justify-center px-6"
-            initial={{ opacity: 0, scale: 0.7, y: 20 }}
+            // up top, under the players: the middle of the screen is where the action is
+            className="pointer-events-none fixed inset-x-0 top-[7.5rem] z-40 flex justify-center px-6"
+            initial={{ opacity: 0, scale: 0.8, y: -16 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 1.1, y: -20 }}
-            transition={{ type: "spring", stiffness: 320, damping: 22 }}
+            exit={{ opacity: 0, scale: 0.95, y: -12 }}
+            transition={{ type: "spring", stiffness: 320, damping: 24 }}
           >
             <div
-              className="rounded-3xl border-2 bg-[#0d1626]/85 px-8 py-3 text-center shadow-[0_18px_50px_rgba(0,0,0,0.5)] backdrop-blur-md"
+              className="flex items-baseline gap-3 rounded-2xl border-2 bg-[#0d1626]/85 px-5 py-1.5 shadow-[0_12px_30px_rgba(0,0,0,0.45)] backdrop-blur-md"
               style={{ borderColor: CAR_PAINT[current.color] }}
             >
-              <p className="font-hud text-xs font-bold uppercase tracking-[0.4em] text-white/70">À toi de jouer</p>
-              <p className="font-display text-4xl tracking-wide" style={{ color: CAR_PAINT[current.color] }}>
+              <p className="font-hud text-[0.65rem] font-bold uppercase tracking-[0.3em] text-white/70">À toi</p>
+              <p className="font-display text-2xl tracking-wide" style={{ color: CAR_PAINT[current.color] }}>
                 {current.name.toUpperCase()}
               </p>
             </div>
