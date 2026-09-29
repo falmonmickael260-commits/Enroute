@@ -1,0 +1,65 @@
+# Unity generated
+/Library/
+/Temp/
+/Obj/
+/Logs/
+/UserSettings/
+/MemoryCaptures/
+/Recordings/
+/Build/
+/Builds/
+
+# Generated IDE/project files
+/[Aa]ssets/AssetStoreTools*
+*.csproj
+*.unityproj
+*.sln
+*.slnx
+*.suo
+*.tmp
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# Unity3D generated meta files (keep only real .meta pairs, this ignores stray autogen ones)
+*.pidb.meta
+*.pdb.meta
+*.mdb.meta
+
+# Unity3D Generated File On Crash Reports
+sysinfo.txt
+
+# Builds
+*.apk
+*.aab
+*.unitypackage
+*.app
+
+# Crashlytics generated file
+crashlytics-build.properties
+
+# Packed Addressables
+/[Aa]ssets/[Aa]ddressable[Aa]ssets[Dd]ata/*/*.bin*
+
+# Temporary auto-generated Android Assets
+/[Aa]ssets/[Ss]treamingAssets/aa.meta
+/[Aa]ssets/[Ss]treamingAssets/aa/*
+
+# macOS
+.DS_Store
+
+# VS Code
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+
+# MCP local config (contains auth token, do not publish)
+.mcp.json

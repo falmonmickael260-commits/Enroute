@@ -1,0 +1,9 @@
+{
+  "enabledMcpjsonServers": [
+    "ai-game-developer"
+  ],
+  "disabledMcpjsonServers": [
+    "21st"
+  ],
+  "enableAllProjectMcpServers": true
+}
