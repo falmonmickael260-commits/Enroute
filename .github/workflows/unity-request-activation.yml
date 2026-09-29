@@ -1,0 +1,24 @@
+name: Unity - Request Activation File
+
+# One-time helper: run this manually (Actions tab -> this workflow -> "Run workflow")
+# to generate the .alf file needed to activate a free Unity Personal license for CI.
+# See the WebGL build workflow's header comment for the full step-by-step.
+on:
+  workflow_dispatch: {}
+
+jobs:
+  request-activation-file:
+    name: Request activation file
+    runs-on: ubuntu-latest
+    steps:
+      - name: Request manual activation file
+        id: getManualLicenseFile
+        uses: game-ci/unity-request-activation-file@v2
+        with:
+          unityVersion: 6000.3.25f1
+
+      - name: Upload activation file
+        uses: actions/upload-artifact@v4
+        with:
+          name: Enroute.alf
+          path: ${{ steps.getManualLicenseFile.outputs.filePath }}

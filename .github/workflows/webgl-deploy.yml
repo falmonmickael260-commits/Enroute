@@ -1,0 +1,70 @@
+name: Build & Deploy WebGL to GitHub Pages
+
+# Builds the Unity project for WebGL on every push to unity-client and publishes it
+# to GitHub Pages, so the game is playable in a browser at:
+#   https://<owner>.github.io/Enroute/
+#
+# ONE-TIME SETUP REQUIRED before this will work (a Unity Personal license, free,
+# but only you can generate it — see the two secrets below):
+#   1. Actions tab -> "Unity - Request Activation File" -> Run workflow -> download
+#      the "Enroute.alf" artifact it produces.
+#   2. Go to https://license.unity3d.com/manual, upload that .alf file, choose
+#      "Unity Personal", and download the .ulf license file it gives you back.
+#   3. Repo Settings -> Secrets and variables -> Actions -> New repository secret:
+#        UNITY_LICENSE = the full contents of that .ulf file
+#   4. Repo Settings -> Pages -> Build and deployment -> Source: "GitHub Actions"
+#      (only needed once; this workflow already requests that mode below).
+#
+# Without step 3, every run of this workflow fails at the "Build WebGL" step with
+# a license/activation error — that's expected until the secret is added.
+on:
+  push:
+    branches: [unity-client]
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Build WebGL
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/cache@v4
+        with:
+          path: Library
+          key: Library-WebGL-${{ hashFiles('Assets/**', 'Packages/**', 'ProjectSettings/**') }}
+          restore-keys: |
+            Library-WebGL-
+
+      - name: Build WebGL
+        uses: game-ci/unity-builder@v4
+        env:
+          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+        with:
+          unityVersion: 6000.3.25f1
+          targetPlatform: WebGL
+          buildsPath: build
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/WebGL/WebGL
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

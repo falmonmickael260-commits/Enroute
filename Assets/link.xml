@@ -1,0 +1,6 @@
+<linker>
+  <!-- Newtonsoft.Json relies heavily on reflection (used by the online room state
+       serialization) — IL2CPP code stripping in WebGL/mobile builds removes members
+       it can't see are used unless we tell it to preserve the whole assembly. -->
+  <assembly fullname="Newtonsoft.Json" preserve="all" />
+</linker>
