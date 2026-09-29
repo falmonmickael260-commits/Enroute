@@ -7,17 +7,16 @@ import type { CardInstance, GameState } from "@/game/types/game";
 import { createGame, gameReducer, type NewGameOptions } from "@/game/lib/engine/gameReducer";
 import { useGameControls } from "@/game/hooks/useGameEngine";
 import { useAnimationQueue } from "@/game/hooks/useAnimationQueue";
+import { useElementSize } from "@/game/hooks/useElementSize";
 import { useSound } from "@/game/hooks/useSound";
 import { uid } from "@/game/utils/array";
-import { PlayerHand } from "@/game/components/cards/PlayerHand";
-import { DrawPile } from "@/game/components/cards/DrawPile";
-import { DiscardPile } from "@/game/components/cards/DiscardPile";
 import { EventToast } from "@/game/components/animations/EventToast";
 import { VictoryOverlay } from "@/game/components/animations/VictoryOverlay";
 import { TargetPicker } from "@/game/components/ui/TargetPicker";
 import { SoundToggle } from "@/game/components/ui/SoundToggle";
 import { Logo } from "@/game/components/ui/Logo";
 import { SceneBoard, CAR_PAINT } from "./SceneBoard";
+import { SceneHand } from "./SceneHand";
 import type { SceneDef } from "./scenePath";
 
 /** Hands dealt in demo mode, so every effect can be tried without luck. */
@@ -70,6 +69,7 @@ export function SceneGame({
   }, [currentEvent]);
 
   const current = state.players[state.currentPlayerIndex];
+  const [handRef, handBox] = useElementSize<HTMLDivElement>();
 
   // let the fireworks play before the results panel covers the road
   const over = state.phase === "gameover";
@@ -94,7 +94,7 @@ export function SceneGame({
       <img src={scene.image} alt="" className="absolute inset-0 -z-10 h-full w-full scale-110 object-cover opacity-60 blur-2xl" />
 
       <div className="absolute inset-0 mx-auto max-w-[min(100vw,calc(100dvh*0.78))]">
-        <SceneBoard state={state} event={currentEvent} def={scene} />
+        <SceneBoard state={state} event={currentEvent} def={scene} bottomInset={handBox.height} />
 
         {/* top: players · logo · turn */}
         <div className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-black/45 via-black/15 to-transparent pb-10">
@@ -156,28 +156,23 @@ export function SceneGame({
           </div>
         </div>
 
-        {/* bottom: draw pile · hand · discard */}
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/75 via-black/40 to-transparent pt-16">
-          <div className="pointer-events-none absolute bottom-3 left-1.5 z-10 origin-bottom-left scale-[0.8] [&>*]:pointer-events-auto">
-            <DrawPile count={state.deck.length} canDraw={state.phase === "draw"} onDraw={controls.draw} />
-          </div>
-          <div className="pointer-events-none absolute bottom-3 right-1.5 z-10 origin-bottom-right scale-[0.8]">
-            <DiscardPile pile={state.discard} />
-          </div>
-          <div className="px-16">
-            <PlayerHand
-              player={current}
-              state={state}
-              isMyTurn={state.phase !== "gameover"}
-              onPlay={(card) => {
-                play("cardPlay");
-                controls.requestPlay(card);
-              }}
-              onDiscard={(card) => {
-                play("cardDiscard");
-                controls.discard(card);
-              }}
-            />
+        {/* bottom: piles and the hand */}
+        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/55 to-transparent pt-10">
+          <div ref={handRef}>
+          <SceneHand
+            player={current}
+            state={state}
+            isMyTurn={state.phase !== "gameover"}
+            onDraw={controls.draw}
+            onPlay={(card) => {
+              play("cardPlay");
+              controls.requestPlay(card);
+            }}
+            onDiscard={(card) => {
+              play("cardDiscard");
+              controls.discard(card);
+            }}
+          />
           </div>
         </div>
       </div>

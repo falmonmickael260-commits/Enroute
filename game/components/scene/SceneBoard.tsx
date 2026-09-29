@@ -77,7 +77,18 @@ interface Focus {
  * WebGL canvas, signs and labels) moves as one piece, so the camera can zoom
  * and tilt towards the action while everything stays aligned.
  */
-export function SceneBoard({ state, event, def }: { state: GameState; event: AnimationEvent | null; def: SceneDef }) {
+export function SceneBoard({
+  state,
+  event,
+  def,
+  bottomInset = 0,
+}: {
+  state: GameState;
+  event: AnimationEvent | null;
+  def: SceneDef;
+  /** Height covered by the hand at the bottom: the start line must stay above it. */
+  bottomInset?: number;
+}) {
   const path = useMemo(() => new ScenePath(def), [def]);
   const [boxRef, box] = useElementSize<HTMLDivElement>();
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
@@ -89,15 +100,17 @@ export function SceneBoard({ state, event, def }: { state: GameState; event: Ani
   // cover the box with the picture, keeping the road centred horizontally
   const cover = useMemo(() => {
     if (!box.width || !box.height) return null;
-    const scale = Math.max(box.width / def.width, box.height / def.height);
+    const startY = def.road[def.startIndex].y;
+    const room = bottomInset + 70; // keep the start line and its cars clear of the hand
+    const scale = Math.max(box.width / def.width, box.height / def.height, room / Math.max(1, def.height - startY));
     const w = def.width * scale;
     const h = def.height * scale;
     const roadXs = def.road.slice(def.startIndex, def.finishIndex + 1).map((p) => p.x);
     const roadMid = ((Math.min(...roadXs) + Math.max(...roadXs)) / 2) * scale;
     const left = Math.min(0, Math.max(box.width - w, box.width / 2 - roadMid));
-    const top = (box.height - h) / 2;
+    const top = Math.max(box.height - h, Math.min(0, box.height - room - startY * scale));
     return { scale, w, h, left, top };
-  }, [box.width, box.height, def]);
+  }, [box.width, box.height, def, bottomInset]);
 
   // create the WebGL layer once the canvas is in the page
   useEffect(() => {
@@ -196,14 +209,14 @@ export function SceneBoard({ state, event, def }: { state: GameState; event: Ani
     const fx = cover.left + focus.x * cover.scale;
     const fy = cover.top + focus.y * cover.scale;
     const cx = box.width / 2;
-    const cy = box.height * 0.42;
+    const cy = Math.max(box.height * 0.3, (box.height - bottomInset) * 0.52);
     let x = cx - fx * z;
     let y = cy - fy * z;
     // never show past the picture's edges
     x = Math.min(-cover.left * z + 0, Math.max(box.width - (cover.left + cover.w) * z, x));
     y = Math.min(-cover.top * z, Math.max(box.height - (cover.top + cover.h) * z, y));
     return { x, y, scale: z, rotateX: 5 };
-  }, [cover, focus, box.width, box.height]);
+  }, [cover, focus, box.width, box.height, bottomInset]);
 
   const markers = useMemo(() => {
     const steps = 5;
