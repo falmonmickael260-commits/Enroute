@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useReducer } from "react";
+import { useCallback, useEffect, useReducer, useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import clsx from "clsx";
 import type { CardInstance, GameState } from "@/game/types/game";
 import { createGame, gameReducer, type NewGameOptions } from "@/game/lib/engine/gameReducer";
@@ -11,7 +12,6 @@ import { uid } from "@/game/utils/array";
 import { PlayerHand } from "@/game/components/cards/PlayerHand";
 import { DrawPile } from "@/game/components/cards/DrawPile";
 import { DiscardPile } from "@/game/components/cards/DiscardPile";
-import { TurnBanner } from "@/game/components/animations/TurnBanner";
 import { EventToast } from "@/game/components/animations/EventToast";
 import { VictoryOverlay } from "@/game/components/animations/VictoryOverlay";
 import { TargetPicker } from "@/game/components/ui/TargetPicker";
@@ -22,8 +22,8 @@ import type { SceneDef } from "./scenePath";
 
 /** Hands dealt in demo mode, so every effect can be tried without luck. */
 const DEMO_HANDS: string[][] = [
-  ["dist200", "crevaison", "collision", "radar", "barrage", "passageLibre", "dist100"],
-  ["dist100", "roueSecours", "reparation", "panne", "pleinEssence", "gps", "turbo"],
+  ["dist200", "crevaison", "collision", "radar", "barrage", "passageLibre", "turbo", "raccourci", "gpsStrategique"],
+  ["dist100", "roueSecours", "reparation", "panne", "pleinEssence", "gps", "depassement", "derniereLigneDroite", "passageLibre"],
 ];
 
 function init({ options, demo }: { options: NewGameOptions; demo: boolean }): GameState {
@@ -70,6 +70,21 @@ export function SceneGame({
   }, [currentEvent]);
 
   const current = state.players[state.currentPlayerIndex];
+
+  // let the fireworks play before the results panel covers the road
+  const over = state.phase === "gameover";
+  const [victoryReady, setVictoryReady] = useState(false);
+  const [prevOver, setPrevOver] = useState(over);
+  if (over !== prevOver) {
+    setPrevOver(over);
+    if (!over) setVictoryReady(false);
+  }
+  useEffect(() => {
+    if (!over) return;
+    const t = setTimeout(() => setVictoryReady(true), 3000);
+    return () => clearTimeout(t);
+  }, [over]);
+
   const leaderKm = Math.max(...state.players.map((p) => p.distance));
 
   return (
@@ -84,7 +99,7 @@ export function SceneGame({
         {/* top: players · logo · turn */}
         <div className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-black/45 via-black/15 to-transparent pb-10">
           <div className="flex items-start justify-between gap-2 px-2.5 pt-2.5">
-            <div className="pointer-events-auto flex w-[42%] max-w-[15rem] flex-col gap-1.5">
+            <div className="pointer-events-auto flex w-[46%] max-w-[16rem] flex-col gap-1.5">
               {state.players.map((p, i) => {
                 const active = p.id === current.id && state.phase !== "gameover";
                 return (
@@ -167,9 +182,30 @@ export function SceneGame({
         </div>
       </div>
 
-      <TurnBanner player={currentEvent?.kind === "turnChange" ? current : null} />
+      <AnimatePresence>
+        {currentEvent?.kind === "turnChange" ? (
+          <motion.div
+            key={currentEvent.id}
+            className="pointer-events-none fixed inset-x-0 top-[34%] z-40 flex justify-center px-6"
+            initial={{ opacity: 0, scale: 0.7, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 1.1, y: -20 }}
+            transition={{ type: "spring", stiffness: 320, damping: 22 }}
+          >
+            <div
+              className="rounded-3xl border-2 bg-[#0d1626]/85 px-8 py-3 text-center shadow-[0_18px_50px_rgba(0,0,0,0.5)] backdrop-blur-md"
+              style={{ borderColor: CAR_PAINT[current.color] }}
+            >
+              <p className="font-hud text-xs font-bold uppercase tracking-[0.4em] text-white/70">À toi de jouer</p>
+              <p className="font-display text-4xl tracking-wide" style={{ color: CAR_PAINT[current.color] }}>
+                {current.name.toUpperCase()}
+              </p>
+            </div>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
       <TargetPicker pending={controls.pendingTarget} state={state} onPick={controls.resolveTarget} onCancel={controls.cancelTarget} />
-      {state.phase === "gameover" ? (
+      {over && victoryReady ? (
         <VictoryOverlay state={state} onReplay={() => dispatch({ type: "NEW_GAME", options })} onNewGame={onExit} onMenu={onExit} />
       ) : null}
     </main>

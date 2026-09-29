@@ -5,7 +5,8 @@ import { motion } from "framer-motion";
 import type { AnimationEvent, GameState, PlayerColor } from "@/game/types/game";
 import { useElementSize } from "@/game/hooks/useElementSize";
 import { ScenePath, type SceneDef } from "./scenePath";
-import { SceneRenderer, type CarScreenPos } from "./SceneRenderer";
+import { SceneRenderer, type CarScreenPos, type MoveStyle, type SceneCue } from "./SceneRenderer";
+import { getCardDef } from "@/game/lib/engine/cardCatalog";
 import styles from "./scene.module.css";
 
 /** Car paint: livelier than the UI tokens, they have to pop on the landscape. */
@@ -16,7 +17,39 @@ export const CAR_PAINT: Record<PlayerColor, string> = {
   emerald: "#2fae55",
 };
 
-function pushState(renderer: SceneRenderer, state: GameState) {
+/** Which card was just played, read from how the state changed. */
+function cueFor(prev: GameState, next: GameState): { playerId: string; cue: SceneCue } | null {
+  if (prev.startedAt !== next.startedAt || next.discard.length !== prev.discard.length + 1) return null;
+  const def = getCardDef(next.discard[next.discard.length - 1].defId);
+  const before = prev.players[prev.currentPlayerIndex];
+  const after = next.players.find((p) => p.id === before.id);
+  if (!after) return null;
+  if (after.distance !== before.distance) {
+    const style: MoveStyle =
+      def.special === "turbo"
+        ? "turbo"
+        : def.special === "raccourci"
+          ? "shortcut"
+          : def.special === "depassement"
+            ? "overtake"
+            : def.special === "derniereLigneDroite"
+              ? "sprint"
+              : (def.value ?? 0) >= 200
+                ? "fast"
+                : "drive";
+    return { playerId: after.id, cue: { kind: "move", style } };
+  }
+  if (def.category === "defense") {
+    return { playerId: after.id, cue: { kind: after.shields.length > before.shields.length ? "shield" : "repair" } };
+  }
+  if (def.special === "gpsStrategique") return { playerId: after.id, cue: { kind: "gps" } };
+  return null;
+}
+
+function pushState(renderer: SceneRenderer, prev: GameState | null, state: GameState) {
+  if (prev && prev.startedAt !== state.startedAt) renderer.reset();
+  const cue = prev ? cueFor(prev, state) : null;
+  if (cue) renderer.cue(cue.playerId, cue.cue);
   const current = state.players[state.currentPlayerIndex]?.id;
   renderer.update(
     state.players.map((p) => ({
@@ -25,10 +58,12 @@ function pushState(renderer: SceneRenderer, state: GameState) {
       km: p.distance,
       hazard: p.hazard,
       limited: p.limited,
-      active: p.id === current,
+      shields: p.shields,
+      active: p.id === current && state.phase !== "gameover",
     })),
     state.target,
   );
+  if (state.phase === "gameover" && prev?.phase !== "gameover") renderer.celebrate();
 }
 
 interface Focus {
@@ -46,6 +81,7 @@ export function SceneBoard({ state, event, def }: { state: GameState; event: Ani
   const path = useMemo(() => new ScenePath(def), [def]);
   const [boxRef, box] = useElementSize<HTMLDivElement>();
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
+  const [loaded, setLoaded] = useState(false);
   const stateRef = useRef(state);
   const rendererRef = useRef<SceneRenderer | null>(null);
   const labelRefs = useRef(new Map<string, HTMLDivElement>());
@@ -69,12 +105,27 @@ export function SceneBoard({ state, event, def }: { state: GameState; event: Ani
     const renderer = new SceneRenderer(canvas, path, 1);
     rendererRef.current = renderer;
     renderer.onFrame = (positions: Map<string, CarScreenPos>) => {
-      for (const [id, p] of positions) {
+      // stack labels that would overlap, nearest car's label lowest
+      const placed: { x: number; y: number; w: number; h: number }[] = [];
+      const order = [...positions.entries()].sort((a, b) => b[1].y - a[1].y);
+      for (const [id, p] of order) {
         const el = labelRefs.current.get(id);
-        if (el) el.style.transform = `translate(${p.x}px, ${p.y - p.size * 0.62}px) translate(-50%, -100%) scale(${Math.max(0.55, Math.min(1.25, p.size / 110))})`;
+        if (!el) continue;
+        const scale = Math.max(0.55, Math.min(1.25, p.size / 110));
+        const w = 130 * scale;
+        const h = 44 * scale;
+        let y = p.y - p.size * 0.62;
+        for (let guard = 0; guard < 6; guard++) {
+          const hit = placed.find((q) => Math.abs(q.x - p.x) < (q.w + w) / 2 && Math.abs(q.y - y) < (q.h + h) / 2);
+          if (!hit) break;
+          y = hit.y - (hit.h + h) / 2 - 2;
+        }
+        placed.push({ x: p.x, y, w, h });
+        el.style.transform = `translate(${p.x}px, ${y}px) translate(-50%, -100%) scale(${scale})`;
+        el.dataset.active = p.active ? "1" : "0";
       }
     };
-    pushState(renderer, stateRef.current);
+    pushState(renderer, null, stateRef.current);
     return () => {
       renderer.dispose();
       rendererRef.current = null;
@@ -90,8 +141,9 @@ export function SceneBoard({ state, event, def }: { state: GameState; event: Ani
 
   // feed the game state to the 3D layer
   useEffect(() => {
+    const prev = stateRef.current;
     stateRef.current = state;
-    if (rendererRef.current) pushState(rendererRef.current, state);
+    if (rendererRef.current) pushState(rendererRef.current, prev, state);
   }, [state]);
 
   // camera: follow what the current event is about, then settle back
@@ -104,15 +156,18 @@ export function SceneBoard({ state, event, def }: { state: GameState; event: Ani
       const a = path.atKm(event.from, state.target);
       const b = path.atKm(event.to, state.target);
       const span = Math.hypot(a.x - b.x, a.y - b.y);
-      return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, zoom: Math.max(1.15, Math.min(1.9, 900 / (span + 360))) };
+      // closer on the far (small) end of the road, but keep both ends in view
+      const bySize = Math.max(1.15, Math.min(2.6, 170 / ((a.s + b.s) / 2)));
+      const byFit = Math.max(1.15, 900 / (span + 360));
+      return { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2, zoom: Math.min(bySize, byFit) };
     }
     if (event.kind === "hazard" || event.kind === "shield") {
       const p = path.atKm(player.distance, state.target);
-      return { x: p.x, y: p.y, zoom: Math.max(1.5, Math.min(2.3, 230 / p.s)) };
+      return { x: p.x, y: p.y, zoom: Math.max(1.5, Math.min(2.6, 230 / p.s)) };
     }
     if (event.kind === "turnChange") {
       const p = path.atKm(player.distance, state.target);
-      return { x: p.x, y: p.y, zoom: 1.2 };
+      return { x: p.x, y: p.y, zoom: Math.max(1.2, Math.min(2, 150 / p.s)) };
     }
     return null;
     // only re-aim when a new event starts
@@ -130,7 +185,9 @@ export function SceneBoard({ state, event, def }: { state: GameState; event: Ani
     const t = setTimeout(() => setHeld(null), 700);
     return () => clearTimeout(t);
   }, [eventFocus, held]);
-  const focus = eventFocus ?? held;
+  // the race is over: stay on the finish line for the celebration
+  const finishFocus = useMemo<Focus>(() => ({ x: path.finish.x, y: path.finish.y, zoom: Math.max(1.6, Math.min(2.8, 110 / path.finish.s)) }), [path]);
+  const focus = state.phase === "gameover" ? finishFocus : (eventFocus ?? held);
 
   const camera = useMemo(() => {
     if (!cover || !focus) return { x: 0, y: 0, scale: 1, rotateX: 0 };
@@ -162,11 +219,17 @@ export function SceneBoard({ state, event, def }: { state: GameState; event: Ani
 
   return (
     <div ref={boxRef} className="absolute inset-0 overflow-hidden" style={{ perspective: 1400 }}>
+      {!loaded ? (
+        <div className="absolute inset-0 z-10 flex items-center justify-center">
+          <div className="h-10 w-10 animate-spin rounded-full border-4 border-white/20 border-t-[#ffd23f]" />
+        </div>
+      ) : null}
       {cover ? (
         <motion.div
           className="absolute left-0 top-0"
           style={{ width: box.width, height: box.height, transformOrigin: "50% 42%" }}
-          animate={{ rotateX: camera.rotateX * (focus ? 1 : 0) }}
+          initial={{ opacity: 0, scale: 1.08 }}
+          animate={{ rotateX: camera.rotateX * (focus ? 1 : 0), opacity: loaded ? 1 : 0, scale: loaded ? 1 : 1.08 }}
           transition={{ duration: 1.1, ease: [0.45, 0, 0.2, 1] }}
         >
           <motion.div
@@ -180,7 +243,17 @@ export function SceneBoard({ state, event, def }: { state: GameState; event: Ani
               style={{ left: cover.left, top: cover.top, width: cover.w, height: cover.h }}
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={def.image} alt="" draggable={false} className="absolute inset-0 h-full w-full select-none" />
+              <img
+                src={def.image}
+                alt=""
+                draggable={false}
+                ref={(img) => {
+                  // cached images may be complete before React attaches onLoad
+                  if (img?.complete && img.naturalWidth > 0 && !loaded) queueMicrotask(() => setLoaded(true));
+                }}
+                onLoad={() => setLoaded(true)}
+                className="absolute inset-0 h-full w-full select-none"
+              />
               <div
                 className="absolute left-0 top-0 origin-top-left"
                 style={{ width: def.width, height: def.height, transform: `scale(${cover.scale})` }}

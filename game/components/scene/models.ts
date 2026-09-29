@@ -29,6 +29,9 @@ export interface CarModel {
   wheels: THREE.Mesh[];
   brakeLights: THREE.MeshStandardMaterial;
   paint: THREE.MeshStandardMaterial;
+  /** Mount points for equipment (roof rack, rear, front). */
+  mounts: { roof: THREE.Group; rear: THREE.Group; front: THREE.Group };
+  exhaust: THREE.Vector3;
 }
 
 export function createCar(color: string): CarModel {
@@ -36,46 +39,91 @@ export function createCar(color: string): CarModel {
   const body = new THREE.Group();
   root.add(body);
 
-  const paint = mat(color, { roughness: 0.28, metalness: 0.25 });
-  const lower = new THREE.Mesh(new RoundedBoxGeometry(0.46, 0.2, 1, 3, 0.07), paint);
+  const paint = mat(color, { roughness: 0.22, metalness: 0.35 });
+  const trim = mat("#20242b", { roughness: 0.6 });
+
+  // lower body with a lower, rounded hood
+  const lower = new THREE.Mesh(new RoundedBoxGeometry(0.47, 0.19, 1, 4, 0.08), paint);
   lower.position.y = 0.17;
   body.add(lower);
+  const hood = new THREE.Mesh(new RoundedBoxGeometry(0.44, 0.08, 0.34, 3, 0.04), paint);
+  hood.position.set(0, 0.27, 0.29);
+  hood.rotation.x = 0.1;
+  body.add(hood);
 
-  const cabin = new THREE.Mesh(new RoundedBoxGeometry(0.4, 0.17, 0.52, 3, 0.07), paint);
-  cabin.position.set(0, 0.33, -0.06);
+  // cabin: paint pillars around dark glass
+  const cabin = new THREE.Mesh(new RoundedBoxGeometry(0.42, 0.18, 0.54, 3, 0.07), paint);
+  cabin.position.set(0, 0.33, -0.08);
   body.add(cabin);
-  const glass = new THREE.Mesh(new RoundedBoxGeometry(0.41, 0.12, 0.48, 2, 0.05), shared.glass);
-  glass.position.set(0, 0.34, -0.06);
-  body.add(glass);
-  // roof panel over the glass so the car reads as a hatchback from above
-  const roof = new THREE.Mesh(new RoundedBoxGeometry(0.36, 0.04, 0.4, 2, 0.02), paint);
-  roof.position.set(0, 0.42, -0.08);
+  const glassSide = new THREE.Mesh(new RoundedBoxGeometry(0.43, 0.1, 0.44, 2, 0.04), shared.glass);
+  glassSide.position.set(0, 0.35, -0.08);
+  body.add(glassSide);
+  const windshield = new THREE.Mesh(new RoundedBoxGeometry(0.38, 0.12, 0.04, 2, 0.02), shared.glass);
+  windshield.position.set(0, 0.35, 0.19);
+  windshield.rotation.x = -0.55;
+  body.add(windshield);
+  const roof = new THREE.Mesh(new RoundedBoxGeometry(0.38, 0.045, 0.42, 3, 0.02), paint);
+  roof.position.set(0, 0.43, -0.1);
   body.add(roof);
+  // racing stripe
+  const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.005, 0.4), mat("#ffffff", { roughness: 0.3 }));
+  stripe.position.set(0, 0.455, -0.1);
+  body.add(stripe);
+  const hoodStripe = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.005, 0.3), stripe.material);
+  hoodStripe.position.set(0, 0.315, 0.3);
+  hoodStripe.rotation.x = 0.1;
+  body.add(hoodStripe);
 
-  // bumpers and lights
-  const front = new THREE.Mesh(new RoundedBoxGeometry(0.44, 0.06, 0.05, 2, 0.02), shared.dark);
+  // spoiler
+  const spoiler = new THREE.Mesh(new RoundedBoxGeometry(0.4, 0.025, 0.08, 2, 0.01), trim);
+  spoiler.position.set(0, 0.47, -0.3);
+  body.add(spoiler);
+
+  // side mirrors
+  for (const x of [-0.24, 0.24]) {
+    const mirror = new THREE.Mesh(new RoundedBoxGeometry(0.05, 0.035, 0.05, 1, 0.01), paint);
+    mirror.position.set(x, 0.33, 0.14);
+    body.add(mirror);
+  }
+
+  // wheel arches
+  for (const [x, z] of [[-0.225, 0.31], [0.225, 0.31], [-0.225, -0.31], [0.225, -0.31]]) {
+    const arch = new THREE.Mesh(new RoundedBoxGeometry(0.06, 0.1, 0.26, 2, 0.03), trim);
+    arch.position.set(x, 0.2, z);
+    body.add(arch);
+  }
+
+  // bumpers, grille, plate and lights
+  const front = new THREE.Mesh(new RoundedBoxGeometry(0.46, 0.07, 0.06, 2, 0.02), trim);
   front.position.set(0, 0.1, 0.5);
   body.add(front);
   const rear = front.clone();
   rear.position.z = -0.5;
   body.add(rear);
-  for (const x of [-0.15, 0.15]) {
-    const hl = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.045, 0.02), shared.headlight);
-    hl.position.set(x, 0.2, 0.5);
+  const grille = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.05, 0.02), trim);
+  grille.position.set(0, 0.19, 0.505);
+  body.add(grille);
+  const plate = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.035, 0.01), shared.white);
+  plate.position.set(0, 0.17, -0.51);
+  body.add(plate);
+  for (const x of [-0.16, 0.16]) {
+    const hl = new THREE.Mesh(new RoundedBoxGeometry(0.11, 0.05, 0.03, 1, 0.012), shared.headlight);
+    hl.position.set(x, 0.21, 0.495);
     body.add(hl);
   }
-  const brakeLights = new THREE.MeshStandardMaterial({ color: "#b3141b", emissive: "#ff1f2a", emissiveIntensity: 0.25 });
-  for (const x of [-0.16, 0.16]) {
-    const tl = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.05, 0.02), brakeLights);
-    tl.position.set(x, 0.21, -0.5);
+  const brakeLights = new THREE.MeshStandardMaterial({ color: "#b3141b", emissive: "#ff1f2a", emissiveIntensity: 0.3 });
+  for (const x of [-0.17, 0.17]) {
+    const tl = new THREE.Mesh(new RoundedBoxGeometry(0.11, 0.05, 0.03, 1, 0.012), brakeLights);
+    tl.position.set(x, 0.22, -0.495);
     body.add(tl);
   }
 
   const wheels: THREE.Mesh[] = [];
-  const tyreGeo = new THREE.CylinderGeometry(0.1, 0.1, 0.08, 14);
+  const tyreGeo = new THREE.CylinderGeometry(0.105, 0.105, 0.085, 16);
   tyreGeo.rotateZ(Math.PI / 2);
-  const rimGeo = new THREE.CylinderGeometry(0.055, 0.055, 0.085, 10);
+  const rimGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.09, 10);
   rimGeo.rotateZ(Math.PI / 2);
+  const hubGeo = new THREE.BoxGeometry(0.092, 0.1, 0.02);
   for (const [x, z] of [
     [-0.22, 0.31],
     [0.22, 0.31],
@@ -84,12 +132,119 @@ export function createCar(color: string): CarModel {
   ]) {
     const wheel = new THREE.Mesh(tyreGeo, shared.tyre);
     wheel.add(new THREE.Mesh(rimGeo, shared.rim));
-    wheel.position.set(x, 0.1, z);
+    // a spoke bar so the spin reads
+    wheel.add(new THREE.Mesh(hubGeo, shared.dark));
+    wheel.position.set(x, 0.105, z);
     root.add(wheel);
     wheels.push(wheel);
   }
 
-  return { root, body, wheels, brakeLights, paint };
+  const mounts = { roof: new THREE.Group(), rear: new THREE.Group(), front: new THREE.Group() };
+  mounts.roof.position.set(0, 0.46, -0.1);
+  mounts.rear.position.set(0, 0.22, -0.53);
+  mounts.front.position.set(0, 0.14, 0.53);
+  body.add(mounts.roof, mounts.rear, mounts.front);
+
+  return { root, body, wheels, brakeLights, paint, mounts, exhaust: new THREE.Vector3(0.12, 0.09, -0.54) };
+}
+
+// ---------------------------------------------------------------- equipment (protections)
+
+/** Chrome bull bar: immune to collisions. */
+export function createBullBar() {
+  const g = new THREE.Group();
+  const bar = new THREE.Mesh(new THREE.TorusGeometry(0.2, 0.018, 8, 20, Math.PI), shared.chrome);
+  bar.rotation.x = 0;
+  bar.position.y = 0;
+  g.add(bar);
+  const cross = new THREE.Mesh(new THREE.CylinderGeometry(0.016, 0.016, 0.4, 8), shared.chrome);
+  cross.rotation.z = Math.PI / 2;
+  cross.position.y = 0.07;
+  g.add(cross);
+  return g;
+}
+
+/** Spare wheel on the tailgate: immune to punctures. */
+export function createSpareWheel() {
+  const g = new THREE.Group();
+  const tyre = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.06, 16), shared.tyre);
+  tyre.rotation.x = Math.PI / 2;
+  g.add(tyre);
+  const rim = new THREE.Mesh(new THREE.CylinderGeometry(0.055, 0.055, 0.065, 10), shared.rim);
+  rim.rotation.x = Math.PI / 2;
+  g.add(rim);
+  g.position.z = -0.03;
+  return g;
+}
+
+/** Jerrycan strapped on a roof rack: immune to running dry. */
+export function createJerrycan() {
+  const g = new THREE.Group();
+  const rack = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.015, 0.3), shared.dark);
+  g.add(rack);
+  const can = new THREE.Mesh(new RoundedBoxGeometry(0.12, 0.15, 0.07, 2, 0.015), mat("#d83a2c", { roughness: 0.4 }));
+  can.position.set(0.05, 0.08, -0.03);
+  g.add(can);
+  const cap = new THREE.Mesh(new THREE.CylinderGeometry(0.018, 0.018, 0.03, 8), shared.dark);
+  cap.position.set(0.09, 0.17, -0.03);
+  g.add(cap);
+  return g;
+}
+
+/** GPS antenna with a blue light: immune to speed cameras. */
+export function createAntenna() {
+  const g = new THREE.Group();
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.04, 0.05, 0.03, 12), shared.dark);
+  g.add(base);
+  const mast = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.007, 0.22, 6), shared.chrome);
+  mast.position.y = 0.12;
+  g.add(mast);
+  const tip = new THREE.Mesh(new THREE.SphereGeometry(0.025, 10, 8), new THREE.MeshStandardMaterial({ color: "#6ec8ff", emissive: "#3aa8ff", emissiveIntensity: 1.2 }));
+  tip.position.y = 0.24;
+  g.add(tip);
+  g.position.x = -0.12;
+  return g;
+}
+
+/** Orange rotating beacon: roadblocks open for you. */
+export function createBeacon() {
+  const g = new THREE.Group();
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.055, 0.025, 12), shared.dark);
+  g.add(base);
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(0.045, 12, 8, 0, Math.PI * 2, 0, Math.PI / 2), shared.orange.clone());
+  dome.position.y = 0.012;
+  g.add(dome);
+  g.position.x = 0.12;
+  return { root: g, light: dome.material as THREE.MeshStandardMaterial };
+}
+
+/** Additive cone for the turbo flame. */
+export function createFlame() {
+  const g = new THREE.Group();
+  const outer = new THREE.Mesh(
+    new THREE.ConeGeometry(0.06, 0.34, 12, 1, true),
+    new THREE.MeshBasicMaterial({ color: "#3aa0ff", transparent: true, opacity: 0.75, blending: THREE.AdditiveBlending, depthWrite: false }),
+  );
+  outer.rotation.x = -Math.PI / 2;
+  outer.position.z = -0.17;
+  const inner = new THREE.Mesh(
+    new THREE.ConeGeometry(0.03, 0.2, 10, 1, true),
+    new THREE.MeshBasicMaterial({ color: "#e8f6ff", transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, depthWrite: false }),
+  );
+  inner.rotation.x = -Math.PI / 2;
+  inner.position.z = -0.1;
+  g.add(outer, inner);
+  return g;
+}
+
+/** Column of light from the sky (GPS stratégique). */
+export function createBeam() {
+  const beam = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.35, 0.55, 6, 24, 1, true),
+    new THREE.MeshBasicMaterial({ color: "#ffe28a", transparent: true, opacity: 0, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }),
+  );
+  beam.position.y = 3;
+  return beam;
 }
 
 /** Soft round shadow texture shared by every blob shadow and glow ring. */

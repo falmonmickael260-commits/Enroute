@@ -164,16 +164,31 @@ for (const fl of fields) {
   </g>`);
 }
 
-// road: shoulder, kerbs, asphalt, lines
-out.push(`<polygon points="${ribbon(1.32, -1.32)}" fill="#cdbb8e" opacity="0.9"/>`);
-out.push(`<polygon points="${ribbon(1.16, -1.16)}" fill="#f4f1ea"/>`);
-// red kerb stripes on both sides
-for (let i = 0; i < road.length - 1; i++) {
-  const stripe = Math.floor(road[i].len / 26) % 2 === 0;
-  if (!stripe) continue;
+// road: drawn as layers of overlapping discs, which stay clean even in
+// hairpins where offset outlines would fold over themselves
+const discs = (k, fill, filter = () => true, extra = "") =>
+  road
+    .filter(filter)
+    .map((p) => `<circle cx="${f(p.x)}" cy="${f(p.y)}" r="${f(p.s * k)}" fill="${fill}" ${extra}/>`)
+    .join("");
+out.push(`<g filter="url(#soft)" opacity="0.5">${discs(1.42, "#2c3a1c")}</g>`);
+out.push(discs(1.3, "#d3c196"));
+out.push(discs(1.16, "#f4f1ea"));
+out.push(discs(1.0, "#555a62"));
+// red kerb stripes, skipped on the inside of bends too tight for them
+for (let i = 1; i < road.length - 1; i++) {
+  if (Math.floor(road[i].len / 26) % 2 !== 0) continue;
   const a = road[i];
   const b = road[i + 1];
+  const pr = road[i - 1];
+  const turn = Math.atan2(b.y - a.y, b.x - a.x) - Math.atan2(a.y - pr.y, a.x - pr.x);
+  const bend = Math.atan2(Math.sin(turn), Math.cos(turn));
+  const step = Math.hypot(b.x - a.x, b.y - a.y) || 1;
+  const radius = Math.abs(step / (bend || 1e-6));
   for (const side of [1, -1]) {
+    // positive bend turns towards +normal: that side is the inside
+    const inside = Math.sign(bend) === side;
+    if (inside && radius < a.s * 1.6) continue;
     const q = [
       [a.x + a.nx * a.s * 1.0 * side, a.y + a.ny * a.s * 1.0 * side],
       [a.x + a.nx * a.s * 1.16 * side, a.y + a.ny * a.s * 1.16 * side],
@@ -183,13 +198,10 @@ for (let i = 0; i < road.length - 1; i++) {
     out.push(`<polygon points="${q.map(([x, y]) => `${f(x)},${f(y)}`).join(" ")}" fill="#e0453a"/>`);
   }
 }
-out.push(`<polygon points="${ribbon(1.0, -1.0)}" fill="url(#asphalt)"/>`);
-// subtle asphalt wear bands
-out.push(`<polygon points="${ribbon(0.55, 0.35)}" fill="#000" opacity="0.06"/>`);
-out.push(`<polygon points="${ribbon(-0.35, -0.55)}" fill="#000" opacity="0.06"/>`);
-for (const side of [0.9, -0.9]) {
-  out.push(`<polygon points="${ribbon(side + 0.035, side - 0.035)}" fill="#ffffff" opacity="0.85"/>`);
-}
+out.push(discs(0.935, "#f7f7f2"));
+out.push(discs(0.865, "#4d525a"));
+// lighter wear in the middle of each lane
+out.push(`<g opacity="0.35">${discs(0.3, "#5e636b")}</g>`);
 for (let i = 0; i < road.length - 1; i++) {
   if (Math.floor(road[i].len / 34) % 2 !== 0) continue;
   const a = road[i];

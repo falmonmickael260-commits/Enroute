@@ -85,3 +85,17 @@
   border-top: 14px solid var(--car);
   filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.4));
 }
+
+.label[data-active="1"] .labelName {
+  background: linear-gradient(180deg, #1c3a6e, #10213f);
+  border-color: #ffd23f;
+  box-shadow: 0 0 16px rgba(255, 210, 63, 0.55), 0 4px 12px rgba(0, 0, 0, 0.35);
+}
+.label[data-active="1"] .labelArrow {
+  animation: bob 0.9s ease-in-out infinite;
+}
+@keyframes bob {
+  50% {
+    transform: translateY(4px);
+  }
+}
