@@ -26,39 +26,87 @@ namespace Enroute.Board
         [Tooltip("Height above the road surface, in world units.")]
         public float RideHeight = 0.06f;
 
-        private float _currentS;
+        /// <summary>Current arc-length position on the road, in board units.</summary>
+        public float CurrentS { get; private set; }
+
         private float _targetS;
         private bool _initialized;
+        private Transform _statusIcon;
+        private MeshRenderer _statusIconRenderer;
+
+        private static readonly Color HazardColorCollision = new Color(0.75f, 0.1f, 0.1f);
+        private static readonly Color HazardColorCrevaison = new Color(0.1f, 0.1f, 0.1f);
+        private static readonly Color HazardColorPanne = new Color(0.55f, 0.4f, 0.15f);
+        private static readonly Color HazardColorRadar = new Color(0.15f, 0.45f, 0.9f);
+        private static readonly Color HazardColorBarrage = new Color(0.9f, 0.75f, 0.1f);
 
         /// <summary>Jump straight to a distance with no travel animation — used when
         /// first placing the car (start grid, joining a game already in progress).</summary>
         public void SnapToDistance(float distanceKm, int target)
         {
-            _currentS = _targetS = DistanceToS(distanceKm, target);
+            CurrentS = _targetS = RoadMath.DistanceToS(distanceKm, target);
             _initialized = true;
-            ApplyTransform(_currentS);
+            ApplyTransform(CurrentS);
         }
 
         /// <summary>Sets a new target distance; Update() glides the car there.</summary>
         public void MoveToDistance(float distanceKm, int target)
         {
-            _targetS = DistanceToS(distanceKm, target);
+            _targetS = RoadMath.DistanceToS(distanceKm, target);
             if (!_initialized) SnapToDistance(distanceKm, target);
         }
 
-        private static float DistanceToS(float distanceKm, int target)
+        public bool IsMoving => _initialized && !Mathf.Approximately(CurrentS, _targetS);
+
+        /// <summary>Shows/hides a small floating marker above the car for the active hazard —
+        /// makes an attack's effect legible at a glance instead of only in a log line.</summary>
+        public void SetHazardVisual(HazardType? hazard)
         {
-            const float nose = 36f; // matches PieceLayout.NOSE — nose of the car touches the mark
-            var clamped = Mathf.Min(distanceKm, target);
-            return clamped / target * RoadPath.RoadLength - nose;
+            EnsureStatusIcon();
+            if (hazard == null) { _statusIcon.gameObject.SetActive(false); return; }
+            _statusIcon.gameObject.SetActive(true);
+            _statusIconRenderer.sharedMaterial.color = hazard switch
+            {
+                HazardType.Collision => HazardColorCollision,
+                HazardType.Crevaison => HazardColorCrevaison,
+                HazardType.Panne => HazardColorPanne,
+                HazardType.Radar => HazardColorRadar,
+                HazardType.Barrage => HazardColorBarrage,
+                _ => Color.white,
+            };
+        }
+
+        private void EnsureStatusIcon()
+        {
+            if (_statusIcon != null) return;
+            var existing = transform.Find("StatusIcon");
+            GameObject go;
+            if (existing != null) go = existing.gameObject;
+            else
+            {
+                go = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+                go.name = "StatusIcon";
+                go.transform.SetParent(transform, false);
+                go.transform.localPosition = new Vector3(0f, 0.34f, 0f);
+                go.transform.localScale = Vector3.one * 0.12f;
+                var collider = go.GetComponent<Collider>();
+                if (collider != null) Object.Destroy(collider);
+                var shader = Shader.Find("Universal Render Pipeline/Lit");
+                var mat = new Material(shader);
+                mat.SetFloat("_Smoothness", 0.1f);
+                mat.EnableKeyword("_EMISSION");
+                go.GetComponent<MeshRenderer>().material = mat;
+            }
+            _statusIcon = go.transform;
+            _statusIconRenderer = go.GetComponent<MeshRenderer>();
         }
 
         private void Update()
         {
             if (!_initialized || Road == null) return;
-            if (!Mathf.Approximately(_currentS, _targetS))
-                _currentS = Mathf.MoveTowards(_currentS, _targetS, TravelSpeed * Time.deltaTime);
-            ApplyTransform(_currentS);
+            if (IsMoving)
+                CurrentS = Mathf.MoveTowards(CurrentS, _targetS, TravelSpeed * Time.deltaTime);
+            ApplyTransform(CurrentS);
         }
 
         private void ApplyTransform(float s)
