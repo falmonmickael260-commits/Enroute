@@ -13,12 +13,11 @@ import { TargetPicker } from "@/game/components/ui/TargetPicker";
 import { SoundToggle } from "@/game/components/ui/SoundToggle";
 import { ViewToggle } from "@/game/components/ui/ViewToggle";
 import { Logo } from "@/game/components/ui/Logo";
-import { SceneBoard, CAR_PAINT } from "./SceneBoard";
+import { SceneBoard } from "./SceneBoard";
+import { WorldBoard } from "./WorldBoard";
+import { CAR_PAINT } from "./sceneSync";
 import { SceneHand } from "./SceneHand";
 import type { SceneDef } from "./scenePath";
-import provisoire from "./scenes/provisoire.json";
-
-export const DEFAULT_SCENE = provisoire as SceneDef;
 
 const SOUND = {
   draw: "cardDraw",
@@ -46,12 +45,17 @@ export function SceneTable({
   onReplay,
   replayHint,
   onNewGame,
-  scene = DEFAULT_SCENE,
+  scene,
   showViewToggle = true,
-}: GameTableProps & { scene?: SceneDef; showViewToggle?: boolean }) {
+}: GameTableProps & {
+  /** An illustrated picture to race on instead of the 3D world. */
+  scene?: SceneDef;
+  showViewToggle?: boolean;
+}) {
   const currentEvent = useAnimationQueue(state.animationQueue, consumeAnimation);
   const { enabled: soundOn, toggle: toggleSound, play } = useSound();
   const [handRef, handBox] = useElementSize<HTMLDivElement>();
+  const [overview, setOverview] = useState(false);
 
   useEffect(() => {
     if (currentEvent) play(SOUND[currentEvent.kind]);
@@ -82,12 +86,16 @@ export function SceneTable({
 
   return (
     <main className="relative isolate h-dvh overflow-hidden bg-[#0d1420] text-white">
-      {/* blurred copy of the scene behind the stage on wide screens */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={scene.image} alt="" className="absolute inset-0 -z-10 h-full w-full scale-110 object-cover opacity-60 blur-2xl" />
+      {scene ? (
+        // blurred copy of the picture behind the stage on wide screens
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={scene.image} alt="" className="absolute inset-0 -z-10 h-full w-full scale-110 object-cover opacity-60 blur-2xl" />
+      ) : null}
 
-      <div className="absolute inset-0 mx-auto max-w-[min(100vw,calc(100dvh*0.78))]">
-        <SceneBoard state={state} event={currentEvent} def={scene} bottomInset={handBox.height} />
+      {/* the 3D world fills the screen; the picture keeps its portrait proportions */}
+      {!scene ? <WorldBoard state={state} event={currentEvent} bottomInset={handBox.height} overview={overview} /> : null}
+      <div className={clsx("absolute inset-0 mx-auto", scene && "max-w-[min(100vw,calc(100dvh*0.78))]")}>
+        {scene ? <SceneBoard state={state} event={currentEvent} def={scene} bottomInset={handBox.height} /> : null}
 
         {/* top: players · logo · turn */}
         <div className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-black/45 via-black/15 to-transparent pb-10">
@@ -165,6 +173,17 @@ export function SceneTable({
           {notice ? <div className="pointer-events-none relative z-[55] mb-1 flex justify-center px-3">{notice}</div> : null}
           <div ref={handRef}>
             <SceneHand
+              middle={
+                !scene && !over ? (
+                  <button
+                    onClick={() => setOverview((v) => !v)}
+                    className="flex items-center gap-1.5 rounded-full border-2 border-white/40 bg-[#0e1522]/80 px-3 py-1.5 font-hud text-xs font-bold text-white shadow-[0_6px_16px_rgba(0,0,0,0.4)] backdrop-blur-md active:scale-95 sm:text-sm"
+                  >
+                    <span className="text-sm leading-none">{overview ? "🚗" : "🗺️"}</span>
+                    {overview ? "Vue normale" : "Vue d'ensemble"}
+                  </button>
+                ) : null
+              }
               player={handOwner}
               state={state}
               isMyTurn={isMyTurn}

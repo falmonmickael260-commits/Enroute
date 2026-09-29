@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import clsx from "clsx";
 import type { CardDef, CardInstance, GameState, PlayerState } from "@/game/types/game";
@@ -96,7 +96,10 @@ export function SceneHand({
   onPlay,
   onDiscard,
   onDraw,
+  middle,
 }: {
+  /** Shown between the piles (e.g. the overview button). */
+  middle?: ReactNode;
   player: PlayerState;
   state: GameState;
   isMyTurn: boolean;
@@ -214,9 +217,12 @@ export function SceneHand({
             <span className="block font-hud text-xs text-white/65">{state.deck.length} cartes</span>
           </span>
         </button>
-        <p className="mb-1 font-hud text-xs font-semibold text-white/70">
-          {mustDraw ? "↖ Touchez la pioche" : canAct ? "Touchez une carte" : ""}
-        </p>
+        <div className="mb-0.5 flex min-w-0 flex-col items-center gap-1">
+          {middle}
+          <p className="font-hud text-[0.7rem] font-semibold text-white/70">
+            {mustDraw ? "↖ Touchez la pioche" : canAct ? "Touchez une carte" : ""}
+          </p>
+        </div>
         <div className="flex items-center gap-2 rounded-2xl border-2 border-white/15 bg-black/45 px-2.5 py-1.5">
           <span className="text-right leading-tight">
             <span className="block font-display text-lg text-white">Défausse</span>

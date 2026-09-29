@@ -2,69 +2,13 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import type { AnimationEvent, GameState, PlayerColor } from "@/game/types/game";
+import type { AnimationEvent, GameState } from "@/game/types/game";
 import { useElementSize } from "@/game/hooks/useElementSize";
 import { ScenePath, type SceneDef } from "./scenePath";
-import { SceneRenderer, type CarScreenPos, type MoveStyle, type SceneCue } from "./SceneRenderer";
-import { getCardDef } from "@/game/lib/engine/cardCatalog";
+import { SceneRenderer, type CarScreenPos } from "./SceneRenderer";
+import { PictureStage } from "./PictureStage";
+import { CAR_PAINT, pushState } from "./sceneSync";
 import styles from "./scene.module.css";
-
-/** Car paint: livelier than the UI tokens, they have to pop on the landscape. */
-export const CAR_PAINT: Record<PlayerColor, string> = {
-  crimson: "#e8352b",
-  azure: "#1f86ea",
-  amber: "#ffc21a",
-  emerald: "#2fae55",
-};
-
-/** Which card was just played, read from how the state changed. */
-function cueFor(prev: GameState, next: GameState): { playerId: string; cue: SceneCue } | null {
-  if (prev.startedAt !== next.startedAt || next.discard.length !== prev.discard.length + 1) return null;
-  const def = getCardDef(next.discard[next.discard.length - 1].defId);
-  const before = prev.players[prev.currentPlayerIndex];
-  const after = next.players.find((p) => p.id === before.id);
-  if (!after) return null;
-  if (after.distance !== before.distance) {
-    const style: MoveStyle =
-      def.special === "turbo"
-        ? "turbo"
-        : def.special === "raccourci"
-          ? "shortcut"
-          : def.special === "depassement"
-            ? "overtake"
-            : def.special === "derniereLigneDroite"
-              ? "sprint"
-              : (def.value ?? 0) >= 200
-                ? "fast"
-                : "drive";
-    return { playerId: after.id, cue: { kind: "move", style } };
-  }
-  if (def.category === "defense") {
-    return { playerId: after.id, cue: { kind: after.shields.length > before.shields.length ? "shield" : "repair" } };
-  }
-  if (def.special === "gpsStrategique") return { playerId: after.id, cue: { kind: "gps" } };
-  return null;
-}
-
-function pushState(renderer: SceneRenderer, prev: GameState | null, state: GameState) {
-  if (prev && prev.startedAt !== state.startedAt) renderer.reset();
-  const cue = prev ? cueFor(prev, state) : null;
-  if (cue) renderer.cue(cue.playerId, cue.cue);
-  const current = state.players[state.currentPlayerIndex]?.id;
-  renderer.update(
-    state.players.map((p) => ({
-      id: p.id,
-      color: CAR_PAINT[p.color],
-      km: p.distance,
-      hazard: p.hazard,
-      limited: p.limited,
-      shields: p.shields,
-      active: p.id === current && state.phase !== "gameover",
-    })),
-    state.target,
-  );
-  if (state.phase === "gameover" && prev?.phase !== "gameover") renderer.celebrate();
-}
 
 interface Focus {
   x: number;
@@ -77,6 +21,8 @@ interface Focus {
  * WebGL canvas, signs and labels) moves as one piece, so the camera can zoom
  * and tilt towards the action while everything stays aligned.
  */
+export { CAR_PAINT };
+
 export function SceneBoard({
   state,
   event,
@@ -115,7 +61,8 @@ export function SceneBoard({
   // create the WebGL layer once the canvas is in the page
   useEffect(() => {
     if (!canvas) return;
-    const renderer = new SceneRenderer(canvas, path, 1);
+    const renderer = new SceneRenderer(canvas, new PictureStage(path));
+    renderer.resize(def.width, def.height, 1);
     rendererRef.current = renderer;
     renderer.onFrame = (positions: Map<string, CarScreenPos>) => {
       // stack labels that would overlap, nearest car's label lowest
@@ -143,14 +90,15 @@ export function SceneBoard({
       renderer.dispose();
       rendererRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [canvas, path]);
 
   // sharper canvas on dense screens
   useEffect(() => {
     if (!cover) return;
     const q = Math.max(0.8, Math.min(2, (cover.w * (window.devicePixelRatio || 1) * 1.2) / def.width));
-    rendererRef.current?.setQuality(q);
-  }, [cover, def.width]);
+    rendererRef.current?.resize(def.width, def.height, q);
+  }, [cover, def.width, def.height]);
 
   // feed the game state to the 3D layer
   useEffect(() => {

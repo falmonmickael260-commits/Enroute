@@ -5,8 +5,6 @@ import { useRouter } from "next/navigation";
 import type { NewGameOptions } from "@/game/lib/engine/gameReducer";
 import type { PlayerColor } from "@/game/types/game";
 import { SceneGame } from "@/game/components/scene/SceneGame";
-import type { SceneDef } from "@/game/components/scene/scenePath";
-import provisoire from "@/game/components/scene/scenes/provisoire.json";
 
 const COLORS: PlayerColor[] = ["azure", "crimson", "emerald", "amber"];
 
@@ -27,5 +25,5 @@ export default function Scene3DPage({ searchParams }: { searchParams: Promise<{ 
     target,
     players: Array.from({ length: n }, (_, i) => ({ id: `p${i + 1}`, name: `Joueur ${i + 1}`, color: COLORS[i] })),
   };
-  return <SceneGame options={options} demo={demo} scene={provisoire as SceneDef} onExit={() => router.push("/")} />;
+  return <SceneGame options={options} demo={demo} onExit={() => router.push("/")} />;
 }

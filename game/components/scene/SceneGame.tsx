@@ -33,7 +33,7 @@ export function SceneGame({
 }: {
   options: NewGameOptions;
   demo: boolean;
-  scene: SceneDef;
+  scene?: SceneDef;
   onExit: () => void;
 }) {
   const [state, dispatch] = useReducer(gameReducer, { options, demo }, init);

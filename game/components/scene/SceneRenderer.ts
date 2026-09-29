@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import type { DefenseType, HazardType } from "@/game/types/game";
-import { ScenePath, type RoadSample } from "./scenePath";
+import type { Stage, Shot, StageCar } from "./stage";
 import {
   createAntenna,
   createBadge,
@@ -27,12 +27,9 @@ import {
 } from "./models";
 
 /**
- * Draws the 3D pieces over an illustrated scene.
- *
- * The painting is treated as a ground plane seen from `pitchDeg` above: an
- * orthographic camera tilted by that angle maps a ground point
- * (x, 0, y / sin θ) exactly onto image pixel (x, y). Perspective (far things
- * smaller) comes from the road's traced width, which scales each car.
+ * Draws and animates the 3D pieces of a race: cars, hazards, protections and
+ * effects. Where things stand and what the camera sees is up to the Stage
+ * (an illustrated picture or a full 3D world).
  */
 
 export interface ScenePlayer {
@@ -48,7 +45,7 @@ export interface ScenePlayer {
 export interface CarScreenPos {
   x: number;
   y: number;
-  /** Car size in image pixels, for labels. */
+  /** Apparent car length on screen, for labels. */
   size: number;
   active: boolean;
 }
@@ -62,8 +59,6 @@ export type SceneCue =
   | { kind: "shield" }
   | { kind: "gps" };
 
-/** Car length relative to the road's half-width at that point. */
-const CAR_SIZE = 0.95;
 const LANES: Record<number, number[]> = { 1: [0], 2: [-0.42, 0.42], 3: [-0.56, 0, 0.56], 4: [-0.62, -0.2, 0.22, 0.64] };
 
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
@@ -125,15 +120,12 @@ interface CarEntity {
   bubbleAt: number;
   beamAt: number;
   active: boolean;
-  pose: RoadSample;
+  scale: number;
 }
 
 export class SceneRenderer {
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene = new THREE.Scene();
-  private readonly camera: THREE.OrthographicCamera;
-  private readonly path: ScenePath;
-  private readonly sinP: number;
   private readonly cars = new Map<string, CarEntity>();
   private readonly particles: Particle[] = [];
   private target = 1000;
@@ -144,72 +136,44 @@ export class SceneRenderer {
   private lastFirework = 0;
   onFrame: ((positions: Map<string, CarScreenPos>) => void) | null = null;
 
-  constructor(canvas: HTMLCanvasElement, path: ScenePath, quality = 1) {
-    this.path = path;
-    const { width, height, pitchDeg } = path.def;
-    const pitch = (pitchDeg * Math.PI) / 180;
-    this.sinP = Math.sin(pitch);
-    const cosP = Math.cos(pitch);
-
+  constructor(
+    canvas: HTMLCanvasElement,
+    private readonly stage: Stage,
+  ) {
     this.renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true, powerPreference: "high-performance" });
     this.renderer.setPixelRatio(1);
     this.renderer.setClearColor(0x000000, 0);
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.15;
-    this.setQuality(quality);
-
-    // Screen x = world x; screen y (down) = z·sinθ − y·cosθ.
-    this.camera = new THREE.OrthographicCamera(0, width, 0, -height, 1, 40000);
-    this.camera.quaternion.setFromAxisAngle(new THREE.Vector3(1, 0, 0), -pitch);
-    this.camera.position.set(0, this.sinP * 20000, cosP * 20000);
-    this.camera.updateMatrixWorld();
 
     // soft studio reflections make the paint look glossy for next to no cost
     const pmrem = new THREE.PMREMGenerator(this.renderer);
     this.scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
     pmrem.dispose();
-    this.scene.add(new THREE.HemisphereLight("#f4f8ff", "#6f8a52", 1.1));
-    const sun = new THREE.DirectionalLight("#fff0d6", 2.4);
-    sun.position.set(-0.8, 1.6, 0.6);
-    this.scene.add(sun);
+    stage.init(this.renderer, this.scene);
 
     this.loop = this.loop.bind(this);
     this.raf = requestAnimationFrame(this.loop);
   }
 
-  /** Drawing-buffer size relative to the image's own pixels. */
-  setQuality(q: number) {
-    const { width, height } = this.path.def;
-    this.renderer.setSize(Math.round(width * q), Math.round(height * q), false);
+  /** Canvas size in CSS pixels, drawn at `pixelRatio`; the hand covers `bottomInset`. */
+  resize(width: number, height: number, pixelRatio: number, bottomInset = 0) {
+    this.renderer.setSize(Math.round(width * pixelRatio), Math.round(height * pixelRatio), false);
+    this.stage.resize(width, height, bottomInset);
   }
 
-  private ground(x: number, y: number, h = 0) {
-    return new THREE.Vector3(x, h, y / this.sinP);
-  }
-
-  private carSize(p: { s: number }) {
-    return p.s * CAR_SIZE;
+  setShot(shot: Shot) {
+    this.stage.setShot(shot);
   }
 
   /** Pose of a car frame at `km` with a lateral lane offset (in car lengths). */
   private place(car: CarEntity, km: number, extraLateral = 0) {
-    const p = this.path.atKm(km, this.target);
-    const size = this.carSize(p);
-    // ground direction of travel: undo the vertical squash of the painting
-    const gx = p.tx;
-    const gz = p.ty / this.sinP;
-    const gl = Math.hypot(gx, gz) || 1;
-    const nx = -gz / gl;
-    const nz = gx / gl;
-    const lat = (car.lateral + extraLateral) * size;
-    const pos = this.ground(p.x, p.y);
-    pos.x += nx * lat;
-    pos.z += nz * lat;
-    car.frame.position.copy(pos);
-    car.frame.rotation.y = Math.atan2(gx, gz);
-    car.frame.scale.setScalar(size);
+    const pl = this.stage.place(km, this.target, car.lateral + extraLateral);
+    car.frame.position.copy(pl.position);
+    car.frame.rotation.y = pl.yaw;
+    car.frame.scale.setScalar(pl.scale);
     car.frame.updateMatrixWorld(true);
-    car.pose = p;
+    car.scale = pl.scale;
   }
 
   /** A card was just played for this car: shapes the animation that follows. */
@@ -295,7 +259,12 @@ export class SceneRenderer {
     flame.visible = false;
     model.body.add(flame);
     const beam = createBeam();
-    frame.add(createBlobShadow(), ring, model.root, beam);
+    frame.add(ring, model.root, beam);
+    if (this.stage.castShadows) {
+      model.root.traverse((o) => {
+        if ((o as THREE.Mesh).isMesh) o.castShadow = true;
+      });
+    } else frame.add(createBlobShadow());
     this.scene.add(frame);
     return {
       id: p.id,
@@ -319,7 +288,7 @@ export class SceneRenderer {
       bubbleAt: -1e9,
       beamAt: -1e9,
       active: p.active,
-      pose: this.path.atKm(p.km, this.target),
+      scale: 1,
     };
   }
 
@@ -388,17 +357,9 @@ export class SceneRenderer {
     car.props.delete(prop.kind);
   }
 
-  /** +1 or -1: the car's side (local x) that faces the middle of the picture. */
-  private sideTowardCentre(car: CarEntity) {
-    const yaw = car.frame.rotation.y;
-    const worldDx = Math.cos(yaw); // where local +x points, horizontally
-    const towardCentre = this.path.def.width / 2 - car.frame.position.x;
-    return Math.sign(worldDx * towardCentre) || 1;
-  }
-
   private createProp(kind: HazardType, now: number, car: CarEntity): Prop {
     const root = new THREE.Group();
-    const side = this.sideTowardCentre(car);
+    const side = this.stage.sideTowardView(car.frame.position, car.frame.rotation.y);
     const prop: Prop = { kind, root, world: null, born: now, leaving: null, update: () => {} };
 
     if (kind === "barrage") {
@@ -584,11 +545,14 @@ export class SceneRenderer {
   }
 
   private firework(t: number) {
-    const f = this.path.finish;
-    // sized for the zoomed-in finish shot, whatever the perspective there
-    const size = Math.max(f.s, 42);
-    const base = this.ground(f.x + (Math.random() - 0.5) * size * 4, f.y + (Math.random() - 0.5) * size * 1.2);
-    base.y = size * (2.2 + Math.random() * 1.8);
+    const f = this.stage.finish(this.target);
+    const size = f.scale * 1.5;
+    const across = new THREE.Vector3(Math.cos(f.yaw), 0, -Math.sin(f.yaw));
+    const base = f.position
+      .clone()
+      .addScaledVector(across, (Math.random() - 0.5) * size * 4)
+      .add(new THREE.Vector3(Math.sin(f.yaw), 0, Math.cos(f.yaw)).multiplyScalar((Math.random() - 0.5) * size * 1.2));
+    base.y += size * (2.2 + Math.random() * 1.8);
     const colors = ["#ffd23f", "#ff5d73", "#4fc3ff", "#7dff9b", "#ffffff", "#c38bff"];
     const color = colors[Math.floor(Math.random() * colors.length)];
     for (let i = 0; i < 22; i++) {
@@ -712,10 +676,13 @@ export class SceneRenderer {
       for (const prop of car.props.values()) {
         if (prop.update(prop, t, car)) this.removeProp(car, prop);
       }
-      positions.set(car.id, { x: car.pose.x, y: car.pose.y, size: this.carSize(car.pose), active: car.active });
+      const screen = this.stage.project(car.frame.position, car.scale);
+      positions.set(car.id, { ...screen, active: car.active });
     }
 
     if (t < this.fireworksUntil && t - this.lastFirework > 220) this.firework(t);
+    const stageCars: StageCar[] = [...this.cars.values()].map((c) => ({ id: c.id, km: c.km, position: c.frame.position, yaw: c.frame.rotation.y }));
+    this.stage.frame(dt, t, stageCars, this.target);
 
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
@@ -734,7 +701,7 @@ export class SceneRenderer {
       p.sprite.material.opacity = p.baseOpacity * (1 - k);
     }
 
-    this.renderer.render(this.scene, this.camera);
+    this.renderer.render(this.scene, this.stage.camera);
     this.onFrame?.(positions);
     this.raf = requestAnimationFrame(this.loop);
   }
@@ -750,6 +717,7 @@ export class SceneRenderer {
       else material?.dispose();
     });
     this.scene.environment?.dispose();
+    this.stage.dispose();
     this.renderer.dispose();
   }
 }
