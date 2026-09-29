@@ -4,19 +4,25 @@ name: Build & Deploy WebGL to GitHub Pages
 # to GitHub Pages, so the game is playable in a browser at:
 #   https://<owner>.github.io/Enroute/
 #
-# ONE-TIME SETUP REQUIRED before this will work (a Unity Personal license, free,
-# but only you can generate it — see the two secrets below):
-#   1. Actions tab -> "Unity - Request Activation File" -> Run workflow -> download
-#      the "Enroute.alf" artifact it produces.
-#   2. Go to https://license.unity3d.com/manual, upload that .alf file, choose
-#      "Unity Personal", and download the .ulf license file it gives you back.
-#   3. Repo Settings -> Secrets and variables -> Actions -> New repository secret:
-#        UNITY_LICENSE = the full contents of that .ulf file
-#   4. Repo Settings -> Pages -> Build and deployment -> Source: "GitHub Actions"
-#      (only needed once; this workflow already requests that mode below).
+# ONE-TIME SETUP REQUIRED before this will work — a Unity Personal license,
+# free, but only you can grant it (Unity no longer allows the old offline
+# .alf/.ulf activation file for Personal/Pro seats, only Enterprise/Industry,
+# so this uses online activation with your Unity account credentials instead):
+#   1. Repo Settings -> Secrets and variables -> Actions -> New repository secret,
+#      added twice:
+#        UNITY_EMAIL    = the email of your Unity ID account
+#        UNITY_PASSWORD = that account's password
+#      (Consider using a separate/free Unity account dedicated to CI rather than
+#      your main one, since the password is stored — encrypted — as a repo secret.)
+#   2. If that Unity account has two-factor authentication enabled, also add:
+#        UNITY_TOTP_SECRET = the account's TOTP seed (from when 2FA was set up)
+#      Simplest fix if you don't have that seed handy: use a dedicated Unity
+#      account for CI with 2FA turned off, or turn 2FA off temporarily to grab it.
+#   3. Repo Settings -> Pages -> Build and deployment -> Source: "GitHub Actions"
+#      (already done once via the API — nothing to do here unless it was reset).
 #
-# Without step 3, every run of this workflow fails at the "Build WebGL" step with
-# a license/activation error — that's expected until the secret is added.
+# Without step 1, every run of this workflow fails at the "Build WebGL" step with
+# a license/activation error — that's expected until the secrets are added.
 on:
   push:
     branches: [unity-client]
@@ -48,7 +54,9 @@ jobs:
       - name: Build WebGL
         uses: game-ci/unity-builder@v4
         env:
-          UNITY_LICENSE: ${{ secrets.UNITY_LICENSE }}
+          UNITY_EMAIL: ${{ secrets.UNITY_EMAIL }}
+          UNITY_PASSWORD: ${{ secrets.UNITY_PASSWORD }}
+          UNITY_TOTP_SECRET: ${{ secrets.UNITY_TOTP_SECRET }}
         with:
           unityVersion: 6000.3.25f1
           targetPlatform: WebGL
