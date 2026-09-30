@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { motion } from "framer-motion";
 import clsx from "clsx";
-import { BRAND, BRAND_NAME, LOGO_ASPECT } from "@/game/lib/brand";
+import { BACKGROUND, BRAND, BRAND_NAME, LOGO_ASPECT, LOGO_READY } from "@/game/lib/brand";
 import styles from "./BrandLoader.module.css";
 
 /** Share of the bar each part of the loading stands for. */
@@ -91,8 +91,10 @@ export function BrandLoader({ onFinish }: { onFinish: () => void }) {
     };
 
     const portrait = window.matchMedia("(orientation: portrait)").matches;
-    const bg = portrait ? BRAND.portrait : BRAND.landscape;
-    load(bg.src, bg.bytes, (p) => set("background", p)).then((url) => {
+    const bg = portrait ? BACKGROUND.portrait : BACKGROUND.landscape;
+    const bgFile = bg ? load(bg.src, bg.bytes, (p) => set("background", p)) : Promise.resolve(null);
+    if (!bg) set("background", 1);
+    bgFile.then((url) => {
       if (url) urls.push(url);
       if (cancelled) return;
       bgDone = true;
@@ -100,7 +102,9 @@ export function BrandLoader({ onFinish }: { onFinish: () => void }) {
       setBgShown(true);
       revealLogo();
     });
-    load(BRAND.logo.src, BRAND.logo.bytes, (p) => set("logo", p)).then((url) => {
+    const logo = LOGO_READY ? load(BRAND.logo.src, BRAND.logo.bytes, (p) => set("logo", p)) : Promise.resolve(null);
+    if (!LOGO_READY) set("logo", 1);
+    logo.then((url) => {
       if (url) urls.push(url);
       logoFile = url;
       revealLogo();
@@ -157,17 +161,22 @@ export function BrandLoader({ onFinish }: { onFinish: () => void }) {
     >
       {/* the official picture for this orientation, filling the screen without distortion */}
       <div className={clsx(styles.bg, bgShown && styles.bgIn)} aria-hidden>
-        {BRAND.ready ? (
+        {BACKGROUND.portrait && BACKGROUND.landscape ? (
           <picture>
-            <source media="(orientation: portrait)" srcSet={bgUrl.portrait ?? BRAND.portrait.src} />
-            <img src={bgUrl.landscape ?? BRAND.landscape.src} alt="" draggable={false} />
+            <source media="(orientation: portrait)" srcSet={bgUrl.portrait ?? BACKGROUND.portrait.src} />
+            <img
+              src={bgUrl.landscape ?? BACKGROUND.landscape.src}
+              alt=""
+              draggable={false}
+              style={{ ["--landscape-position" as string]: BACKGROUND.landscapePosition }}
+            />
           </picture>
         ) : null}
       </div>
 
       <div className={styles.stack}>
         <div className={clsx(styles.logo, logoShown && styles.logoIn)}>
-          {BRAND.ready ? (
+          {LOGO_READY ? (
             <>
               {/* soft glow: the logo's own shape, blurred — never a box */}
               {/* eslint-disable-next-line @next/next/no-img-element */}

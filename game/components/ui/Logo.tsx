@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { BRAND, BRAND_NAME, LOGO_ASPECT, LOGO_SRCSET } from "@/game/lib/brand";
+import { BRAND, BRAND_NAME, LOGO_ASPECT, LOGO_READY, LOGO_SRCSET } from "@/game/lib/brand";
 
 /** Displayed widths; `sizes` lets the browser pick a file sharp enough for the screen. */
 const sizes = {
@@ -25,7 +25,7 @@ export function Logo({
   const s = sizes[size];
   return (
     <div className={clsx("inline-flex select-none", s.box, className)}>
-      {BRAND.ready ? (
+      {LOGO_READY ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
           src={BRAND.logo.src}

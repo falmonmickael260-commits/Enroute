@@ -1,19 +1,20 @@
-// Brings the official KILOMAX files into the app, untouched in their drawing:
-//   - the logo (transparent PNG): checked for a real alpha channel and a fully
-//     transparent surround, stripped of empty margins only, kept lossless at
-//     full resolution, plus a lighter copy for small uses (card backs, header);
-//   - the loading-screen backgrounds (portrait + landscape): re-encoded as
-//     high-quality WebP at their native resolution.
-// It then writes game/lib/brand/assets.json (paths, sizes, byte counts) which
-// the Logo component and the loader read.
+// Brings the official KILOMAX files into the app, untouched in their drawing.
+// Each file can be brought on its own; the others stay as they are.
+//   --logo <file>       transparent PNG/WebP: checked for a real alpha channel
+//                       and a fully transparent surround, stripped of empty
+//                       margins only, kept lossless at full resolution, plus a
+//                       lighter copy for small uses (card backs, header)
+//   --portrait <file>   background for phones and tall screens
+//   --landscape <file>  background for wide screens
+// Backgrounds already in WebP are copied byte for byte (no second compression);
+// others are encoded as high-quality WebP at their native resolution.
+// Writes game/lib/brand/assets.json, which the logo, menus and loader read.
 //
-// Usage:
-//   node scripts/prepare-brand.mjs               downloads the official files
-//   node scripts/prepare-brand.mjs --from <dir>  uses logo.png, portrait.png and
-//                                                landscape.png from <dir>
+//   node scripts/prepare-brand.mjs --portrait ~/fond.webp --logo ~/logo.png
+//   node scripts/prepare-brand.mjs --download   (the official Cloudinary files)
 import sharp from "sharp";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, mkdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -28,21 +29,24 @@ const SOURCES = {
   landscape: "https://res.cloudinary.com/dkm8cbylh/image/upload/v1790753861/ChatGPT_Image_30_sept._2026_09_37_28_assaxh.png",
 };
 
+function arg(name) {
+  const i = process.argv.indexOf(`--${name}`);
+  return i > 0 ? path.resolve(process.argv[i + 1]) : null;
+}
+
 function sourceFiles() {
-  const i = process.argv.indexOf("--from");
-  if (i > 0) {
-    const dir = path.resolve(process.argv[i + 1]);
-    return Object.fromEntries(Object.keys(SOURCES).map((k) => [k, path.join(dir, `${k}.png`)]));
+  if (process.argv.includes("--download")) {
+    const dir = path.join(os.tmpdir(), "kilomax-brand");
+    mkdirSync(dir, { recursive: true });
+    return Object.fromEntries(
+      Object.entries(SOURCES).map(([k, url]) => {
+        const file = path.join(dir, `${k}.png`);
+        execFileSync("curl", ["-sSfL", "-o", file, url], { stdio: "inherit" });
+        return [k, file];
+      }),
+    );
   }
-  const dir = path.join(os.tmpdir(), "kilomax-brand");
-  mkdirSync(dir, { recursive: true });
-  return Object.fromEntries(
-    Object.entries(SOURCES).map(([k, url]) => {
-      const file = path.join(dir, `${k}.png`);
-      execFileSync("curl", ["-sSfL", "-o", file, url], { stdio: "inherit" });
-      return [k, file];
-    }),
-  );
+  return { logo: arg("logo"), portrait: arg("portrait"), landscape: arg("landscape") };
 }
 
 /** Refuses a logo without real transparency: it must never sit on a box. */
@@ -69,53 +73,54 @@ async function checkLogo(file) {
   }
   let clear = 0;
   for (let i = 3; i < data.length; i += 4) if (data[i] === 0) clear++;
-  const report = {
+  console.log("logo", {
     size: `${w}x${h}`,
     transparentPixels: `${((clear / (w * h)) * 100).toFixed(1)} %`,
     opaqueBorder: `${((edgeOpaque / edge) * 100).toFixed(1)} %`,
-  };
-  console.log("logo", report);
+  });
   if (edgeOpaque / edge > 0.02) throw new Error(`${file}: le pourtour du logo n'est pas transparent (fond intégré).`);
 }
 
-async function main() {
-  const files = sourceFiles();
-  mkdirSync(outDir, { recursive: true });
-  mkdirSync(path.dirname(jsonPath), { recursive: true });
-
-  await checkLogo(files.logo);
+async function prepareLogo(file) {
+  await checkLogo(file);
   // only the fully transparent margins go: the drawing itself is not touched
-  const logoBuf = await sharp(files.logo).trim({ background: { r: 0, g: 0, b: 0, alpha: 0 }, threshold: 0 }).png().toBuffer();
-  const logoMeta = await sharp(logoBuf).metadata();
-  const logoFile = path.join(outDir, "kilomax-logo.png");
-  await sharp(logoBuf).png({ compressionLevel: 9, adaptiveFiltering: true }).toFile(logoFile);
-  const smallW = Math.min(logoMeta.width, 960);
-  const logoSmallFile = path.join(outDir, "kilomax-logo-960.png");
-  await sharp(logoBuf).resize({ width: smallW, kernel: "lanczos3" }).png({ compressionLevel: 9, adaptiveFiltering: true }).toFile(logoSmallFile);
-
-  const backgrounds = {};
-  for (const key of ["portrait", "landscape"]) {
-    const meta = await sharp(files[key]).metadata();
-    const out = path.join(outDir, `loader-${key}.webp`);
-    await sharp(files[key]).webp({ quality: 92, smartSubsample: true, effort: 6 }).toFile(out);
-    backgrounds[key] = { src: `/images/brand/loader-${key}.webp`, width: meta.width, height: meta.height, bytes: statSync(out).size };
-  }
-
-  const assets = {
+  const buf = await sharp(file).trim({ background: { r: 0, g: 0, b: 0, alpha: 0 }, threshold: 0 }).png().toBuffer();
+  const meta = await sharp(buf).metadata();
+  const full = path.join(outDir, "kilomax-logo.png");
+  await sharp(buf).png({ compressionLevel: 9, adaptiveFiltering: true }).toFile(full);
+  const smallWidth = Math.min(meta.width, 960);
+  await sharp(buf)
+    .resize({ width: smallWidth, kernel: "lanczos3" })
+    .png({ compressionLevel: 9, adaptiveFiltering: true })
+    .toFile(path.join(outDir, "kilomax-logo-960.png"));
+  return {
     ready: true,
-    logo: {
-      src: "/images/brand/kilomax-logo.png",
-      small: "/images/brand/kilomax-logo-960.png",
-      smallWidth: smallW,
-      width: logoMeta.width,
-      height: logoMeta.height,
-      bytes: statSync(logoFile).size,
-    },
-    ...backgrounds,
+    src: "/images/brand/kilomax-logo.png",
+    small: "/images/brand/kilomax-logo-960.png",
+    smallWidth,
+    width: meta.width,
+    height: meta.height,
+    bytes: statSync(full).size,
   };
-  writeFileSync(jsonPath, JSON.stringify(assets, null, 2) + "\n");
-  console.log("brand assets written to", outDir);
-  console.log(JSON.stringify(assets, null, 2));
 }
 
-await main();
+async function prepareBackground(key, file) {
+  const meta = await sharp(file).metadata();
+  const out = path.join(outDir, `loader-${key}.webp`);
+  if (meta.format === "webp") copyFileSync(file, out);
+  else await sharp(file).webp({ quality: 92, smartSubsample: true, effort: 6 }).toFile(out);
+  console.log(key, `${meta.width}x${meta.height}`, meta.format);
+  return { ready: true, src: `/images/brand/loader-${key}.webp`, width: meta.width, height: meta.height, bytes: statSync(out).size };
+}
+
+const files = sourceFiles();
+if (!files.logo && !files.portrait && !files.landscape) {
+  console.error("Rien à faire : --logo, --portrait, --landscape ou --download.");
+  process.exit(1);
+}
+mkdirSync(outDir, { recursive: true });
+const assets = JSON.parse(readFileSync(jsonPath, "utf8"));
+if (files.logo) assets.logo = await prepareLogo(files.logo);
+for (const key of ["portrait", "landscape"]) if (files[key]) assets[key] = await prepareBackground(key, files[key]);
+writeFileSync(jsonPath, JSON.stringify(assets, null, 2) + "\n");
+console.log(JSON.stringify(assets, null, 2));

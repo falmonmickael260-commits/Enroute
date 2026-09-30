@@ -43,6 +43,12 @@
   user-select: none;
 }
 
+@media (orientation: landscape) {
+  .bg img {
+    object-position: var(--landscape-position, center);
+  }
+}
+
 .bgIn {
   opacity: 1;
   animation: settle 7s cubic-bezier(0.2, 0.6, 0.2, 1) both;

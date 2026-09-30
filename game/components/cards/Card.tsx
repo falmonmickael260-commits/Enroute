@@ -6,7 +6,7 @@ import { forwardRef } from "react";
 import type { CardCategory, CardDef } from "@/game/types/game";
 import { getCardDef } from "@/game/lib/engine/cardCatalog";
 import { CardArt } from "./CardArt";
-import { BRAND, BRAND_NAME, LOGO_ASPECT } from "@/game/lib/brand";
+import { BRAND, BRAND_NAME, LOGO_ASPECT, LOGO_READY } from "@/game/lib/brand";
 
 export const CATEGORY_STYLE: Record<CardCategory, { from: string; to: string; label: string; accent: string }> = {
   distance: { from: "#f8c94e", to: "#c27410", label: "Distance", accent: "#e0a93e" },
@@ -109,7 +109,7 @@ function CardBack() {
     >
       <div className="absolute inset-[7%] rounded-[inherit] border border-[#e6bf5c]/60" style={{ borderRadius: "10%" }} />
       <div className="relative flex w-[78%] flex-col items-center">
-        {BRAND.ready ? (
+        {LOGO_READY ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={BRAND.logo.small}

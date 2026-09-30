@@ -1,5 +1,5 @@
 import clsx from "clsx";
-import { BRAND } from "@/game/lib/brand";
+import { BACKGROUND } from "@/game/lib/brand";
 
 /**
  * The official KILOMAX picture behind the menus: portrait on phones and tall
@@ -9,10 +9,16 @@ import { BRAND } from "@/game/lib/brand";
 export function MenuBackdrop({ variant = "home" }: { variant?: "home" | "inner" }) {
   return (
     <div aria-hidden className={clsx("menu-backdrop", variant === "inner" && "menu-backdrop-inner")}>
-      {BRAND.ready ? (
+      {BACKGROUND.portrait && BACKGROUND.landscape ? (
         <picture>
-          <source media="(orientation: portrait)" srcSet={BRAND.portrait.src} />
-          <img src={BRAND.landscape.src} alt="" draggable={false} fetchPriority="high" />
+          <source media="(orientation: portrait)" srcSet={BACKGROUND.portrait.src} />
+          <img
+            src={BACKGROUND.landscape.src}
+            alt=""
+            draggable={false}
+            fetchPriority="high"
+            style={{ ["--landscape-position" as string]: BACKGROUND.landscapePosition }}
+          />
         </picture>
       ) : (
         <div className="menu-backdrop-fallback" />

@@ -21,6 +21,11 @@
     object-fit: cover;
     object-position: center;
   }
+  @media (orientation: landscape) {
+    .menu-backdrop img {
+      object-position: var(--landscape-position, center);
+    }
+  }
   /* until the official picture is in: sky, sea and road in plain colour */
   .menu-backdrop-fallback {
     position: absolute;
