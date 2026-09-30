@@ -135,6 +135,8 @@ export class SceneRenderer {
   private fireworksUntil = 0;
   private lastFirework = 0;
   onFrame: ((positions: Map<string, CarScreenPos>) => void) | null = null;
+  /** Where each car is along the road this frame (read by the race audio). */
+  onMotion: ((cars: { id: string; km: number }[]) => void) | null = null;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -703,6 +705,7 @@ export class SceneRenderer {
 
     this.renderer.render(this.scene, this.stage.camera);
     this.onFrame?.(positions);
+    this.onMotion?.([...this.cars.values()].map((c) => ({ id: c.id, km: c.km })));
     this.raf = requestAnimationFrame(this.loop);
   }
 

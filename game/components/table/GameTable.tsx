@@ -1,10 +1,11 @@
 "use client";
 
-import { useEffect, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import type { CardInstance, GameState } from "@/game/types/game";
 import type { GameControls } from "@/game/hooks/useGameEngine";
 import { useAnimationQueue } from "@/game/hooks/useAnimationQueue";
 import { useSound } from "@/game/hooks/useSound";
+import { useRaceAudio } from "@/game/audio/useRaceAudio";
 import { Board } from "@/game/components/board/Board";
 import { BoardFit } from "@/game/components/board/BoardFit";
 import { PlayerHand } from "@/game/components/cards/PlayerHand";
@@ -56,18 +57,7 @@ export function GameTable({
   const { draw, requestPlay, resolveTarget, cancelTarget, pendingTarget, discard } = controls;
   const currentEvent = useAnimationQueue(state.animationQueue, consumeAnimation);
   const { enabled: soundOn, toggle: toggleSound, play } = useSound();
-
-  useEffect(() => {
-    if (!currentEvent) return;
-    if (currentEvent.kind === "draw") play("cardDraw");
-    else if (currentEvent.kind === "discard") play("cardDiscard");
-    else if (currentEvent.kind === "move") play("move");
-    else if (currentEvent.kind === "hazard") play("hazard");
-    else if (currentEvent.kind === "shield") play("shield");
-    else if (currentEvent.kind === "turnChange") play("turnChange");
-    else if (currentEvent.kind === "victory") play("victory");
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentEvent]);
+  useRaceAudio(state, currentEvent, { simulate: true });
 
   const currentPlayer = state.players[state.currentPlayerIndex];
   const handOwner = (viewerId && state.players.find((p) => p.id === viewerId)) || currentPlayer;
@@ -80,7 +70,6 @@ export function GameTable({
   };
 
   const handleDiscard = (card: CardInstance) => {
-    play("cardDiscard");
     discard(card);
   };
 

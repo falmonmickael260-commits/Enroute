@@ -6,6 +6,7 @@ import { useElementSize } from "@/game/hooks/useElementSize";
 import { SceneRenderer, type CarScreenPos } from "./SceneRenderer";
 import { WorldStage } from "./WorldStage";
 import { CAR_PAINT, pushState } from "./sceneSync";
+import { raceAudio } from "@/game/audio/race";
 import type { Shot } from "./stage";
 import styles from "./scene.module.css";
 import { CardArt } from "@/game/components/cards/CardArt";
@@ -77,8 +78,10 @@ export function WorldBoard({
         el.dataset.active = p.active ? "1" : "0";
       }
     };
+    renderer.onMotion = (cars) => raceAudio.motion(cars);
     pushState(renderer, null, stateRef.current);
     return () => {
+      renderer.onMotion = null;
       renderer.dispose();
       rendererRef.current = null;
     };

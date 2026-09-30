@@ -7,6 +7,7 @@ import type { GameTableProps } from "@/game/components/table/GameTable";
 import { useAnimationQueue } from "@/game/hooks/useAnimationQueue";
 import { useElementSize } from "@/game/hooks/useElementSize";
 import { useSound } from "@/game/hooks/useSound";
+import { useRaceAudio } from "@/game/audio/useRaceAudio";
 import { EventToast } from "@/game/components/animations/EventToast";
 import { VictoryOverlay } from "@/game/components/animations/VictoryOverlay";
 import { TargetPicker } from "@/game/components/ui/TargetPicker";
@@ -19,16 +20,6 @@ import { CAR_PAINT } from "./sceneSync";
 import { SceneHand } from "./SceneHand";
 import { PlayerStatus } from "./PlayerStatus";
 import type { SceneDef } from "./scenePath";
-
-const SOUND = {
-  draw: "cardDraw",
-  discard: "cardDiscard",
-  move: "move",
-  hazard: "hazard",
-  shield: "shield",
-  turnChange: "turnChange",
-  victory: "victory",
-} as const;
 
 /**
  * The game screen on the illustrated 3D board. Same inputs as the classic
@@ -58,10 +49,7 @@ export function SceneTable({
   const [handRef, handBox] = useElementSize<HTMLDivElement>();
   const [overview, setOverview] = useState(false);
 
-  useEffect(() => {
-    if (currentEvent) play(SOUND[currentEvent.kind]);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentEvent]);
+  useRaceAudio(state, currentEvent, { simulate: false });
 
   const current = state.players[state.currentPlayerIndex];
   // online: this device's player holds the hand; hotseat: whoever's turn it is
@@ -196,10 +184,7 @@ export function SceneTable({
                 play("cardPlay");
                 controls.requestPlay(card);
               }}
-              onDiscard={(card) => {
-                play("cardDiscard");
-                controls.discard(card);
-              }}
+              onDiscard={(card) => controls.discard(card)}
             />
           </div>
         </div>

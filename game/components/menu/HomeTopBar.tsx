@@ -7,6 +7,14 @@ import { getOnlineSession, getOnlineSessionServer, subscribeOnlineSession } from
 import { setBoardView, useBoardView } from "@/game/lib/store/boardViewStore";
 import { useSound } from "@/game/hooks/useSound";
 import { GearIcon, UserIcon } from "./icons";
+import { getAudioLevels, getAudioLevelsServer, setAudioLevel, subscribeAudioLevels, type Bus } from "@/game/audio/settings";
+
+const LEVELS: [Bus, string][] = [
+  ["engine", "Moteur"],
+  ["effects", "Effets"],
+  ["ambience", "Ambiance"],
+  ["ui", "Interface"],
+];
 
 /** Top of the home screen: who is playing, and the settings. */
 export function HomeTopBar() {
@@ -15,6 +23,7 @@ export function HomeTopBar() {
   const [open, setOpen] = useState(false);
   const { enabled: soundOn, toggle: toggleSound } = useSound();
   const boardView = useBoardView();
+  const levels = useSyncExternalStore(subscribeAudioLevels, getAudioLevels, getAudioLevelsServer);
 
   return (
     <div className="relative flex items-center justify-between gap-3">
@@ -59,6 +68,22 @@ export function HomeTopBar() {
                 >
                   <span className={clsx("absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all", soundOn ? "left-6" : "left-0.5")} />
                 </button>
+              </div>
+              <div className={clsx("mt-3 flex flex-col gap-2 transition-opacity", !soundOn && "pointer-events-none opacity-40")}>
+                {LEVELS.map(([bus, label]) => (
+                  <label key={bus} className="flex items-center gap-2 font-menu text-sm font-semibold text-white/85">
+                    <span className="w-[4.6rem] shrink-0">{label}</span>
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      value={Math.round(levels[bus] * 100)}
+                      onChange={(e) => setAudioLevel(bus, Number(e.target.value) / 100)}
+                      aria-label={`Volume ${label.toLowerCase()}`}
+                      className="h-1.5 w-full cursor-pointer accent-[#ffc83d]"
+                    />
+                  </label>
+                ))}
               </div>
               <p className="mt-4 font-menu text-lg font-semibold">Plateau</p>
               <div className="mt-1.5 grid grid-cols-2 gap-2">

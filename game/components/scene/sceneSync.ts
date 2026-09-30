@@ -1,6 +1,7 @@
 import type { GameState, PlayerColor } from "@/game/types/game";
 import { getCardDef } from "@/game/lib/engine/cardCatalog";
 import type { MoveStyle, SceneCue, SceneRenderer } from "./SceneRenderer";
+import { raceAudio } from "@/game/audio/race";
 
 /** Car paint: livelier than the UI tokens, they have to pop on the landscape. */
 export const CAR_PAINT: Record<PlayerColor, string> = {
@@ -43,6 +44,7 @@ export function pushState(renderer: SceneRenderer, prev: GameState | null, state
   if (prev && prev.startedAt !== state.startedAt) renderer.reset();
   const cue = prev ? cueFor(prev, state) : null;
   if (cue) renderer.cue(cue.playerId, cue.cue);
+  if (cue?.cue.kind === "move") raceAudio.launch(cue.cue.style);
   const current = state.players[state.currentPlayerIndex]?.id;
   renderer.update(
     state.players.map((p) => ({

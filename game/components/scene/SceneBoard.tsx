@@ -8,6 +8,7 @@ import { ScenePath, type SceneDef } from "./scenePath";
 import { SceneRenderer, type CarScreenPos } from "./SceneRenderer";
 import { PictureStage } from "./PictureStage";
 import { CAR_PAINT, pushState } from "./sceneSync";
+import { raceAudio } from "@/game/audio/race";
 import styles from "./scene.module.css";
 
 interface Focus {
@@ -85,8 +86,10 @@ export function SceneBoard({
         el.dataset.active = p.active ? "1" : "0";
       }
     };
+    renderer.onMotion = (cars) => raceAudio.motion(cars);
     pushState(renderer, null, stateRef.current);
     return () => {
+      renderer.onMotion = null;
       renderer.dispose();
       rendererRef.current = null;
     };
