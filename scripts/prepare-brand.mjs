@@ -1,9 +1,10 @@
 // Brings the official KILOMAX files into the app, untouched in their drawing.
 // Each file can be brought on its own; the others stay as they are.
 //   --logo <file>       transparent PNG/WebP: checked for a real alpha channel
-//                       and a fully transparent surround, stripped of empty
-//                       margins only, kept lossless at full resolution, plus a
-//                       lighter copy for small uses (card backs, header)
+//                       and a fully transparent surround, kept at full
+//                       resolution (WebP byte for byte, PNG lossless with only
+//                       its empty margins trimmed), plus a lighter copy for
+//                       small uses (card backs, header)
 //   --portrait <file>   background for phones and tall screens
 //   --landscape <file>  background for wide screens
 // Backgrounds already in WebP are copied byte for byte (no second compression);
@@ -83,23 +84,33 @@ async function checkLogo(file) {
 
 async function prepareLogo(file) {
   await checkLogo(file);
-  // only the fully transparent margins go: the drawing itself is not touched
-  const buf = await sharp(file).trim({ background: { r: 0, g: 0, b: 0, alpha: 0 }, threshold: 0 }).png().toBuffer();
-  const meta = await sharp(buf).metadata();
-  const full = path.join(outDir, "kilomax-logo.png");
-  await sharp(buf).png({ compressionLevel: 9, adaptiveFiltering: true }).toFile(full);
-  const smallWidth = Math.min(meta.width, 960);
+  const meta = await sharp(file).metadata();
+  let full;
+  let buf;
+  if (meta.format === "webp") {
+    // already compressed: kept byte for byte, margins and all
+    full = path.join(outDir, "kilomax-logo.webp");
+    copyFileSync(file, full);
+    buf = readFileSync(file);
+  } else {
+    // only the fully transparent margins go: the drawing itself is not touched
+    buf = await sharp(file).trim({ background: { r: 0, g: 0, b: 0, alpha: 0 }, threshold: 0 }).png().toBuffer();
+    full = path.join(outDir, "kilomax-logo.png");
+    await sharp(buf).png({ compressionLevel: 9, adaptiveFiltering: true }).toFile(full);
+  }
+  const { width, height } = await sharp(buf).metadata();
+  const smallWidth = Math.min(width, 960);
   await sharp(buf)
     .resize({ width: smallWidth, kernel: "lanczos3" })
-    .png({ compressionLevel: 9, adaptiveFiltering: true })
-    .toFile(path.join(outDir, "kilomax-logo-960.png"));
+    .webp({ quality: 92, alphaQuality: 100, effort: 6 })
+    .toFile(path.join(outDir, "kilomax-logo-960.webp"));
   return {
     ready: true,
-    src: "/images/brand/kilomax-logo.png",
-    small: "/images/brand/kilomax-logo-960.png",
+    src: `/images/brand/${path.basename(full)}`,
+    small: "/images/brand/kilomax-logo-960.webp",
     smallWidth,
-    width: meta.width,
-    height: meta.height,
+    width,
+    height,
     bytes: statSync(full).size,
   };
 }

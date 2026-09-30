@@ -11,7 +11,7 @@ import { GearIcon, UserIcon } from "./icons";
 /** Top of the home screen: who is playing, and the settings. */
 export function HomeTopBar() {
   const session = useSyncExternalStore(subscribeOnlineSession, getOnlineSession, getOnlineSessionServer);
-  const name = session?.name.trim() || "Pilote";
+  const name = session?.name.trim() || "Joueur 1";
   const [open, setOpen] = useState(false);
   const { enabled: soundOn, toggle: toggleSound } = useSound();
   const boardView = useBoardView();
@@ -24,7 +24,7 @@ export function HomeTopBar() {
         </span>
         <span className="min-w-0 rounded-full bg-gradient-to-r from-black/55 via-black/30 to-transparent py-1 pl-2.5 pr-8">
           <span className="block truncate font-menu text-[1.35rem] font-bold leading-none drop-shadow-[0_2px_2px_rgba(0,0,0,0.7)]">{name}</span>
-          <span className="block font-menu text-[0.8rem] font-semibold uppercase tracking-[0.08em] text-[#f4c64f]">Pilote KILOMAX</span>
+          <span className="block font-menu text-[0.8rem] font-semibold uppercase tracking-[0.08em] text-[#f4c64f]">Pilote</span>
         </span>
       </div>
 

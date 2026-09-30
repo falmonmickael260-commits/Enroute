@@ -1,12 +1,12 @@
 {
   "logo": {
-    "ready": false,
-    "src": "/images/brand/kilomax-logo.png",
-    "small": "/images/brand/kilomax-logo-960.png",
+    "ready": true,
+    "src": "/images/brand/kilomax-logo.webp",
+    "small": "/images/brand/kilomax-logo-960.webp",
     "smallWidth": 960,
-    "width": 1600,
-    "height": 640,
-    "bytes": 0
+    "width": 1536,
+    "height": 1024,
+    "bytes": 433000
   },
   "portrait": {
     "ready": true,
