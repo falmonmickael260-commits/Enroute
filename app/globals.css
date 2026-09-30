@@ -86,6 +86,7 @@
   --font-mono: var(--font-geist-mono);
   --font-display: var(--font-bebas);
   --font-hud: var(--font-rajdhani);
+  --font-menu: var(--font-barlow-condensed);
 }
 
 * {
@@ -113,6 +114,9 @@ body {
   .font-display {
     font-family: var(--font-display), sans-serif;
     letter-spacing: 0.04em;
+  }
+  .font-menu {
+    font-family: var(--font-menu), sans-serif;
   }
   .font-hud {
     font-family: var(--font-hud), sans-serif;

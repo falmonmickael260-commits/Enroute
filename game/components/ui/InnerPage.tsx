@@ -1,34 +1,55 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import clsx from "clsx";
-import { TableBackdrop } from "./TableBackdrop";
+import { MenuBackdrop } from "@/game/components/menu/MenuBackdrop";
+import { ArrowLeftIcon, FlagIcon } from "@/game/components/menu/icons";
+import { Logo } from "./Logo";
 
-/** Menu-style page laid on the game table, below the inlaid logo. */
+/** Menu page: the KILOMAX picture behind, the logo on top, a carbon panel with a gold edge. */
 export function InnerPage({
   backHref,
   backLabel,
   title,
+  subtitle,
   wide = false,
   children,
 }: {
   backHref: string;
   backLabel: string;
   title?: string;
+  subtitle?: string;
   wide?: boolean;
   children: ReactNode;
 }) {
   return (
     <main className="relative isolate min-h-dvh text-[var(--color-paper)]">
-      <TableBackdrop />
-      <Link
-        href={backHref}
-        className="panel-leather fixed left-3 top-3 z-20 rounded-full px-4 py-2 font-hud text-xs font-bold uppercase tracking-widest text-white/80 transition-colors hover:text-white"
-      >
-        ← {backLabel}
-      </Link>
-      <div className="relative z-10 flex min-h-dvh flex-col items-center px-4 pb-10" style={{ paddingTop: "calc(var(--logo-band) + 1.25rem)" }}>
-        <div className={clsx("panel-leather flex w-full flex-col gap-6 rounded-3xl p-5 sm:p-7", wide ? "max-w-4xl" : "max-w-lg")}>
-          {title ? <h1 className="text-brass text-center font-display text-4xl tracking-wide sm:text-5xl">{title}</h1> : null}
+      <MenuBackdrop variant="inner" />
+      <div className={clsx("relative z-10 mx-auto flex min-h-dvh w-full flex-col px-3.5 pb-8 pt-3 sm:px-5", wide ? "max-w-4xl" : "max-w-xl")}>
+        {/* back · logo · (balance) — the logo never runs under the button */}
+        <header className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-1 sm:gap-3">
+          <Link href={backHref} className="menu-back">
+            <ArrowLeftIcon className="h-[1.1em] w-[1.1em]" />
+            {backLabel}
+          </Link>
+          <div className="flex justify-center">
+            <Logo size="md" className="!w-[min(100%,17rem)] drop-shadow-[0_6px_10px_rgba(0,0,0,0.5)]" />
+          </div>
+          <span aria-hidden className="menu-back invisible">
+            <ArrowLeftIcon className="h-[1.1em] w-[1.1em]" />
+            {backLabel}
+          </span>
+        </header>
+
+        <div className="menu-panel mt-2 flex w-full flex-col gap-5 px-4 pb-5 pt-5 sm:px-7 sm:pb-7 sm:pt-6">
+          {title ? (
+            <div className="flex flex-col items-center gap-1.5 text-center">
+              <h1 className="flex items-center gap-2">
+                <span className="menu-title text-[clamp(2.2rem,10.5vw,3.4rem)]">{title}</span>
+                <FlagIcon className="h-9 w-9 shrink-0 -rotate-6 opacity-90" />
+              </h1>
+              {subtitle ? <p className="font-sans text-[0.78rem] font-medium uppercase tracking-[0.06em] text-white/70">{subtitle}</p> : null}
+            </div>
+          ) : null}
           {children}
         </div>
       </div>
@@ -36,6 +57,11 @@ export function InnerPage({
   );
 }
 
-export function SectionLabel({ children }: { children: ReactNode }) {
-  return <p className="mb-2.5 font-hud text-[0.7rem] font-bold uppercase tracking-[0.25em] text-[var(--color-brass-300)]/85">{children}</p>;
+export function SectionLabel({ children, icon }: { children: ReactNode; icon?: ReactNode }) {
+  return (
+    <p className="menu-label">
+      {icon ? <span className="flex h-6 w-6 shrink-0 items-center justify-center [&>svg]:h-full [&>svg]:w-full">{icon}</span> : null}
+      {children}
+    </p>
+  );
 }

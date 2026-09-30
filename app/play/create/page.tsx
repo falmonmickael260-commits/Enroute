@@ -11,6 +11,22 @@ import { InnerPage, SectionLabel } from "@/game/components/ui/InnerPage";
 import { createOnlineRoom } from "@/game/lib/online/actions";
 import { OnlineError } from "@/game/lib/online/api";
 import { setBoardView, useBoardView } from "@/game/lib/store/boardViewStore";
+import { AmbianceScene } from "@/game/components/menu/AmbianceScene";
+import {
+  ChevronRightIcon,
+  FlagIcon,
+  GaugeIcon,
+  GlobeIcon,
+  HelmetIcon,
+  MapIcon,
+  MoonIcon,
+  PencilIcon,
+  PhoneIcon,
+  SunIcon,
+  SunsetIcon,
+  TrophyIcon,
+  UsersIcon,
+} from "@/game/components/menu/icons";
 
 type Mode = "online" | "local";
 
@@ -19,19 +35,19 @@ const MODES: { id: Mode; label: string; hint: string }[] = [
   { id: "local", label: "Sur cet appareil", hint: "On se passe l'écran" },
 ];
 
+const BOARDS = [
+  { id: "3d", label: "3D", hint: "Voitures et effets animés", image: "/images/menu/plateau-3d.webp" },
+  { id: "classic", label: "Classique", hint: "Plateau vu de dessus", image: "/images/menu/plateau-classique.webp" },
+] as const;
+
 const DURATIONS: { label: string; value: number; hint: string }[] = [
-  { label: "Courte", value: 400, hint: "~15 min" },
-  { label: "Standard", value: 700, hint: "~25 min" },
-  { label: "Longue", value: 1000, hint: "~40 min" },
+  { label: "Courte", value: 400, hint: "~ 15 min" },
+  { label: "Standard", value: 700, hint: "~ 25 min" },
+  { label: "Longue", value: 1000, hint: "~ 40 min" },
 ];
 
-const choice = (active: boolean) =>
-  clsx(
-    "rounded-xl border transition-all",
-    active
-      ? "border-[var(--color-brass-300)] bg-[var(--color-brass-300)]/15 shadow-[0_0_18px_rgba(230,191,92,0.25)]"
-      : "border-white/10 bg-black/25 hover:border-white/30",
-  );
+const AMBIANCE_ICON = { jour: SunIcon, crepuscule: SunsetIcon, nuit: MoonIcon } as const;
+const AMBIANCE_ICON_COLOR = { jour: "text-[#ffd23f]", crepuscule: "text-[#ffb13d]", nuit: "text-[#e8ecff]" } as const;
 
 export default function CreateGamePage() {
   const router = useRouter();
@@ -71,31 +87,43 @@ export default function CreateGamePage() {
   const pilots = mode === "online" ? names.slice(0, 1) : names.slice(0, playerCount);
 
   return (
-    <InnerPage backHref="/" backLabel="Accueil" title="Créer une partie">
+    <InnerPage backHref="/" backLabel="Accueil" title="Créer une partie" subtitle={"Choisis tes options et prends la route\u00a0!"}>
       <section>
-        <SectionLabel>Mode de jeu</SectionLabel>
-        <div className="grid grid-cols-2 gap-2">
+        <SectionLabel icon={<UsersIcon />}>Mode de jeu</SectionLabel>
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
           {MODES.map((m) => (
-            <button key={m.id} onClick={() => setMode(m.id)} className={clsx(choice(mode === m.id), "flex flex-col items-center gap-0.5 px-2 py-3")}>
-              <span className="font-hud text-base font-bold text-white">{m.label}</span>
-              <span className="text-[0.65rem] text-white/50">{m.hint}</span>
+            <button
+              key={m.id}
+              onClick={() => setMode(m.id)}
+              aria-pressed={mode === m.id}
+              className={clsx("menu-option flex min-h-[4.6rem] items-center gap-2 px-2 py-3 sm:gap-3 sm:px-3.5", m.id === "online" && "menu-option-online")}
+            >
+              {m.id === "online" ? (
+                <GlobeIcon className="h-8 w-8 shrink-0 text-[#4cb4ff] drop-shadow-[0_0_8px_rgba(60,160,255,0.8)] sm:h-12 sm:w-12" />
+              ) : (
+                <PhoneIcon className="h-8 w-8 shrink-0 text-white/85 sm:h-12 sm:w-12" />
+              )}
+              <span className="min-w-0">
+                <span className="block font-menu text-[1.02rem] min-[400px]:whitespace-nowrap font-bold leading-tight min-[400px]:text-[1.15rem] sm:text-[1.3rem]">{m.label}</span>
+                <span className="block font-menu text-[0.82rem] font-medium leading-tight text-white/75 sm:text-[0.95rem]">{m.hint}</span>
+              </span>
             </button>
           ))}
         </div>
       </section>
 
       <section>
-        <SectionLabel>Plateau</SectionLabel>
-        <div className="grid grid-cols-2 gap-2">
-          {(
-            [
-              { id: "3d", label: "3D", hint: "Voitures et effets animés" },
-              { id: "classic", label: "Classique", hint: "Plateau vu de dessus" },
-            ] as const
-          ).map((b) => (
-            <button key={b.id} onClick={() => setBoardView(b.id)} className={clsx(choice(boardView === b.id), "flex flex-col items-center gap-0.5 px-2 py-3")}>
-              <span className="font-hud text-base font-bold text-white">{b.label}</span>
-              <span className="text-[0.65rem] text-white/50">{b.hint}</span>
+        <SectionLabel icon={<MapIcon />}>Plateau</SectionLabel>
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+          {BOARDS.map((b) => (
+            <button key={b.id} onClick={() => setBoardView(b.id)} aria-pressed={boardView === b.id} className="menu-option aspect-[2.1/1]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={b.image} alt="" draggable={false} className="absolute inset-0 -z-10 h-full w-full object-cover" />
+              <span className="absolute inset-x-0 bottom-0 -z-10 h-3/4 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
+              <span className="absolute inset-x-1 bottom-1.5 text-center sm:bottom-2">
+                <span className="block font-menu text-[1.3rem] font-extrabold leading-none drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] sm:text-[1.5rem]">{b.label}</span>
+                <span className="block truncate text-[0.68rem] text-white/90 sm:text-[0.8rem]">{b.hint}</span>
+              </span>
             </button>
           ))}
         </div>
@@ -103,10 +131,10 @@ export default function CreateGamePage() {
 
       {mode === "local" ? (
         <section>
-          <SectionLabel>Nombre de joueurs</SectionLabel>
-          <div className="grid grid-cols-3 gap-3">
+          <SectionLabel icon={<UsersIcon />}>Nombre de joueurs</SectionLabel>
+          <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
             {[2, 3, 4].map((n) => (
-              <button key={n} onClick={() => setPlayerCount(n)} className={clsx(choice(playerCount === n), "py-3 font-display text-3xl")}>
+              <button key={n} onClick={() => setPlayerCount(n)} aria-pressed={playerCount === n} className="menu-option py-2.5 text-center font-menu text-3xl font-extrabold italic">
                 {n}
               </button>
             ))}
@@ -115,12 +143,12 @@ export default function CreateGamePage() {
       ) : null}
 
       <section>
-        <SectionLabel>{mode === "online" ? "Votre nom de pilote" : "Pilotes"}</SectionLabel>
+        <SectionLabel icon={<HelmetIcon />}>{mode === "online" ? "Votre nom de pilote" : "Pilotes"}</SectionLabel>
         <div className="flex flex-col gap-2">
           {pilots.map((name, i) => (
-            <label key={i} className="flex items-center gap-3 rounded-xl border border-white/10 bg-black/30 px-3 focus-within:border-[var(--color-brass-300)]">
+            <label key={i} className="menu-option flex cursor-text items-center gap-3 !rounded-[14px] py-2 pl-2.5 pr-2 focus-within:!border-[#ffc83d]">
               <span
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full font-display text-white"
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full font-menu text-xl font-extrabold text-white shadow-[inset_0_2px_0_rgba(255,255,255,0.35),inset_0_-3px_0_rgba(0,0,0,0.25),0_2px_6px_rgba(0,0,0,0.5)]"
                 style={{ background: PLAYER_COLOR[PLAYER_COLORS[i]] }}
               >
                 {i + 1}
@@ -129,39 +157,57 @@ export default function CreateGamePage() {
                 value={name}
                 onChange={(e) => setNames((prev) => prev.map((n, j) => (j === i ? e.target.value : n)))}
                 maxLength={14}
-                className="w-full bg-transparent py-2.5 font-hud text-lg font-semibold text-white outline-none placeholder-white/30"
+                className="min-w-0 flex-1 bg-transparent py-1.5 font-menu text-[1.45rem] font-semibold text-white outline-none placeholder-white/30"
                 placeholder={`Joueur ${i + 1}`}
                 aria-label={`Nom du joueur ${i + 1}`}
               />
+              <span aria-hidden className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/25 bg-white/5 text-white/85">
+                <PencilIcon className="h-5 w-5" />
+              </span>
             </label>
           ))}
         </div>
       </section>
 
       <section>
-        <SectionLabel>Ambiance du plateau</SectionLabel>
-        <div className="grid grid-cols-3 gap-2">
-          {AMBIANCE_LIST.map((a) => (
-            <button key={a.id} onClick={() => setAmbiance(a.id)} className={clsx(choice(ambiance === a.id), "flex flex-col items-center gap-1.5 px-1 py-3")}>
-              <span
-                className="h-9 w-14 rounded-md shadow-[inset_0_0_0_1px_rgba(255,255,255,0.2)]"
-                style={{ background: `linear-gradient(160deg, ${a.swatch[0]}, ${a.swatch[1]})` }}
-              />
-              <span className="font-hud text-xs font-bold text-white/90">{a.label}</span>
-              <span className="text-[0.6rem] text-white/45">{a.hint}</span>
-            </button>
-          ))}
+        <SectionLabel icon={<SunIcon />}>Ambiance du plateau</SectionLabel>
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          {AMBIANCE_LIST.map((a) => {
+            const Icon = AMBIANCE_ICON[a.id];
+            return (
+              <button key={a.id} onClick={() => setAmbiance(a.id)} aria-pressed={ambiance === a.id} className="menu-option aspect-[1.3/1]">
+                <AmbianceScene id={a.id} className="absolute inset-0 -z-10 h-full w-full" />
+                <span className="absolute inset-x-0 bottom-0 -z-10 h-2/3 bg-gradient-to-t from-black/85 via-black/45 to-transparent" />
+                <span className="absolute inset-x-1 bottom-1.5 flex flex-col items-center text-center">
+                  <Icon className={clsx("mb-0.5 h-6 w-6 sm:h-7 sm:w-7", AMBIANCE_ICON_COLOR[a.id])} />
+                  <span className="w-full whitespace-nowrap font-menu text-[0.8rem] font-bold leading-none tracking-tight drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] min-[400px]:text-[0.9rem] sm:text-[1.1rem]">{a.label}</span>
+                  <span className="w-full truncate text-[0.62rem] text-white/85 sm:text-[0.75rem]">{a.hint}</span>
+                </span>
+              </button>
+            );
+          })}
         </div>
       </section>
 
       <section>
-        <SectionLabel>Durée de la partie</SectionLabel>
-        <div className="grid grid-cols-3 gap-2">
-          {DURATIONS.map((d) => (
-            <button key={d.value} onClick={() => setTarget(d.value)} className={clsx(choice(target === d.value), "flex flex-col items-center py-3")}>
-              <span className="font-hud font-bold text-white">{d.label}</span>
-              <span className="text-[0.65rem] text-white/50">
-                {d.value} km · {d.hint}
+        <SectionLabel icon={<GaugeIcon />}>Durée de la partie</SectionLabel>
+        <div className="grid grid-cols-3 gap-2 sm:gap-3">
+          {DURATIONS.map((d, i) => (
+            <button
+              key={d.value}
+              onClick={() => setTarget(d.value)}
+              aria-pressed={target === d.value}
+              className="menu-option flex flex-col items-center gap-1 px-1.5 py-2.5 text-center min-[400px]:flex-row min-[400px]:gap-1.5 min-[400px]:px-2 min-[400px]:text-left sm:gap-2.5 sm:px-3"
+            >
+              {i === 2 ? (
+                <TrophyIcon className="h-7 w-7 shrink-0 text-[#ffc83d] drop-shadow-[0_0_6px_rgba(255,190,50,0.6)] sm:h-10 sm:w-10" />
+              ) : (
+                <FlagIcon double={i === 1} className="h-7 w-7 shrink-0 text-white/85 sm:h-10 sm:w-10" />
+              )}
+              <span className="min-w-0 leading-tight">
+                <span className="block font-menu text-[1.05rem] font-bold sm:text-[1.25rem]">{d.label}</span>
+                <span className="block font-menu text-[0.95rem] font-medium text-white/90 sm:text-[1.1rem]">{d.value} km</span>
+                <span className="block text-[0.7rem] text-white/65 sm:text-[0.8rem]">{d.hint}</span>
               </span>
             </button>
           ))}
@@ -169,11 +215,12 @@ export default function CreateGamePage() {
       </section>
 
       {error ? <p className="text-center text-sm text-[#ff8a7e]">{error}</p> : null}
-      <button onClick={handleStart} disabled={busy} className="btn-enroute-primary mt-1 w-full disabled:opacity-60">
+      <button onClick={handleStart} disabled={busy} className="menu-cta mt-1">
         {busy ? "Création…" : "Générer le code de partie"}
+        <ChevronRightIcon className="h-[0.9em] w-[0.9em] shrink-0" />
       </button>
       {mode === "online" ? (
-        <p className="-mt-3 text-center text-xs text-white/45">Vos amis rejoignent avec le code ou le lien, de 2 à 4 pilotes.</p>
+        <p className="-mt-2 text-center text-[0.8rem] text-white/60">Vos amis rejoignent avec le code ou le lien, de 2 à 4 pilotes.</p>
       ) : null}
     </InnerPage>
   );
