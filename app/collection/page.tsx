@@ -7,7 +7,7 @@ const SECTIONS: { category: CardCategory; title: string; blurb: string }[] = [
   { category: "distance", title: "Cartes de distance", blurb: "Faites avancer votre véhicule sur la route." },
   { category: "attaque", title: "Cartes d'attaque", blurb: "Ralentissez vos adversaires." },
   { category: "defense", title: "Cartes de défense", blurb: "Réparez ou blindez votre véhicule." },
-  { category: "special", title: "Cartes spéciales EN ROUTE", blurb: "L'identité unique du jeu." },
+  { category: "special", title: "Cartes spéciales KILOMAX", blurb: "L'identité unique du jeu." },
 ];
 
 export default function CollectionPage() {
@@ -21,7 +21,7 @@ export default function CollectionPage() {
 
   return (
     <InnerPage backHref="/" backLabel="Accueil" title="Collection" wide>
-      <p className="-mt-3 text-center text-white/60">Toutes les cartes du jeu EN ROUTE.</p>
+      <p className="-mt-3 text-center text-white/60">Toutes les cartes du jeu KILOMAX.</p>
       {SECTIONS.map((section) => (
         <section key={section.category}>
           <h2 className="text-brass font-display text-3xl tracking-wide">{section.title}</h2>

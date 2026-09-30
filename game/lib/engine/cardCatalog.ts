@@ -1,7 +1,7 @@
 import type { CardDef, DefenseType, HazardType } from "@/game/types/game";
 
 /**
- * The full EN ROUTE card catalog. `count` controls how many copies
+ * The full KILOMAX card catalog. `count` controls how many copies
  * ship in a standard deck (tuned for 2-4 players, hand size 7).
  */
 export const CARD_CATALOG: Record<string, CardDef & { count: number }> = {
@@ -101,7 +101,7 @@ export const CARD_CATALOG: Record<string, CardDef & { count: number }> = {
     count: 6,
   },
 
-  // ---- Special EN ROUTE cards ----
+  // ---- Special KILOMAX cards ----
   turbo: {
     category: "special",
     id: "turbo",

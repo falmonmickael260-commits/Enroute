@@ -13,10 +13,10 @@ function ShareButton({ code }: { code: string }) {
 
   const share = async () => {
     const url = `${window.location.origin}/play/online/${code}`;
-    const text = `Rejoins ma partie EN ROUTE avec le code ${code}`;
+    const text = `Rejoins ma partie KILOMAX avec le code ${code}`;
     try {
       if (navigator.share) {
-        await navigator.share({ title: "EN ROUTE", text, url });
+        await navigator.share({ title: "KILOMAX", text, url });
         return;
       }
     } catch {

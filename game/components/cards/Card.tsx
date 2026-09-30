@@ -6,6 +6,7 @@ import { forwardRef } from "react";
 import type { CardCategory, CardDef } from "@/game/types/game";
 import { getCardDef } from "@/game/lib/engine/cardCatalog";
 import { CardArt } from "./CardArt";
+import { BRAND, BRAND_NAME, LOGO_ASPECT } from "@/game/lib/brand";
 
 export const CATEGORY_STYLE: Record<CardCategory, { from: string; to: string; label: string; accent: string }> = {
   distance: { from: "#f8c94e", to: "#c27410", label: "Distance", accent: "#e0a93e" },
@@ -107,13 +108,22 @@ function CardBack() {
       }}
     >
       <div className="absolute inset-[7%] rounded-[inherit] border border-[#e6bf5c]/60" style={{ borderRadius: "10%" }} />
-      <div className="relative flex flex-col items-center">
-        <span className="font-display leading-none tracking-[0.12em] text-[0.62em]" style={{ color: "#e6bf5c" }}>
-          EN
-        </span>
-        <span className="font-display leading-none tracking-[0.08em] text-[0.8em]" style={{ color: "#e0483e", textShadow: "0 1px 0 #000" }}>
-          ROUTE
-        </span>
+      <div className="relative flex w-[78%] flex-col items-center">
+        {BRAND.ready ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={BRAND.logo.small}
+            width={BRAND.logo.smallWidth}
+            height={Math.round(BRAND.logo.smallWidth / LOGO_ASPECT)}
+            alt=""
+            draggable={false}
+            className="block h-auto w-full drop-shadow-[0_1px_1px_rgba(0,0,0,0.6)]"
+          />
+        ) : (
+          <span className="font-display leading-none tracking-[0.08em] text-[0.62em]" style={{ color: "#e6bf5c" }}>
+            {BRAND_NAME}
+          </span>
+        )}
         <span className="mt-[0.25em] h-[2px] w-[2.2em] bg-[repeating-linear-gradient(90deg,#e6bf5c_0_5px,transparent_5px_9px)]" />
       </div>
     </div>

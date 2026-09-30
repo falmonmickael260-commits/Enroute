@@ -1,44 +1,49 @@
 import clsx from "clsx";
+import { BRAND, BRAND_NAME, LOGO_ASPECT, LOGO_SRCSET } from "@/game/lib/brand";
 
+/** Displayed widths; `sizes` lets the browser pick a file sharp enough for the screen. */
 const sizes = {
-  sm: { text: "text-2xl md:text-3xl", stripe: "w-16 h-1" },
-  md: { text: "text-4xl md:text-5xl", stripe: "w-24 h-1.5" },
-  lg: { text: "text-6xl md:text-8xl", stripe: "w-36 h-2" },
-  xl: { text: "text-7xl md:text-[9rem]", stripe: "w-48 h-2.5" },
+  sm: { box: "w-[7.5rem] md:w-[9.5rem]", sizes: "(min-width: 768px) 152px, 120px" },
+  md: { box: "w-[min(70vw,18rem)]", sizes: "(min-width: 412px) 288px, 70vw" },
+  lg: { box: "w-[min(80vw,28rem)]", sizes: "(min-width: 560px) 448px, 80vw" },
+  xl: { box: "w-[min(86vw,40rem)]", sizes: "(min-width: 745px) 640px, 86vw" },
 } as const;
 
+/**
+ * The official KILOMAX logo: the transparent PNG laid straight over whatever
+ * is behind it, at its own proportions (no frame, no backing, no redraw).
+ */
 export function Logo({
   size = "md",
-  tagline = false,
   className,
+  priority = false,
 }: {
   size?: keyof typeof sizes;
-  tagline?: boolean;
   className?: string;
+  priority?: boolean;
 }) {
   const s = sizes[size];
   return (
-    <div className={clsx("inline-flex flex-col items-center select-none", className)}>
-      <h1
-        className={clsx(
-          s.text,
-          "font-display leading-none tracking-[0.06em] text-brand-shadow flex items-baseline gap-[0.14em]",
-        )}
-      >
-        <span className="text-[var(--color-paper)]">EN</span>
-        <span className="text-[var(--color-brand-crimson)]">ROUTE</span>
-      </h1>
-      <span
-        className={clsx(
-          s.stripe,
-          "mt-2 rounded-full bg-[repeating-linear-gradient(90deg,var(--color-brand-gold)_0_14px,transparent_14px_24px)] opacity-90",
-        )}
-      />
-      {tagline ? (
-        <p className="mt-3 font-hud text-sm md:text-base tracking-[0.3em] uppercase text-[var(--color-paper)]/70">
-          À toi de prendre la route
-        </p>
-      ) : null}
+    <div className={clsx("inline-flex select-none", s.box, className)}>
+      {BRAND.ready ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={BRAND.logo.src}
+          srcSet={LOGO_SRCSET}
+          sizes={s.sizes}
+          width={BRAND.logo.width}
+          height={BRAND.logo.height}
+          alt={BRAND_NAME}
+          draggable={false}
+          decoding="async"
+          fetchPriority={priority ? "high" : "auto"}
+          className="block h-auto w-full"
+          style={{ aspectRatio: LOGO_ASPECT }}
+        />
+      ) : (
+        // placeholder until scripts/prepare-brand.mjs has brought the official file in
+        <span className="block w-full text-center font-display text-[2em] leading-none tracking-[0.08em] text-white">{BRAND_NAME}</span>
+      )}
     </div>
   );
 }

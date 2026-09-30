@@ -25,15 +25,15 @@ const rajdhani = Rajdhani({
 });
 
 export const metadata: Metadata = {
-  title: "EN ROUTE — À toi de prendre la route.",
+  title: "KILOMAX",
   description:
-    "EN ROUTE, le jeu de plateau numérique de course automobile. Affrontez vos amis sur la route dans un jeu de cartes premium, animé et multijoueur.",
-  applicationName: "EN ROUTE",
+    "KILOMAX, le jeu de plateau numérique de course automobile. Affrontez vos amis sur la route dans un jeu de cartes premium, animé et multijoueur.",
+  applicationName: "KILOMAX",
   manifest: "/manifest.json",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "EN ROUTE",
+    title: "KILOMAX",
   },
   icons: {
     icon: [

@@ -1,7 +1,7 @@
 {
-  "name": "EN ROUTE",
-  "short_name": "EN ROUTE",
-  "description": "EN ROUTE — jeu de plateau numérique de course automobile. À toi de prendre la route.",
+  "name": "KILOMAX",
+  "short_name": "KILOMAX",
+  "description": "KILOMAX — jeu de plateau numérique de course automobile.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

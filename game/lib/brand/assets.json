@@ -1,0 +1,13 @@
+{
+  "ready": false,
+  "logo": {
+    "src": "/images/brand/kilomax-logo.png",
+    "small": "/images/brand/kilomax-logo-960.png",
+    "smallWidth": 960,
+    "width": 1600,
+    "height": 640,
+    "bytes": 0
+  },
+  "portrait": { "src": "/images/brand/loader-portrait.webp", "width": 1024, "height": 1536, "bytes": 0 },
+  "landscape": { "src": "/images/brand/loader-landscape.webp", "width": 1536, "height": 1024, "bytes": 0 }
+}

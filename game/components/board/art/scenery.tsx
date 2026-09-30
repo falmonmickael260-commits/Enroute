@@ -251,7 +251,7 @@ function GasStation({ lit }: { lit: boolean }) {
       <rect x={1264} y={650} width={132} height={20} rx={3} fill="#f6f3ea" stroke="#c9c1ac" strokeWidth={1.5} />
       <rect x={1264} y={662} width={132} height={8} fill="#e0483e" />
       <text x={1330} y={661} textAnchor="middle" fontFamily="var(--font-display)" fontSize={12} letterSpacing={2} fill="#14161c">
-        EN ROUTE
+        KILOMAX
       </text>
       <ParkedCar x={1318} y={744} color="#3eab6f" angle={0} />
       {/* shop */}

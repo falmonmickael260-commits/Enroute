@@ -88,7 +88,7 @@ export function VictoryOverlay({
         <h2 className="font-display text-4xl sm:text-5xl mt-1 mb-1 text-brand-shadow" style={{ color: COLOR_VAR[winner.color] }}>
           {winner.name.toUpperCase()}
         </h2>
-        <p className="font-sans text-sm text-white/70 mb-6">remporte la partie EN ROUTE</p>
+        <p className="font-sans text-sm text-white/70 mb-6">remporte la partie KILOMAX</p>
 
         <div className="grid grid-cols-2 gap-3 mb-7 text-left">
           <Stat label="Distance" value={`${winner.distance} km`} />

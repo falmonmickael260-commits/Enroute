@@ -21,7 +21,7 @@ export default function RulesPage() {
       <section>
         <H2>Le principe</H2>
         <p className="leading-relaxed text-white/80">
-          EN ROUTE se joue de 2 à 4 joueurs. Chacun pilote son véhicule sur une route qui traverse la campagne, la ville, la
+          KILOMAX se joue de 2 à 4 joueurs. Chacun pilote son véhicule sur une route qui traverse la campagne, la ville, la
           montagne et la côte. Le premier à parcourir la distance choisie (400, 700 ou 1000 km) franchit la ligne
           d&apos;arrivée et remporte la partie.
         </p>
@@ -68,7 +68,7 @@ export default function RulesPage() {
       </section>
 
       <section>
-        <H2>Cartes spéciales EN ROUTE</H2>
+        <H2>Cartes spéciales KILOMAX</H2>
         <div className="grid gap-3 sm:grid-cols-2">
           {["turbo", "raccourci", "depassement", "gpsStrategique", "derniereLigneDroite"].map((id) => (
             <div key={id} className="flex items-center gap-3 rounded-2xl border border-white/10 bg-black/25 p-3">

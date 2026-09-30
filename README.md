@@ -1,4 +1,4 @@
-# EN ROUTE
+# KILOMAX
 
 Jeu de course de cartes multijoueur (2 à 4 pilotes) — Next.js, React, Tailwind, framer-motion.
 

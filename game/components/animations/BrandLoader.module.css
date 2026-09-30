@@ -1,0 +1,246 @@
+/* KILOMAX loading screen. Layers: background picture → transparent logo → progress.
+   Nothing is ever drawn behind the logo: its glow and light sweep are cut to
+   its own shape. Every movement ends at the identity transform, so the logo
+   rests at its native rendering (no resampling blur). */
+
+.root {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  overflow: hidden;
+  background: #06080c;
+  /* where the logo sits and how wide it is, per orientation */
+  --logo-top: max(7.5vh, calc(env(safe-area-inset-top) + 4vh));
+  --logo-w: min(46vw, calc(30vh * var(--logo-aspect)), 920px);
+}
+
+@media (orientation: portrait) {
+  .root {
+    --logo-top: max(8vh, calc(env(safe-area-inset-top) + 5vh));
+    --logo-w: min(84vw, calc(26vh * var(--logo-aspect)), 640px);
+  }
+}
+
+/* ---------- background ---------- */
+
+.bg {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  transition: opacity 0.9s ease;
+}
+
+.bg picture,
+.bg img {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.bg img {
+  object-fit: cover;
+  object-position: center;
+  user-select: none;
+}
+
+.bgIn {
+  opacity: 1;
+  animation: settle 7s cubic-bezier(0.2, 0.6, 0.2, 1) both;
+}
+
+@keyframes settle {
+  from {
+    transform: scale(1.035);
+  }
+  to {
+    transform: none;
+  }
+}
+
+/* ---------- logo ---------- */
+
+.stack {
+  position: absolute;
+  top: var(--logo-top);
+  left: 0;
+  right: 0;
+  margin-inline: auto;
+  width: var(--logo-w);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.logo {
+  position: relative;
+  width: 100%;
+  aspect-ratio: var(--logo-aspect);
+  opacity: 0;
+}
+
+.logoIn {
+  animation: logo-in 1.6s cubic-bezier(0.16, 0.84, 0.3, 1) both;
+}
+
+@keyframes logo-in {
+  0% {
+    opacity: 0;
+    transform: translateY(1.4vh) scale(1.07);
+  }
+  55% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.mark,
+.glow {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  user-select: none;
+}
+
+/* depth: two soft shadows that follow the logo's outline */
+.mark {
+  filter: drop-shadow(0 0.5vh 0.7vh rgba(0, 0, 0, 0.45)) drop-shadow(0 1.6vh 2.6vh rgba(0, 0, 0, 0.3));
+}
+
+/* very light warm halo, breathing slowly once the logo is in */
+.glow {
+  filter: blur(1.4vh) brightness(1.5) saturate(1.2);
+  opacity: 0;
+  animation: glow 6s ease-in-out 1.4s infinite;
+}
+
+@keyframes glow {
+  0%,
+  100% {
+    opacity: 0.16;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}
+
+/* a band of light crossing the logo, masked by the logo itself */
+.sheen {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  -webkit-mask: var(--logo-url) center / 100% 100% no-repeat;
+  mask: var(--logo-url) center / 100% 100% no-repeat;
+  background: linear-gradient(
+    105deg,
+    transparent 38%,
+    rgba(255, 248, 230, 0) 43%,
+    rgba(255, 248, 230, 0.55) 50%,
+    rgba(255, 248, 230, 0) 57%,
+    transparent 62%
+  );
+  background-size: 320% 100%;
+  background-position: 130% 0;
+  mix-blend-mode: soft-light;
+  animation: sheen 5.5s cubic-bezier(0.45, 0, 0.25, 1) 0.9s infinite;
+}
+
+@keyframes sheen {
+  0% {
+    background-position: 130% 0;
+  }
+  32%,
+  100% {
+    background-position: -30% 0;
+  }
+}
+
+.placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: calc(var(--logo-w) / 5);
+  letter-spacing: 0.08em;
+}
+
+/* ---------- progress ---------- */
+
+.progress {
+  position: relative;
+  width: min(62%, 320px);
+  margin-top: clamp(14px, 2.6vh, 30px);
+  opacity: 0;
+  animation: fade-in 0.6s ease 0.2s forwards;
+}
+
+.track {
+  position: relative;
+  height: 3px;
+  overflow: hidden;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.45);
+}
+
+.fill {
+  position: absolute;
+  inset: 0;
+  transform: scaleX(0);
+  transform-origin: left center;
+  background: linear-gradient(90deg, #ff6a1a, #ffb43b 65%, #fff1cf);
+}
+
+/* the leading edge, lit like a headlamp */
+.tip {
+  position: absolute;
+  top: 1.5px;
+  left: 0;
+  width: 10px;
+  height: 10px;
+  margin: -5px 0 0 -5px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fffaf0 0 28%, rgba(255, 196, 90, 0.6) 45%, rgba(255, 150, 40, 0) 72%);
+  pointer-events: none;
+}
+
+.meta {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 9px;
+  font-size: clamp(10px, 1.35vh, 13px);
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.86);
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.75);
+}
+
+@keyframes fade-in {
+  to {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .bgIn {
+    animation: none;
+  }
+  .logoIn {
+    animation: fade-in 0.6s ease both;
+  }
+  .glow {
+    animation: none;
+    opacity: 0.2;
+  }
+  .sheen {
+    animation: none;
+    opacity: 0;
+  }
+}

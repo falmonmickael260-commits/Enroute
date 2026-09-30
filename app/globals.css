@@ -41,9 +41,8 @@
   --color-brass-500: #b9862a;
   --color-brass-700: #7a5413;
 
-  /* Height of the inlaid logo at the top of the table image. The backdrop is
-     `cover`-scaled from 2560x1440 (portrait: 1170x2532), so the logo's on-screen
-     height is whichever axis wins the cover scale. */
+  /* Height of the band at the top of the table that holds the logo; the
+     menus and the game header start below it. */
   --logo-band: max(13.4vh, 7.6vw);
 }
 
@@ -201,6 +200,28 @@ body {
   @media (orientation: portrait) {
     .table-backdrop {
       background-image: url("/images/table-portrait.webp");
+    }
+  }
+
+  /* The KILOMAX logo on the table: transparent, straight over the wood. */
+  .table-logo {
+    position: absolute;
+    top: calc(var(--logo-band) * 0.1);
+    left: 0;
+    right: 0;
+    margin-inline: auto;
+    display: block;
+    width: auto;
+    height: calc(var(--logo-band) * 0.8);
+    max-width: 34vw;
+    object-fit: contain;
+    filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.55));
+    user-select: none;
+  }
+  @media (orientation: portrait) {
+    /* clear of the back button and the corner controls */
+    .table-logo {
+      max-width: min(62vw, calc(100vw - 15.5rem));
     }
   }
 
