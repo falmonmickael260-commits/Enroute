@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import clsx from "clsx";
 import { useSetupStore, PLAYER_COLORS } from "@/game/lib/store/setupStore";
 import { AMBIANCE_LIST } from "@/game/lib/ambiances";
 import type { AmbianceId } from "@/game/types/game";
@@ -11,28 +10,24 @@ import { InnerPage, SectionLabel } from "@/game/components/ui/InnerPage";
 import { createOnlineRoom } from "@/game/lib/online/actions";
 import { OnlineError } from "@/game/lib/online/api";
 import { setBoardView, useBoardView } from "@/game/lib/store/boardViewStore";
-import { AmbianceScene } from "@/game/components/menu/AmbianceScene";
 import {
   ChevronRightIcon,
   FlagIcon,
   GaugeIcon,
-  GlobeIcon,
   HelmetIcon,
   MapIcon,
-  MoonIcon,
   PencilIcon,
-  PhoneIcon,
   SunIcon,
-  SunsetIcon,
   TrophyIcon,
   UsersIcon,
 } from "@/game/components/menu/icons";
 
 type Mode = "online" | "local";
 
-const MODES: { id: Mode; label: string; hint: string }[] = [
-  { id: "online", label: "En ligne", hint: "Chacun sur son téléphone" },
-  { id: "local", label: "Sur cet appareil", hint: "On se passe l'écran" },
+// tile pictures taken from the KILOMAX menu design
+const MODES: { id: Mode; label: string; hint: string; image: string }[] = [
+  { id: "online", label: "En ligne", hint: "Chacun sur son téléphone", image: "/images/menu/mode-online.webp" },
+  { id: "local", label: "Sur cet appareil", hint: "On se passe l'écran", image: "/images/menu/mode-local.webp" },
 ];
 
 const BOARDS = [
@@ -45,9 +40,6 @@ const DURATIONS: { label: string; value: number; hint: string }[] = [
   { label: "Standard", value: 700, hint: "~ 25 min" },
   { label: "Longue", value: 1000, hint: "~ 40 min" },
 ];
-
-const AMBIANCE_ICON = { jour: SunIcon, crepuscule: SunsetIcon, nuit: MoonIcon } as const;
-const AMBIANCE_ICON_COLOR = { jour: "text-[#ffd23f]", crepuscule: "text-[#ffb13d]", nuit: "text-[#e8ecff]" } as const;
 
 export default function CreateGamePage() {
   const router = useRouter();
@@ -92,21 +84,9 @@ export default function CreateGamePage() {
         <SectionLabel icon={<UsersIcon />}>Mode de jeu</SectionLabel>
         <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
           {MODES.map((m) => (
-            <button
-              key={m.id}
-              onClick={() => setMode(m.id)}
-              aria-pressed={mode === m.id}
-              className={clsx("menu-option flex min-h-[4.6rem] items-center gap-2 px-2 py-3 sm:gap-3 sm:px-3.5", m.id === "online" && "menu-option-online")}
-            >
-              {m.id === "online" ? (
-                <GlobeIcon className="h-8 w-8 shrink-0 text-[#4cb4ff] drop-shadow-[0_0_8px_rgba(60,160,255,0.8)] sm:h-12 sm:w-12" />
-              ) : (
-                <PhoneIcon className="h-8 w-8 shrink-0 text-white/85 sm:h-12 sm:w-12" />
-              )}
-              <span className="min-w-0">
-                <span className="block font-menu text-[1.02rem] min-[400px]:whitespace-nowrap font-bold leading-tight min-[400px]:text-[1.15rem] sm:text-[1.3rem]">{m.label}</span>
-                <span className="block font-menu text-[0.82rem] font-medium leading-tight text-white/75 sm:text-[0.95rem]">{m.hint}</span>
-              </span>
+            <button key={m.id} onClick={() => setMode(m.id)} aria-pressed={mode === m.id} aria-label={`${m.label} — ${m.hint}`} className="menu-option aspect-[3.3/1]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={m.image} alt="" draggable={false} className="absolute inset-0 -z-10 h-full w-full object-cover" />
             </button>
           ))}
         </div>
@@ -116,14 +96,9 @@ export default function CreateGamePage() {
         <SectionLabel icon={<MapIcon />}>Plateau</SectionLabel>
         <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
           {BOARDS.map((b) => (
-            <button key={b.id} onClick={() => setBoardView(b.id)} aria-pressed={boardView === b.id} className="menu-option aspect-[2.1/1]">
+            <button key={b.id} onClick={() => setBoardView(b.id)} aria-pressed={boardView === b.id} aria-label={`${b.label} — ${b.hint}`} className="menu-option aspect-[2.2/1]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={b.image} alt="" draggable={false} className="absolute inset-0 -z-10 h-full w-full object-cover" />
-              <span className="absolute inset-x-0 bottom-0 -z-10 h-3/4 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
-              <span className="absolute inset-x-1 bottom-1.5 text-center sm:bottom-2">
-                <span className="block font-menu text-[1.3rem] font-extrabold leading-none drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] sm:text-[1.5rem]">{b.label}</span>
-                <span className="block truncate text-[0.68rem] text-white/90 sm:text-[0.8rem]">{b.hint}</span>
-              </span>
             </button>
           ))}
         </div>
@@ -172,20 +147,12 @@ export default function CreateGamePage() {
       <section>
         <SectionLabel icon={<SunIcon />}>Ambiance du plateau</SectionLabel>
         <div className="grid grid-cols-3 gap-2 sm:gap-3">
-          {AMBIANCE_LIST.map((a) => {
-            const Icon = AMBIANCE_ICON[a.id];
-            return (
-              <button key={a.id} onClick={() => setAmbiance(a.id)} aria-pressed={ambiance === a.id} className="menu-option aspect-[1.3/1]">
-                <AmbianceScene id={a.id} className="absolute inset-0 -z-10 h-full w-full" />
-                <span className="absolute inset-x-0 bottom-0 -z-10 h-2/3 bg-gradient-to-t from-black/85 via-black/45 to-transparent" />
-                <span className="absolute inset-x-1 bottom-1.5 flex flex-col items-center text-center">
-                  <Icon className={clsx("mb-0.5 h-6 w-6 sm:h-7 sm:w-7", AMBIANCE_ICON_COLOR[a.id])} />
-                  <span className="w-full whitespace-nowrap font-menu text-[0.8rem] font-bold leading-none tracking-tight drop-shadow-[0_2px_2px_rgba(0,0,0,0.8)] min-[400px]:text-[0.9rem] sm:text-[1.1rem]">{a.label}</span>
-                  <span className="w-full truncate text-[0.62rem] text-white/85 sm:text-[0.75rem]">{a.hint}</span>
-                </span>
-              </button>
-            );
-          })}
+          {AMBIANCE_LIST.map((a) => (
+            <button key={a.id} onClick={() => setAmbiance(a.id)} aria-pressed={ambiance === a.id} aria-label={`${a.label} — ${a.hint}`} className="menu-option aspect-[1.4/1]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={`/images/menu/ambiance-${a.id}.webp`} alt="" draggable={false} className="absolute inset-0 -z-10 h-full w-full object-cover" />
+            </button>
+          ))}
         </div>
       </section>
 
@@ -197,17 +164,17 @@ export default function CreateGamePage() {
               key={d.value}
               onClick={() => setTarget(d.value)}
               aria-pressed={target === d.value}
-              className="menu-option flex flex-col items-center gap-1 px-1.5 py-2.5 text-center min-[400px]:flex-row min-[400px]:gap-1.5 min-[400px]:px-2 min-[400px]:text-left sm:gap-2.5 sm:px-3"
+              className="menu-option flex items-center gap-1 px-1.5 py-2.5 min-[400px]:gap-1.5 min-[400px]:px-2 sm:gap-2.5 sm:px-3"
             >
               {i === 2 ? (
-                <TrophyIcon className="h-7 w-7 shrink-0 text-[#ffc83d] drop-shadow-[0_0_6px_rgba(255,190,50,0.6)] sm:h-10 sm:w-10" />
+                <TrophyIcon className="h-6 w-6 shrink-0 text-[#ffc83d] drop-shadow-[0_0_6px_rgba(255,190,50,0.6)] min-[400px]:h-7 min-[400px]:w-7 sm:h-10 sm:w-10" />
               ) : (
-                <FlagIcon double={i === 1} className="h-7 w-7 shrink-0 text-white/85 sm:h-10 sm:w-10" />
+                <FlagIcon double={i === 1} className="h-6 w-6 shrink-0 text-white/85 min-[400px]:h-7 min-[400px]:w-7 sm:h-10 sm:w-10" />
               )}
               <span className="min-w-0 leading-tight">
-                <span className="block font-menu text-[1.05rem] font-bold sm:text-[1.25rem]">{d.label}</span>
-                <span className="block font-menu text-[0.95rem] font-medium text-white/90 sm:text-[1.1rem]">{d.value} km</span>
-                <span className="block text-[0.7rem] text-white/65 sm:text-[0.8rem]">{d.hint}</span>
+                <span className="block font-menu text-[0.95rem] font-bold min-[400px]:text-[1.05rem] sm:text-[1.25rem]">{d.label}</span>
+                <span className="block whitespace-nowrap font-menu text-[0.88rem] font-medium text-white/90 min-[400px]:text-[0.95rem] sm:text-[1.1rem]">{d.value} km</span>
+                <span className="block whitespace-nowrap text-[0.66rem] text-white/65 min-[400px]:text-[0.7rem] sm:text-[0.8rem]">{d.hint}</span>
               </span>
             </button>
           ))}

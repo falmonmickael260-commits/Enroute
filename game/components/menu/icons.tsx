@@ -135,26 +135,6 @@ export function ChevronRightIcon(props: IconProps) {
   );
 }
 
-export function GlobeIcon(props: IconProps) {
-  return (
-    <svg {...base(props)} strokeWidth={1.5}>
-      <circle cx="12" cy="12" r="9.5" />
-      <ellipse cx="12" cy="12" rx="4.2" ry="9.5" />
-      <path d="M2.5 12h19M4 7h16M4 17h16" />
-    </svg>
-  );
-}
-
-export function PhoneIcon(props: IconProps) {
-  return (
-    <svg {...base(props)} strokeWidth={1.6}>
-      <rect x="7" y="2.5" width="10" height="19" rx="2.2" fill="currentColor" fillOpacity={0.15} />
-      <path d="M10.5 4.6h3M11 19h2" />
-      <path d="M3.6 8.5c-1 2-1 5 0 7M20.4 8.5c1 2 1 5 0 7" strokeWidth={1.3} opacity={0.7} />
-    </svg>
-  );
-}
-
 export function MapIcon(props: IconProps) {
   return (
     <svg {...base(props)} strokeWidth={1.7}>
@@ -179,23 +159,6 @@ export function SunIcon(props: IconProps) {
     <svg {...base(props)} strokeWidth={2}>
       <circle cx="12" cy="12" r="4.4" fill="currentColor" />
       <path d="M12 1.8v2.6M12 19.6v2.6M1.8 12h2.6M19.6 12h2.6M4.8 4.8l1.8 1.8M17.4 17.4l1.8 1.8M4.8 19.2l1.8-1.8M17.4 6.6l1.8-1.8" />
-    </svg>
-  );
-}
-
-export function SunsetIcon(props: IconProps) {
-  return (
-    <svg {...base(props)} strokeWidth={2}>
-      <path d="M6.5 17a5.5 5.5 0 0 1 11 0Z" fill="currentColor" />
-      <path d="M12 5.5v2.4M4.4 9.4l1.7 1.7M19.6 9.4l-1.7 1.7M1.8 17h2.4M19.8 17h2.4M3 20.5h18" />
-    </svg>
-  );
-}
-
-export function MoonIcon(props: IconProps) {
-  return (
-    <svg {...base(props)} stroke="none" fill="currentColor">
-      <path d="M14.8 2.6a9.6 9.6 0 1 0 6.6 15.2A8 8 0 0 1 14.8 2.6Z" />
     </svg>
   );
 }
