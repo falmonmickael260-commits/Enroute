@@ -43,9 +43,9 @@ export function HomeTopBar() {
             <button aria-label="Fermer les réglages" className="fixed inset-0 z-30 cursor-default" onClick={() => setOpen(false)} />
             <motion.div
               className="menu-panel absolute right-0 top-[3.8rem] z-40 w-64 p-4"
-              initial={{ opacity: 0, y: -8, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: -8, scale: 0.96 }}
+              initial={{ opacity: 0, scale: 0.96 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.96 }}
               transition={{ duration: 0.18 }}
             >
               <p className="menu-label !mb-3 !text-base">Réglages</p>
