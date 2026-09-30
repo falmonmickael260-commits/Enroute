@@ -8,6 +8,7 @@ import { Logo } from "@/game/components/ui/Logo";
 import { useBootDone } from "@/game/components/animations/BootLoader";
 import { MenuBackdrop } from "@/game/components/menu/MenuBackdrop";
 import { HomeTopBar } from "@/game/components/menu/HomeTopBar";
+import { LEGAL, LEGAL_READY } from "@/game/lib/brand/legal";
 import { BookIcon, CardsIcon, CartIcon, ChartIcon, MedalIcon, PlayIcon, TrophyIcon, UsersIcon } from "@/game/components/menu/icons";
 
 type Icon = ComponentType<SVGProps<SVGSVGElement>>;
@@ -111,6 +112,17 @@ export default function Home() {
                 </button>
               ))}
             </div>
+            <p className="home-legal mt-1.5 text-center font-hud text-[0.68rem] font-semibold text-white/60 [text-shadow:0_1px_2px_rgba(0,0,0,0.8)]">
+              © {LEGAL.year} KILOMAX · Tous droits réservés
+              {LEGAL_READY ? (
+                <>
+                  {" · "}
+                  <Link href="/mentions-legales" className="underline underline-offset-2 hover:text-white">
+                    Mentions légales
+                  </Link>
+                </>
+              ) : null}
+            </p>
           </motion.div>
         </nav>
       </div>

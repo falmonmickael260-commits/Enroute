@@ -108,6 +108,13 @@ body {
   overscroll-behavior: none;
 }
 
+/* pictures can't be dragged off or long-pressed to save (iOS) */
+img {
+  -webkit-user-drag: none;
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+
 ::selection {
   background: var(--color-brand-crimson);
   color: white;
@@ -213,7 +220,7 @@ body {
   /* The KILOMAX logo on the table: transparent, straight over the wood. */
   .table-logo {
     position: absolute;
-    top: calc(var(--logo-band) * 0.1);
+    top: calc(var(--logo-band) * 0.1 + env(safe-area-inset-top));
     left: 0;
     right: 0;
     margin-inline: auto;
@@ -299,7 +306,7 @@ body {
 
   /* ---------- Game screen: always fits the viewport, never scrolls ---------- */
   .game-header {
-    height: var(--logo-band);
+    height: calc(var(--logo-band) + env(safe-area-inset-top));
   }
   .game-middle {
     display: flex;

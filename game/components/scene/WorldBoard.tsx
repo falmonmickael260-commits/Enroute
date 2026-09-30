@@ -8,6 +8,9 @@ import { WorldStage } from "./WorldStage";
 import { CAR_PAINT, pushState } from "./sceneSync";
 import type { Shot } from "./stage";
 import styles from "./scene.module.css";
+import { CardArt } from "@/game/components/cards/CardArt";
+import { getCardDef } from "@/game/lib/engine/cardCatalog";
+import { hazardLabel } from "@/game/lib/engine/rules";
 
 /** How long the camera stays on an action after it's over, before pulling back. */
 const HOLD_MS = 900;
@@ -35,6 +38,7 @@ export function WorldBoard({
   const rendererRef = useRef<SceneRenderer | null>(null);
   const stateRef = useRef(state);
   const labelRefs = useRef(new Map<string, HTMLDivElement>());
+  const widthRef = useRef(0);
 
   useEffect(() => {
     if (!canvas) return;
@@ -57,17 +61,19 @@ export function WorldBoard({
           continue;
         }
         const scale = Math.max(0.6, Math.min(1, p.size / 70));
-        const w = 120 * scale;
-        const h = 40 * scale;
+        const w = (el.offsetWidth || 120) * scale;
+        const h = (el.offsetHeight || 40) * scale;
+        // keep the whole label on screen, even when its car is near an edge
+        const x = widthRef.current > w + 12 ? Math.min(widthRef.current - w / 2 - 6, Math.max(w / 2 + 6, p.x)) : p.x;
         let y = p.y - p.size * 0.55;
         for (let guard = 0; guard < 6; guard++) {
-          const hit = placed.find((q) => Math.abs(q.x - p.x) < (q.w + w) / 2 && Math.abs(q.y - y) < (q.h + h) / 2);
+          const hit = placed.find((q) => Math.abs(q.x - x) < (q.w + w) / 2 && Math.abs(q.y - y) < (q.h + h) / 2);
           if (!hit) break;
           y = hit.y - (hit.h + h) / 2 - 2;
         }
-        placed.push({ x: p.x, y, w, h });
+        placed.push({ x, y, w, h });
         el.style.opacity = "1";
-        el.style.transform = `translate(${p.x}px, ${y}px) translate(-50%, -100%) scale(${scale})`;
+        el.style.transform = `translate(${x}px, ${y}px) translate(-50%, -100%) scale(${scale})`;
         el.dataset.active = p.active ? "1" : "0";
       }
     };
@@ -80,6 +86,7 @@ export function WorldBoard({
 
   useEffect(() => {
     if (!box.width || !box.height) return;
+    widthRef.current = box.width;
     const dpr = Math.min(window.devicePixelRatio || 1, 1.75);
     rendererRef.current?.resize(box.width, box.height, dpr, bottomInset);
   }, [box.width, box.height, bottomInset, canvas]);
@@ -133,7 +140,17 @@ export function WorldBoard({
           className={`${styles.label} pointer-events-none absolute left-0 top-0 origin-bottom`}
           style={{ ["--car" as string]: CAR_PAINT[p.color], opacity: 0 }}
         >
-          <span className={styles.labelName}>{p.name || `Joueur ${i + 1}`}</span>
+          <span className={styles.labelName}>
+            {p.name || `Joueur ${i + 1}`}
+            {/* what stops or slows this car, readable from the road */}
+            {p.hazard ? (
+              <span className={styles.labelHazard} title={hazardLabel(p.hazard)}>
+                <CardArt def={getCardDef(p.hazard)} />
+              </span>
+            ) : p.limited ? (
+              <span className={styles.labelRadar}>50</span>
+            ) : null}
+          </span>
           <span className={styles.labelArrow} />
         </div>
       ))}

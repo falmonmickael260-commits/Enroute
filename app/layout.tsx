@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Bebas_Neue, Rajdhani, Barlow_Condensed } from "next/
 import "./globals.css";
 import "@/game/components/menu/menu.css";
 import { BootLoader } from "@/game/components/animations/BootLoader";
+import { ImageGuard } from "@/game/components/ui/ImageGuard";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -71,6 +72,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       <body className="min-h-full flex flex-col bg-[var(--color-asphalt-900)] text-[var(--color-paper)]">
         {children}
         <BootLoader />
+        <ImageGuard />
       </body>
     </html>
   );

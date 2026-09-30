@@ -76,6 +76,30 @@
   white-space: nowrap;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
+.labelName {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+.labelHazard {
+  display: block;
+  width: 28px;
+  height: 28px;
+  padding: 3px;
+  border-radius: 7px;
+  background: #e0342c;
+  color: #fff;
+  box-shadow: 0 0 10px rgba(224, 52, 44, 0.7);
+}
+.labelRadar {
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 3px solid #e0342c;
+  background: #fff;
+  color: #14161c;
+  font-size: 17px;
+  line-height: 1.2;
+}
 .labelArrow {
   width: 0;
   height: 0;

@@ -17,6 +17,7 @@ import { SceneBoard } from "./SceneBoard";
 import { WorldBoard } from "./WorldBoard";
 import { CAR_PAINT } from "./sceneSync";
 import { SceneHand } from "./SceneHand";
+import { PlayerStatus } from "./PlayerStatus";
 import type { SceneDef } from "./scenePath";
 
 const SOUND = {
@@ -99,7 +100,7 @@ export function SceneTable({
 
         {/* top: players · logo · turn */}
         <div className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-black/45 via-black/15 to-transparent pb-10">
-          <div className="flex items-start justify-between gap-2 px-2.5 pt-2.5">
+          <div className="flex items-start justify-between gap-2 px-2.5 pt-[max(0.625rem,env(safe-area-inset-top))]">
             <div className="pointer-events-auto flex w-[46%] max-w-[16rem] flex-col gap-1.5">
               {state.players.map((p, i) => {
                 const active = p.id === current.id && !over;
@@ -108,30 +109,33 @@ export function SceneTable({
                   <div
                     key={p.id}
                     className={clsx(
-                      "flex items-center gap-2 rounded-xl border px-2 py-1 backdrop-blur-md transition-all",
+                      "flex flex-col gap-1 rounded-xl border px-2 py-1 backdrop-blur-md transition-all",
                       active ? "border-white/60 bg-[#12305c]/85 shadow-[0_0_18px_rgba(80,160,255,0.55)]" : "border-white/10 bg-black/45",
                       offline && "opacity-60",
                     )}
                   >
-                    <span
-                      className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-display text-sm text-white shadow-[inset_0_-2px_0_rgba(0,0,0,0.3)]"
-                      style={{ background: CAR_PAINT[p.color] }}
-                    >
-                      {i + 1}
-                    </span>
-                    <span className="min-w-0 flex-1 truncate font-hud text-sm font-bold">
-                      {p.name}
-                      {p.id === viewerId ? <span className="ml-1 font-semibold text-white/50">(vous)</span> : null}
-                    </span>
-                    {offline ? (
-                      <span className="font-hud text-[0.55rem] font-bold uppercase tracking-wider text-[#ff8a7e]">Hors ligne</span>
-                    ) : (
-                      <span className="font-display text-lg leading-none text-[#ffd23f] drop-shadow">
-                        {p.distance}
-                        <span className="ml-0.5 text-[0.65em] text-white/70">km</span>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full font-display text-sm text-white shadow-[inset_0_-2px_0_rgba(0,0,0,0.3)]"
+                        style={{ background: CAR_PAINT[p.color] }}
+                      >
+                        {i + 1}
                       </span>
-                    )}
-                    {p.distance === leaderKm && leaderKm > 0 && !offline ? <span className="text-xs">👑</span> : null}
+                      <span className="min-w-0 flex-1 truncate font-hud text-sm font-bold">
+                        {p.name}
+                        {p.id === viewerId ? <span className="ml-1 font-semibold text-white/50">(vous)</span> : null}
+                      </span>
+                      {offline ? (
+                        <span className="font-hud text-[0.55rem] font-bold uppercase tracking-wider text-[#ff8a7e]">Hors ligne</span>
+                      ) : (
+                        <span className="font-display text-lg leading-none text-[#ffd23f] drop-shadow">
+                          {p.distance}
+                          <span className="ml-0.5 text-[0.65em] text-white/70">km</span>
+                        </span>
+                      )}
+                      {p.distance === leaderKm && leaderKm > 0 && !offline ? <span className="text-xs">👑</span> : null}
+                    </div>
+                    <PlayerStatus player={p} compact />
                   </div>
                 );
               })}
@@ -171,7 +175,7 @@ export function SceneTable({
         {/* bottom: piles and the hand */}
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/55 to-transparent pt-10">
           {notice ? <div className="pointer-events-none relative z-[55] mb-1 flex justify-center px-3">{notice}</div> : null}
-          <div ref={handRef}>
+          <div ref={handRef} className="pb-[env(safe-area-inset-bottom)]">
             <SceneHand
               middle={
                 !scene && !over ? (
@@ -206,7 +210,7 @@ export function SceneTable({
           <motion.div
             key={currentEvent.id}
             // up top, under the players: the middle of the screen is where the action is
-            className="pointer-events-none fixed inset-x-0 top-[7.5rem] z-40 flex justify-center px-6"
+            className="pointer-events-none fixed inset-x-0 top-[calc(8.5rem+env(safe-area-inset-top))] z-40 flex justify-center px-6"
             initial={{ opacity: 0, scale: 0.8, y: -16 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: -12 }}

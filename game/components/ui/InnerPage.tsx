@@ -3,6 +3,7 @@ import Link from "next/link";
 import clsx from "clsx";
 import { MenuBackdrop } from "@/game/components/menu/MenuBackdrop";
 import { ArrowLeftIcon, FlagIcon } from "@/game/components/menu/icons";
+import { LEGAL, LEGAL_READY } from "@/game/lib/brand/legal";
 import { Logo } from "./Logo";
 
 /** Menu page: the KILOMAX picture behind, the logo on top, a carbon panel with a gold edge. */
@@ -24,7 +25,7 @@ export function InnerPage({
   return (
     <main className="relative isolate min-h-dvh text-[var(--color-paper)]">
       <MenuBackdrop variant="inner" />
-      <div className={clsx("relative z-10 mx-auto flex min-h-dvh w-full flex-col px-3.5 pb-8 pt-3 sm:px-5", wide ? "max-w-4xl" : "max-w-xl")}>
+      <div className={clsx("relative z-10 mx-auto flex min-h-dvh w-full flex-col px-3.5 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-5", wide ? "max-w-4xl" : "max-w-xl")}>
         {/* back · logo · (balance) — the logo never runs under the button */}
         <header className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-start gap-1 sm:gap-3">
           <Link href={backHref} className="menu-back">
@@ -52,6 +53,17 @@ export function InnerPage({
           ) : null}
           {children}
         </div>
+        <p className="mt-5 text-center font-hud text-[0.7rem] font-semibold text-white/60 [text-shadow:0_1px_2px_rgba(0,0,0,0.8)]">
+          © {LEGAL.year} KILOMAX · Tous droits réservés
+          {LEGAL_READY ? (
+            <>
+              {" · "}
+              <Link href="/mentions-legales" className="underline underline-offset-2 hover:text-white">
+                Mentions légales
+              </Link>
+            </>
+          ) : null}
+        </p>
       </div>
     </main>
   );

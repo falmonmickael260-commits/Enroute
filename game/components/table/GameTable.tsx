@@ -87,9 +87,9 @@ export function GameTable({
   return (
     <main className="relative isolate h-dvh overflow-hidden text-[var(--color-paper)]">
       <TableBackdrop />
-      <div className="relative z-10 flex h-full flex-col">
+      <div className="relative z-10 flex h-full flex-col pb-[env(safe-area-inset-bottom)]">
         {/* The top band is left clear: it's where the KILOMAX logo sits on the table. */}
-        <header className="game-header flex shrink-0 items-start justify-between gap-3 px-3 pt-3 sm:px-5">
+        <header className="game-header flex shrink-0 items-start justify-between gap-3 px-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-5">
           <div className="flex items-center gap-2">
             <div className="panel-leather hidden rounded-full px-3 py-1.5 font-hud text-[0.68rem] font-semibold uppercase tracking-[0.18em] text-white/70 sm:block">
               {state.id} · Tour {state.turn}
