@@ -11,6 +11,8 @@ const COLOR_VAR: Record<PlayerState["color"], string> = {
   azure: "var(--color-player-azure)",
   amber: "var(--color-player-amber)",
   emerald: "var(--color-player-emerald)",
+  violet: "var(--color-player-violet)",
+  rose: "var(--color-player-rose)",
 };
 
 export function TargetPicker({

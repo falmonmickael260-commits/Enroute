@@ -10,6 +10,7 @@ import { InnerPage, SectionLabel } from "@/game/components/ui/InnerPage";
 import { createOnlineRoom } from "@/game/lib/online/actions";
 import { OnlineError } from "@/game/lib/online/api";
 import { setBoardView, useBoardView } from "@/game/lib/store/boardViewStore";
+import { MAX_PLAYERS } from "@/game/lib/engine/deck";
 import {
   ChevronRightIcon,
   FlagIcon,
@@ -36,9 +37,9 @@ const BOARDS = [
 ] as const;
 
 const DURATIONS: { label: string; value: number; hint: string }[] = [
-  { label: "Courte", value: 400, hint: "~ 15 min" },
-  { label: "Standard", value: 700, hint: "~ 25 min" },
-  { label: "Longue", value: 1000, hint: "~ 40 min" },
+  { label: "Courte", value: 700, hint: "~ 25 min" },
+  { label: "Standard", value: 1000, hint: "~ 40 min" },
+  { label: "Longue", value: 1500, hint: "~ 60 min" },
 ];
 
 export default function CreateGamePage() {
@@ -46,7 +47,7 @@ export default function CreateGamePage() {
   const createLocalGame = useSetupStore((s) => s.createLocalGame);
 
   const [playerCount, setPlayerCount] = useState(2);
-  const [names, setNames] = useState<string[]>(["Joueur 1", "Joueur 2", "Joueur 3", "Joueur 4"]);
+  const [names, setNames] = useState<string[]>(["Joueur 1", "Joueur 2", "Joueur 3", "Joueur 4", "Joueur 5", "Joueur 6"]);
   const [ambiance, setAmbiance] = useState<AmbianceId>("jour");
   const [target, setTarget] = useState(1000);
   const [mode, setMode] = useState<Mode>("online");
@@ -107,8 +108,9 @@ export default function CreateGamePage() {
       {mode === "local" ? (
         <section>
           <SectionLabel icon={<UsersIcon />}>Nombre de joueurs</SectionLabel>
-          <div className="grid grid-cols-3 gap-2.5 sm:gap-3">
-            {[2, 3, 4].map((n) => (
+          <div className="grid grid-cols-5 gap-2.5 sm:gap-3">
+            {/* de 2 à MAX_PLAYERS pilotes sur le même appareil */}
+            {Array.from({ length: MAX_PLAYERS - 1 }, (_, i) => i + 2).map((n) => (
               <button key={n} onClick={() => setPlayerCount(n)} aria-pressed={playerCount === n} className="menu-option py-2.5 text-center font-menu text-3xl font-extrabold italic">
                 {n}
               </button>
@@ -187,7 +189,7 @@ export default function CreateGamePage() {
         <ChevronRightIcon className="h-[0.9em] w-[0.9em] shrink-0" />
       </button>
       {mode === "online" ? (
-        <p className="-mt-2 text-center text-[0.8rem] text-white/60">Vos amis rejoignent avec le code ou le lien, de 2 à 4 pilotes.</p>
+        <p className="-mt-2 text-center text-[0.8rem] text-white/60">Vos amis rejoignent avec le code ou le lien, de 2 à {MAX_PLAYERS} pilotes.</p>
       ) : null}
     </InnerPage>
   );

@@ -41,7 +41,11 @@ export interface Stage {
   readonly castShadows: boolean;
   init(renderer: THREE.WebGLRenderer, scene: THREE.Scene): void;
   resize(width: number, height: number, bottomInset: number): void;
-  place(km: number, target: number, lateral: number): Placement;
+  /**
+   * Pose of a car at `km`. `lateral` shifts it across the road and `along`
+   * along the road (negative = further back), both in car lengths.
+   */
+  place(km: number, target: number, lateral: number, along?: number): Placement;
   finish(target: number): Placement;
   /** Which side (±1 along the car's local x) faces the middle of the view. */
   sideTowardView(position: THREE.Vector3, yaw: number): number;

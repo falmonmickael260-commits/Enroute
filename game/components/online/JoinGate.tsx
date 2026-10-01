@@ -6,6 +6,7 @@ import { AMBIANCES } from "@/game/lib/ambiances";
 import { OnlineError, roomInfo, type RoomPreview } from "@/game/lib/online/api";
 import { joinOnlineRoom } from "@/game/lib/online/actions";
 import { PLAYER_COLOR } from "@/game/components/players/PlayerPiece";
+import { MAX_PLAYERS } from "@/game/lib/engine/deck";
 import { InnerPage, SectionLabel } from "@/game/components/ui/InnerPage";
 
 /** Shown to someone opening an invite link without a seat in the room yet. */
@@ -64,7 +65,7 @@ export function JoinGate({ code, defaultName }: { code: string; defaultName: str
     );
   }
 
-  const open = preview.status === "lobby" && preview.players.length < 4;
+  const open = preview.status === "lobby" && preview.players.length < MAX_PLAYERS;
 
   return (
     <InnerPage backHref="/" backLabel="Accueil" title="Rejoindre">
@@ -107,7 +108,7 @@ export function JoinGate({ code, defaultName }: { code: string; defaultName: str
         </>
       ) : (
         <p className="text-center text-white/70">
-          {preview.status === "lobby" ? "Cette partie est complète (4 pilotes)." : "Cette partie a déjà commencé sans vous."}
+          {preview.status === "lobby" ? "Cette partie est complète ({MAX_PLAYERS} pilotes)." : "Cette partie a déjà commencé sans vous."}
         </p>
       )}
     </InnerPage>

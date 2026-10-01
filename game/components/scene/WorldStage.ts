@@ -692,9 +692,10 @@ export class WorldStage implements Stage {
     this.camera.updateProjectionMatrix();
   }
 
-  place(km: number, target: number, lateral: number): Placement {
+  place(km: number, target: number, lateral: number, along = 0): Placement {
     if (target !== this.finishTarget) this.buildSigns(target);
-    const { point, forward, right } = this.road.at(this.road.kmToLen(km, target));
+    // une longueur de voiture vaut 1 unité du monde : on recule le long de la route
+    const { point, forward, right } = this.road.at(this.road.kmToLen(km, target) + along);
     const position = point.clone().addScaledVector(right, lateral * 1.0);
     position.y += 0.04;
     return { position, yaw: Math.atan2(forward.x, forward.z), scale: 1 };

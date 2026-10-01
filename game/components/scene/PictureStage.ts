@@ -35,14 +35,19 @@ export class PictureStage implements Stage {
 
   resize() {}
 
-  place(km: number, target: number, lateral: number): Placement {
+  place(km: number, target: number, lateral: number, along = 0): Placement {
     const p = this.path.atKm(km, target);
     const size = p.s * CAR_SIZE;
     // ground direction of travel: undo the vertical squash of the painting
     const gx = p.tx;
     const gz = p.ty / this.sinP;
     const gl = Math.hypot(gx, gz) || 1;
-    const position = new THREE.Vector3(p.x + (-gz / gl) * lateral * size, 0, p.y / this.sinP + (gx / gl) * lateral * size);
+    // décalage latéral (perpendiculaire) puis longitudinal (dans l'axe de la route)
+    const position = new THREE.Vector3(
+      p.x + ((-gz * lateral + gx * along) / gl) * size,
+      0,
+      p.y / this.sinP + ((gx * lateral + gz * along) / gl) * size,
+    );
     return { position, yaw: Math.atan2(gx, gz), scale: size };
   }
 

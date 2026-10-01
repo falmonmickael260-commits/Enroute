@@ -12,6 +12,8 @@ export const PLAYER_COLOR: Record<PlayerState["color"], string> = {
   azure: "var(--color-player-azure)",
   amber: "var(--color-player-amber)",
   emerald: "var(--color-player-emerald)",
+  violet: "var(--color-player-violet)",
+  rose: "var(--color-player-rose)",
 };
 
 const PAINT: Record<PlayerState["color"], [string, string, string]> = {
@@ -19,6 +21,8 @@ const PAINT: Record<PlayerState["color"], [string, string, string]> = {
   azure: ["#173f73", "#3e8fe0", "#9fd0ff"],
   amber: ["#7a4f0f", "#e0a93e", "#ffe29e"],
   emerald: ["#135733", "#3eab6f", "#9eeac0"],
+  violet: ["#43237a", "#8e5ae0", "#cfb3ff"],
+  rose: ["#7a1f55", "#e05aa8", "#ffb3dd"],
 };
 
 export function PieceDefs() {
