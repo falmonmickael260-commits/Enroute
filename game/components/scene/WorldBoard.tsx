@@ -49,7 +49,7 @@ export function WorldBoard({
 
   useEffect(() => {
     if (!canvas) return;
-    const renderer = new SceneRenderer(canvas, new WorldStage());
+    const renderer = new SceneRenderer(canvas, new WorldStage(stateRef.current.ambiance));
     rendererRef.current = renderer;
     let shown = false;
     renderer.onFrame = (positions: Map<string, CarScreenPos>) => {

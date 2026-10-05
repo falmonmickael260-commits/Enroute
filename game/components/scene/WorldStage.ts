@@ -1,5 +1,6 @@
 import * as THREE from "three";
 import type { Placement, ScreenPoint, Shot, Stage, StageCar } from "./stage";
+import type { AmbianceId } from "@/game/types/game";
 
 /**
  * A small Mediterranean coast built in 3D: a winding road with red and white
@@ -266,15 +267,15 @@ function signTexture(text: string, finish = false) {
   );
 }
 
-const skyTexture = () =>
+const skyTexture = ([top, middle, horizon]: readonly [string, string, string]) =>
   canvasTexture(
     2,
     256,
     (g) => {
       const grad = g.createLinearGradient(0, 0, 0, 256);
-      grad.addColorStop(0, "#2f86dc");
-      grad.addColorStop(0.55, "#8cc6ee");
-      grad.addColorStop(1, "#dceff8");
+      grad.addColorStop(0, top);
+      grad.addColorStop(0.55, middle);
+      grad.addColorStop(1, horizon);
       g.fillStyle = grad;
       g.fillRect(0, 0, 2, 256);
     },
@@ -382,19 +383,116 @@ const mat4 = (x: number, y: number, z: number, sx: number, sy: number, sz: numbe
 const BEHIND = { polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 4 } as const;
 const IN_FRONT = { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 } as const;
 
-/** Where the sun shines from, relative to what the camera looks at; and its axes. */
-const SUN_OFFSET = new THREE.Vector3(-26, 40, 18);
-const SUN_TO_WORLD = new THREE.Matrix4().lookAt(SUN_OFFSET, new THREE.Vector3(), new THREE.Vector3(0, 1, 0));
-const SUN_FROM_WORLD = SUN_TO_WORLD.clone().transpose();
 const SUN_SNAP = new THREE.Vector3();
+
+/** How the coast looks at each time of day (the ambiance picked for the game). */
+interface Look {
+  sky: readonly [string, string, string];
+  fog: readonly [string, number, number];
+  hemi: readonly [string, string, number];
+  /** Sun (or moon): colour, intensity, where it shines from relative to the view. */
+  sun: readonly [string, number, readonly [number, number, number]];
+  exposure: number;
+  env: number;
+  sea: string;
+  shallows: string;
+  glints: readonly [string, number];
+  clouds: readonly [string, number];
+  /** Street lamps, windows and headlights: 0 = off (day) … 1 = full night. */
+  lights: number;
+  /** A disc in the sky where the light comes from: the low sun or the moon. */
+  disc: readonly [string, number] | null;
+  stars: boolean;
+}
+
+const LOOKS: Record<AmbianceId, Look> = {
+  jour: {
+    sky: ["#2f86dc", "#8cc6ee", "#dceff8"],
+    fog: ["#cfe6f2", 70, 320],
+    hemi: ["#dcecff", "#6f7a45", 0.85],
+    sun: ["#ffe7c4", 2.3, [-26, 40, 18]],
+    exposure: 0.95,
+    env: 0.35,
+    sea: "#16a2c9",
+    shallows: "#5fd4d8",
+    glints: ["#ffffff", 0.55],
+    clouds: ["#ffffff", 0.35],
+    lights: 0,
+    disc: null,
+    stars: false,
+  },
+  crepuscule: {
+    sky: ["#3b3f7c", "#e88a6c", "#ffc98e"],
+    fog: ["#eea283", 60, 280],
+    hemi: ["#ffd3b4", "#4e4038", 0.6],
+    sun: ["#ffad66", 2.2, [42, 15, -40]],
+    exposure: 0.95,
+    env: 0.22,
+    sea: "#3a8fb8",
+    shallows: "#6fc2c6",
+    glints: ["#ffc890", 1],
+    clouds: ["#ffc2a8", 0.45],
+    lights: 0.5,
+    disc: ["#ffd08a", 26],
+    stars: false,
+  },
+  nuit: {
+    sky: ["#040817", "#0e1b3d", "#26365f"],
+    fog: ["#111b38", 45, 240],
+    hemi: ["#4a62a6", "#141a28", 0.95],
+    sun: ["#b4c6ff", 1.15, [-22, 30, -42]],
+    exposure: 1.15,
+    env: 0.04,
+    sea: "#123a5e",
+    shallows: "#1d5670",
+    glints: ["#cfdcff", 0.3],
+    clouds: ["#59627e", 0.04],
+    lights: 1,
+    disc: ["#f6f2de", 10],
+    stars: true,
+  },
+};
+
+/** A soft round glow (for light pools, halos, headlight beams). */
+const glowTexture = (falloff = 1) =>
+  canvasTexture(
+    64,
+    64,
+    (g) => {
+      const grad = g.createRadialGradient(32, 32, 0, 32, 32, 32);
+      grad.addColorStop(0, "rgba(255,255,255,1)");
+      grad.addColorStop(0.35 * falloff, "rgba(255,255,255,0.45)");
+      grad.addColorStop(1, "rgba(255,255,255,0)");
+      g.fillStyle = grad;
+      g.fillRect(0, 0, 64, 64);
+    },
+    false,
+  );
 
 // ---------------------------------------------------------------- the stage
 
 export class WorldStage implements Stage {
   readonly camera = new THREE.PerspectiveCamera(50, 1, 0.3, 700);
+  private readonly look: Look;
+  private readonly sunOffset: THREE.Vector3;
+  private readonly sunToWorld: THREE.Matrix4;
+  private readonly sunFromWorld: THREE.Matrix4;
+  /** Headlight beams and lamps, one set per car (night and dusk). */
+  private headlights = new Map<string, THREE.Group>();
+  /** Stars and the sun or moon disc: far away, they travel with the camera. */
+  private sky: THREE.Group | null = null;
+  private headlightParts: { beam: THREE.MeshBasicMaterial; lamp: THREE.SpriteMaterial; beamGeo: THREE.PlaneGeometry } | null = null;
+
+  constructor(ambiance: AmbianceId = "jour") {
+    this.look = LOOKS[ambiance] ?? LOOKS.jour;
+    this.sunOffset = new THREE.Vector3(...this.look.sun[2]);
+    this.sunToWorld = new THREE.Matrix4().lookAt(this.sunOffset, new THREE.Vector3(), new THREE.Vector3(0, 1, 0));
+    this.sunFromWorld = this.sunToWorld.clone().transpose();
+  }
+
   readonly castShadows = true;
   private readonly road = new Road();
-  private sun = new THREE.DirectionalLight("#ffe7c4", 2.3);
+  private sun = new THREE.DirectionalLight("#ffffff", 1);
   private width = 1;
   private height = 1;
   private virtualHeight = 1;
@@ -414,16 +512,19 @@ export class WorldStage implements Stage {
     this.scene = scene;
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFShadowMap;
-    const sky = skyTexture();
+    const look = this.look;
+    const sky = skyTexture(look.sky);
     scene.background = sky;
-    scene.fog = new THREE.Fog("#cfe6f2", 70, 320);
+    scene.fog = new THREE.Fog(look.fog[0], look.fog[1], look.fog[2]);
     this.disposables.push(sky);
 
     // the studio reflections are for the cars' paint; keep them off the landscape
-    scene.environmentIntensity = 0.35;
-    renderer.toneMappingExposure = 0.95;
-    scene.add(new THREE.HemisphereLight("#dcecff", "#6f7a45", 0.85));
-    this.sun.position.copy(SUN_OFFSET);
+    scene.environmentIntensity = look.env;
+    renderer.toneMappingExposure = look.exposure;
+    scene.add(new THREE.HemisphereLight(look.hemi[0], look.hemi[1], look.hemi[2]));
+    this.sun.color.set(look.sun[0]);
+    this.sun.intensity = look.sun[1];
+    this.sun.position.copy(this.sunOffset);
     this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(1024, 1024);
     const sc = this.sun.shadow.camera;
@@ -449,6 +550,7 @@ export class WorldStage implements Stage {
     this.buildGulls(scene);
     this.buildCelebration(scene);
     this.buildLighthouse(scene);
+    this.buildSky(scene);
   }
 
   // ------------------------------------------------------------ world building
@@ -515,7 +617,16 @@ export class WorldStage implements Stage {
     this.seaMaps = [ripples, glints];
     const sea = new THREE.Mesh(
       geo,
-      new THREE.MeshStandardMaterial({ color: "#16a2c9", map: ripples, emissive: "#ffffff", emissiveMap: glints, emissiveIntensity: 0.55, roughness: 0.12, metalness: 0.25, ...BEHIND }),
+      new THREE.MeshStandardMaterial({
+        color: this.look.sea,
+        map: ripples,
+        emissive: this.look.glints[0],
+        emissiveMap: glints,
+        emissiveIntensity: this.look.glints[1],
+        roughness: 0.12,
+        metalness: 0.25,
+        ...BEHIND,
+      }),
     );
     sea.position.set(120, SEA_LEVEL, -80);
     sea.receiveShadow = true;
@@ -523,7 +634,7 @@ export class WorldStage implements Stage {
     // lighter shallows along the shore
     const shallow = new THREE.Mesh(
       ribbonCoast(),
-      new THREE.MeshStandardMaterial({ color: "#5fd4d8", roughness: 0.2, transparent: true, opacity: 0.8 }),
+      new THREE.MeshStandardMaterial({ color: this.look.shallows, roughness: 0.2, transparent: true, opacity: 0.8 }),
     );
     shallow.position.y = SEA_LEVEL + 0.02;
     scene.add(shallow);
@@ -661,6 +772,7 @@ export class WorldStage implements Stage {
     const walls: { m: THREE.Matrix4; c: THREE.Color }[] = [];
     const roofs: { m: THREE.Matrix4; c: THREE.Color }[] = [];
     const boats: { m: THREE.Matrix4 }[] = [];
+    const houses: { x: number; y: number; z: number; w: number; h: number; d: number; yaw: number }[] = [];
 
     const free = (x: number, z: number, margin: number) => {
       if (x > coastX(z) - 1.2) return false;
@@ -686,6 +798,7 @@ export class WorldStage implements Stage {
         const h = 1.3 + (r() < 0.4 ? 1.1 : 0) + r() * 0.4;
         const yaw = r() * Math.PI;
         walls.push({ m: mat4(x, y + h / 2, z, w, h, d, yaw), c: new THREE.Color().setHSL(0.09 + r() * 0.03, 0.45 + r() * 0.2, 0.8 + r() * 0.08) });
+        houses.push({ x, y, z, w, h, d, yaw });
         roofs.push({ m: mat4(x, y + h + 0.42, z, w * 0.78, 0.85, d * 0.78, yaw + Math.PI / 4), c: new THREE.Color().setHSL(0.04 + r() * 0.02, 0.6, 0.45 + r() * 0.1) });
         if (r() < 0.5) bushes.push({ m: mat4(x + w * 0.7, y + 0.35, z + 0.4, 0.7, 0.6, 0.7), c: new THREE.Color("#d9468f") });
       }
@@ -737,6 +850,33 @@ export class WorldStage implements Stage {
     add(new THREE.IcosahedronGeometry(0.6, 1), new THREE.MeshStandardMaterial({ roughness: 0.9, flatShading: true }), bushes);
     add(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ roughness: 0.85 }), walls);
     add(new THREE.ConeGeometry(0.72, 1, 4), new THREE.MeshStandardMaterial({ roughness: 0.8, flatShading: true }), roofs);
+
+    // lit windows after dark
+    if (this.look.lights > 0) {
+      const lit = rng(808);
+      const windows: { m: THREE.Matrix4 }[] = [];
+      for (const hs of houses) {
+        const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, hs.yaw, 0));
+        for (const [lx, lz, face] of [
+          [-0.22, 0.5, 0],
+          [0.22, 0.5, 0],
+          [-0.22, -0.5, Math.PI],
+          [0.5, 0.15, Math.PI / 2],
+          [-0.5, -0.15, -Math.PI / 2],
+        ] as const) {
+          if (lit() > 0.55 * this.look.lights + 0.1) continue;
+          const local = new THREE.Vector3(Math.abs(lx) === 0.5 ? lx * hs.w + Math.sign(lx) * 0.01 : lx * hs.w, hs.h * 0.6, Math.abs(lz) === 0.5 ? lz * hs.d + Math.sign(lz) * 0.01 : lz * hs.d).applyQuaternion(q);
+          windows.push({
+            m: new THREE.Matrix4().compose(
+              local.add(new THREE.Vector3(hs.x, hs.y, hs.z)),
+              new THREE.Quaternion().setFromEuler(new THREE.Euler(0, hs.yaw + face, 0)),
+              new THREE.Vector3(0.28, 0.36, 1),
+            ),
+          });
+        }
+      }
+      add(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: "#ffcf73", side: THREE.DoubleSide }), windows, false);
+    }
 
     // boat = hull + sail
     const hull = new THREE.BoxGeometry(0.6, 0.25, 1.8);
@@ -876,7 +1016,27 @@ export class WorldStage implements Stage {
     const lampMetal = new THREE.MeshStandardMaterial({ color: "#3b4048", metalness: 0.6, roughness: 0.35 });
     add(new THREE.CylinderGeometry(0.5, 0.6, 1, 6), lampMetal, lampPoles);
     add(new THREE.BoxGeometry(1, 1, 1), lampMetal.clone(), lampArms);
-    add(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: "#fff3c4", emissive: "#ffd98a", emissiveIntensity: 0.6 }), lampHeads, false);
+    add(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: "#fff3c4", emissive: "#ffd98a", emissiveIntensity: 0.6 + this.look.lights * 3 }), lampHeads, false);
+    // after dark, each lamp lays a warm pool of light on the road
+    if (this.look.lights > 0) {
+      const glow = glowTexture();
+      const pool = new THREE.MeshBasicMaterial({
+        map: glow,
+        color: "#ffc874",
+        transparent: true,
+        opacity: 0.55 * this.look.lights,
+        blending: THREE.AdditiveBlending,
+        depthWrite: false,
+        ...IN_FRONT,
+      });
+      const pools = lampHeads.map(({ m }) => {
+        const at = new THREE.Vector3().setFromMatrixPosition(m);
+        const { y } = this.road.nearest(at.x, at.z);
+        return { m: new THREE.Matrix4().compose(new THREE.Vector3(at.x, y + 0.06, at.z), new THREE.Quaternion().setFromEuler(new THREE.Euler(-Math.PI / 2, 0, 0)), new THREE.Vector3(4.2, 4.2, 1)) };
+      });
+      add(new THREE.PlaneGeometry(1, 1), pool, pools, false);
+      this.disposables.push(glow);
+    }
     add(new THREE.DodecahedronGeometry(0.6, 0), new THREE.MeshStandardMaterial({ roughness: 0.95, flatShading: true }), rocks);
     add(new THREE.ConeGeometry(0.5, 1, 5), new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true }), tufts, false);
   }
@@ -890,6 +1050,7 @@ export class WorldStage implements Stage {
   private pennants: { base: THREE.Matrix4; phase: number }[] = [];
   private pennantMesh: THREE.InstancedMesh | null = null;
   private beacon: THREE.MeshStandardMaterial | null = null;
+  private beam: THREE.Group | null = null;
 
   /**
    * Start and finish feel like an event: bunting across the road and a few
@@ -997,6 +1158,23 @@ export class WorldStage implements Stage {
     const lamp = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.8, 12), new THREE.MeshStandardMaterial({ color: "#fff6c8", emissive: "#ffe9a0", emissiveIntensity: 1.2 }));
     lamp.position.y = 9;
     g.add(lamp);
+    // after dark the lamp sweeps the sea
+    if (this.look.lights > 0.8) {
+      const beam = new THREE.Group();
+      beam.position.y = 9;
+      const beamGeo = new THREE.ConeGeometry(1.2, 22, 16, 1, true);
+      beamGeo.rotateZ(Math.PI / 2);
+      beamGeo.translate(11, 0, 0);
+      const beamMat = new THREE.MeshBasicMaterial({ color: "#fff3c0", transparent: true, opacity: 0.09, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
+      for (const a of [0, Math.PI]) {
+        const b = new THREE.Mesh(beamGeo, beamMat);
+        b.rotation.y = a;
+        beam.add(b);
+      }
+      g.add(beam);
+      this.beam = beam;
+      this.disposables.push(beamGeo, beamMat);
+    }
     g.position.set(x, y, z);
     scene.add(g);
     this.beacon = lamp.material as THREE.MeshStandardMaterial;
@@ -1052,6 +1230,7 @@ export class WorldStage implements Stage {
       });
       this.pennantMesh.instanceMatrix.needsUpdate = true;
     }
+    if (this.beam) this.beam.rotation.y = s * 0.5;
     // the lighthouse flashes twice every few seconds
     if (this.beacon) {
       const f = s % 4;
@@ -1106,6 +1285,98 @@ export class WorldStage implements Stage {
     }
   }
 
+  /** Stars, and the low sun or the moon where the light comes from. */
+  private buildSky(scene: THREE.Scene) {
+    const look = this.look;
+    if (!look.stars && !look.disc) return;
+    const sky = new THREE.Group();
+    if (look.stars) {
+      const r = rng(99);
+      const pos: number[] = [];
+      for (let i = 0; i < 700; i++) {
+        const a = r() * Math.PI * 2;
+        const h = 0.08 + r() * 0.92; // above the horizon
+        const c = Math.sqrt(1 - h * h);
+        pos.push(Math.cos(a) * c * 600, h * 600, Math.sin(a) * c * 600);
+      }
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+      const mat = new THREE.PointsMaterial({ color: "#ffffff", size: 1.6, sizeAttenuation: false, fog: false, transparent: true, opacity: 0.85 });
+      sky.add(new THREE.Points(geo, mat));
+      this.disposables.push(geo, mat);
+    }
+    if (look.disc) {
+      const dir = this.sunOffset.clone().normalize();
+      const glow = glowTexture(0.6);
+      const disc = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow, color: look.disc[0], fog: false, depthWrite: false, transparent: true }));
+      disc.scale.setScalar(look.disc[1]);
+      disc.position.copy(dir).multiplyScalar(500);
+      const halo = new THREE.Sprite(new THREE.SpriteMaterial({ map: glow, color: look.disc[0], fog: false, depthWrite: false, transparent: true, opacity: 0.35, blending: THREE.AdditiveBlending }));
+      halo.scale.setScalar(look.disc[1] * 4);
+      halo.position.copy(disc.position);
+      sky.add(halo, disc);
+      this.disposables.push(glow, disc.material, halo.material);
+    }
+    sky.renderOrder = -1;
+    scene.add(sky);
+    this.sky = sky;
+  }
+
+  /** After dark, each car lights the road ahead of it. */
+  private updateHeadlights(cars: StageCar[]) {
+    if (!this.look.lights || !this.scene) return;
+    if (!this.headlightParts) {
+      const beamTex = canvasTexture(
+        32,
+        64,
+        (g) => {
+          const grad = g.createLinearGradient(0, 64, 0, 0);
+          grad.addColorStop(0, "rgba(255,255,255,0.9)");
+          grad.addColorStop(1, "rgba(255,255,255,0)");
+          g.fillStyle = grad;
+          g.beginPath();
+          g.moveTo(10, 64);
+          g.lineTo(22, 64);
+          g.lineTo(32, 0);
+          g.lineTo(0, 0);
+          g.closePath();
+          g.fill();
+        },
+        false,
+      );
+      const beamGeo = new THREE.PlaneGeometry(1.5, 3.2);
+      // lying on the road, bright end at the car, fading out ahead (+z is the car's forward)
+      beamGeo.rotateX(-Math.PI / 2);
+      beamGeo.rotateY(Math.PI);
+      beamGeo.translate(0, 0, 2.15);
+      this.headlightParts = {
+        beam: new THREE.MeshBasicMaterial({ map: beamTex, color: "#fff2cc", transparent: true, opacity: 0.45 * this.look.lights, blending: THREE.AdditiveBlending, depthWrite: false, ...IN_FRONT }),
+        lamp: new THREE.SpriteMaterial({ map: glowTexture(0.5), color: "#fff6dc", transparent: true, depthWrite: false, blending: THREE.AdditiveBlending }),
+        beamGeo,
+      };
+      this.disposables.push(beamTex, beamGeo, this.headlightParts.beam, this.headlightParts.lamp.map!, this.headlightParts.lamp);
+    }
+    const parts = this.headlightParts;
+    for (const car of cars) {
+      let g = this.headlights.get(car.id);
+      if (!g) {
+        g = new THREE.Group();
+        g.add(new THREE.Mesh(parts.beamGeo, parts.beam));
+        for (const side of [-1, 1]) {
+          const lamp = new THREE.Sprite(parts.lamp);
+          lamp.scale.setScalar(0.35);
+          lamp.position.set(side * 0.16, 0.16, 0.6);
+          g.add(lamp);
+        }
+        this.scene.add(g);
+        this.headlights.set(car.id, g);
+      }
+      g.position.copy(car.position);
+      g.position.y += 0.02;
+      g.rotation.y = car.yaw;
+    }
+  }
+
   private buildMountainsAndClouds(scene: THREE.Scene) {
     const r = rng(3);
     const mountains: { m: THREE.Matrix4; c: THREE.Color }[] = [];
@@ -1126,7 +1397,13 @@ export class WorldStage implements Stage {
     const mMesh = instanced(mGeo, mMat, mountains, false);
     scene.add(mMesh);
 
-    const cloudMat = new THREE.MeshStandardMaterial({ color: "#ffffff", roughness: 1, emissive: "#ffffff", emissiveIntensity: 0.35, fog: false });
+    const cloudMat = new THREE.MeshStandardMaterial({
+      color: this.look.clouds[0],
+      roughness: 1,
+      emissive: this.look.clouds[0],
+      emissiveIntensity: this.look.clouds[1],
+      fog: false,
+    });
     const puffs: { m: THREE.Matrix4 }[] = [];
     for (let i = 0; i < 9; i++) {
       const cx = -120 + r() * 260;
@@ -1378,10 +1655,12 @@ export class WorldStage implements Stage {
     // shadows follow what we look at, by whole shadow-map texels: moved by less,
     // their edges would shimmer while the camera glides
     const texel = (this.sun.shadow.camera.right - this.sun.shadow.camera.left) / this.sun.shadow.mapSize.x;
-    const p = SUN_SNAP.copy(this.camLook).applyMatrix4(SUN_FROM_WORLD);
-    p.set(Math.round(p.x / texel) * texel, Math.round(p.y / texel) * texel, p.z).applyMatrix4(SUN_TO_WORLD);
+    const p = SUN_SNAP.copy(this.camLook).applyMatrix4(this.sunFromWorld);
+    p.set(Math.round(p.x / texel) * texel, Math.round(p.y / texel) * texel, p.z).applyMatrix4(this.sunToWorld);
     this.sun.target.position.copy(p);
-    this.sun.position.copy(p).add(SUN_OFFSET);
+    this.sun.position.copy(p).add(this.sunOffset);
+    if (this.sky) this.sky.position.copy(this.camera.position);
+    this.updateHeadlights(cars);
     this.sun.target.updateMatrixWorld();
   }
 
