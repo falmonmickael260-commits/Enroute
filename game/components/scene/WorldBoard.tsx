@@ -26,12 +26,18 @@ export function WorldBoard({
   event,
   bottomInset = 0,
   overview = false,
+  intro = false,
+  onReady,
 }: {
   state: GameState;
   event: AnimationEvent | null;
   bottomInset?: number;
   /** Zoomed out over the whole road (the player's choice). */
   overview?: boolean;
+  /** The opening flyover is playing. */
+  intro?: boolean;
+  /** The world is on screen (first frame drawn). */
+  onReady?: () => void;
 }) {
   const [boxRef, box] = useElementSize<HTMLDivElement>();
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
@@ -107,7 +113,8 @@ export function WorldBoard({
     const renderer = rendererRef.current;
     if (!renderer) return;
     let shot: Shot | null = null;
-    if (over) shot = { kind: "finish" };
+    if (over) shot = { kind: "finish", winnerId: state.winnerId ?? undefined };
+    else if (intro) shot = { kind: "intro" };
     else if (overview) shot = { kind: "overview" };
     else if (event?.kind === "move") shot = { kind: "follow", id: event.playerId };
     else if (event?.kind === "hazard" || event?.kind === "shield") shot = { kind: "car", id: event.playerId };
@@ -119,44 +126,47 @@ export function WorldBoard({
     const t = setTimeout(() => rendererRef.current?.setShot({ kind: "pack" }), HOLD_MS);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [eventKey, over, overview, canvas]);
+  }, [eventKey, over, overview, intro, canvas]);
+
+  useEffect(() => {
+    if (ready) onReady?.();
+  }, [ready, onReady]);
 
   return (
     <div ref={boxRef} className="absolute inset-0 overflow-hidden bg-[#9fd3f0]">
-      <canvas
-        ref={setCanvas}
-        className="absolute inset-0 h-full w-full transition-opacity duration-500"
-        style={{ opacity: ready ? 1 : 0 }}
-      />
+      <canvas ref={setCanvas} className="absolute inset-0 h-full w-full transition-opacity duration-500" style={{ opacity: ready ? 1 : 0 }} />
       {!ready ? (
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="h-10 w-10 animate-spin rounded-full border-4 border-white/30 border-t-[#ffd23f]" />
         </div>
       ) : null}
-      {state.players.map((p, i) => (
-        <div
-          key={p.id}
-          ref={(el) => {
-            if (el) labelRefs.current.set(p.id, el);
-            else labelRefs.current.delete(p.id);
-          }}
-          className={`${styles.label} pointer-events-none absolute left-0 top-0 origin-bottom`}
-          style={{ ["--car" as string]: CAR_PAINT[p.color], opacity: 0 }}
-        >
-          <span className={styles.labelName}>
-            {p.name || `Joueur ${i + 1}`}
-            {/* what stops or slows this car, readable from the road */}
-            {p.hazard ? (
-              <span className={styles.labelHazard} title={hazardLabel(p.hazard)}>
-                <CardArt def={getCardDef(p.hazard)} />
-              </span>
-            ) : p.limited ? (
-              <span className={styles.labelRadar}>50</span>
-            ) : null}
-          </span>
-          <span className={styles.labelArrow} />
-        </div>
-      ))}
+      {/* names over the cars, out of the way during the opening flyover */}
+      <div className="transition-opacity duration-500" style={{ opacity: intro ? 0 : 1 }}>
+        {state.players.map((p, i) => (
+          <div
+            key={p.id}
+            ref={(el) => {
+              if (el) labelRefs.current.set(p.id, el);
+              else labelRefs.current.delete(p.id);
+            }}
+            className={`${styles.label} pointer-events-none absolute left-0 top-0 origin-bottom`}
+            style={{ ["--car" as string]: CAR_PAINT[p.color], opacity: 0 }}
+          >
+            <span className={styles.labelName}>
+              {p.name || `Joueur ${i + 1}`}
+              {/* what stops or slows this car, readable from the road */}
+              {p.hazard ? (
+                <span className={styles.labelHazard} title={hazardLabel(p.hazard)}>
+                  <CardArt def={getCardDef(p.hazard)} />
+                </span>
+              ) : p.limited ? (
+                <span className={styles.labelRadar}>50</span>
+              ) : null}
+            </span>
+            <span className={styles.labelArrow} />
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

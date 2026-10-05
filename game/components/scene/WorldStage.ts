@@ -402,6 +402,7 @@ export class WorldStage implements Stage {
   private camPos = new THREE.Vector3(0, 6, 36);
   private camLook = new THREE.Vector3(0, 0, 0);
   private placed = false;
+  private shotSince = 0;
   /** Stretches of road carried by the viaduct (no ground under them). */
   private bridges: [number, number][] = [];
   private readonly disposables: { dispose: () => void }[] = [];
@@ -1258,7 +1259,33 @@ export class WorldStage implements Stage {
     return { x: ((v.x + 1) / 2) * this.width, y: ((1 - v.y) / 2) * this.height, size: v.z < 1 ? perUnit : 0 };
   }
 
+  /** Behind the last car, looking down the road past the leader. */
+  private packShot(cars: StageCar[], target: number) {
+    const kms = cars.map((c) => c.km);
+    const rear = kms.length ? Math.min(...kms) : 0;
+    const front = kms.length ? Math.max(...kms) : 0;
+    const rearLen = this.road.kmToLen(rear, target);
+    const frontLen = this.road.kmToLen(front, target);
+    const spread = frontLen - rearLen;
+    // cars in the lower third, centred, the road running on towards the horizon
+    const mid = this.road.at((rearLen + frontLen) / 2);
+    const back = 11 + spread * 0.55;
+    const height = 5.5 + spread * 0.22;
+    const pos = mid.point.clone().addScaledVector(mid.forward, -back).add(new THREE.Vector3(0, height, 0));
+    const run = back + 24;
+    const look = mid.point.clone().addScaledVector(mid.forward, 24);
+    look.y = pos.y - run * Math.tan(THREE.MathUtils.degToRad(16));
+    // idle drift keeps the world alive
+    pos.x += Math.sin(performance.now() / 5200) * 0.8;
+    return { pos, look };
+  }
+
   setShot(shot: Shot) {
+    // the scripted shots start from their first frame, with a cut
+    if (shot.kind !== this.shot.kind || (shot.kind === "finish" && this.shot.kind === "finish" && shot.winnerId !== this.shot.winnerId)) {
+      this.shotSince = performance.now();
+      if (shot.kind === "intro" || shot.kind === "finish") this.placed = false;
+    }
     this.shot = shot;
   }
 
@@ -1303,6 +1330,32 @@ export class WorldStage implements Stage {
       wantPos.set(centre.x + 4, centre.y + Math.sin(pitch) * dist, centre.z + Math.cos(pitch) * dist);
       wantLook.copy(centre);
       stiffness = 2.4;
+    } else if (shot.kind === "intro") {
+      // over the sea with the whole coast in view, then a long swoop down to the grid
+      const e = (performance.now() - this.shotSince) / 1000;
+      const pack = this.packShot(cars, target);
+      const a0 = new THREE.Vector3(46, 21, -98);
+      const a1 = new THREE.Vector3(32, 12, 6);
+      const l0 = new THREE.Vector3(4, 0, -64);
+      const l1 = new THREE.Vector3(2, 0, -22);
+      if (e < 3) {
+        const k = THREE.MathUtils.smoothstep(e, 0, 3);
+        wantPos.lerpVectors(a0, a1, k);
+        wantLook.lerpVectors(l0, l1, k);
+      } else {
+        const k = THREE.MathUtils.smootherstep(e, 3, 6.2);
+        wantPos.lerpVectors(a1, pack.pos, k);
+        wantLook.lerpVectors(l1, pack.look, k);
+      }
+      stiffness = 60;
+    } else if (shot.kind === "finish" && shot.winnerId && byId.has(shot.winnerId) && performance.now() - this.shotSince < 2900) {
+      // trackside, low, just past the line: the winner comes at us and crosses
+      const car = byId.get(shot.winnerId)!;
+      // (on the sea side, behind the rail: the crowd and the arch fill the background)
+      const f = this.road.at(this.road.finishLen);
+      wantPos.copy(f.point).addScaledVector(f.right, HALF_WIDTH + 2.2).addScaledVector(f.forward, 4.5).setY(f.point.y + 0.95);
+      wantLook.copy(car.position).setY(car.position.y + 0.35);
+      stiffness = 9;
     } else if (shot.kind === "finish") {
       const f = this.road.at(this.road.finishLen);
       const a = performance.now() / 4200;
@@ -1310,23 +1363,9 @@ export class WorldStage implements Stage {
       wantLook.copy(f.point).setY(f.point.y + 1.2);
       stiffness = 2;
     } else {
-      // pack shot: behind the last car, looking down the road past the leader
-      const kms = cars.map((c) => c.km);
-      const rear = kms.length ? Math.min(...kms) : 0;
-      const front = kms.length ? Math.max(...kms) : 0;
-      const rearLen = this.road.kmToLen(rear, target);
-      const frontLen = this.road.kmToLen(front, target);
-      const spread = frontLen - rearLen;
-      // cars in the lower third, centred, the road running on towards the horizon
-      const mid = this.road.at((rearLen + frontLen) / 2);
-      const back = 11 + spread * 0.55;
-      const height = 5.5 + spread * 0.22;
-      wantPos.copy(mid.point).addScaledVector(mid.forward, -back).add(new THREE.Vector3(0, height, 0));
-      const run = back + 24;
-      wantLook.copy(mid.point).addScaledVector(mid.forward, 24);
-      wantLook.y = wantPos.y - run * Math.tan(THREE.MathUtils.degToRad(16));
-      // idle drift keeps the world alive
-      wantPos.x += Math.sin(performance.now() / 5200) * 0.8;
+      const pack = this.packShot(cars, target);
+      wantPos.copy(pack.pos);
+      wantLook.copy(pack.look);
     }
 
     const k = this.placed ? 1 - Math.exp(-dt * stiffness) : 1;

@@ -21,7 +21,9 @@ export type Shot =
   | { kind: "overview" }
   | { kind: "follow"; id: string }
   | { kind: "car"; id: string }
-  | { kind: "finish" };
+  | { kind: "finish"; winnerId?: string }
+  /** Opening flyover: over the sea, along the coast, down to the grid. */
+  | { kind: "intro" };
 
 export interface StageCar {
   id: string;

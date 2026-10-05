@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import clsx from "clsx";
 import type { GameTableProps } from "@/game/components/table/GameTable";
@@ -15,6 +15,7 @@ import { SoundToggle } from "@/game/components/ui/SoundToggle";
 import { ViewToggle } from "@/game/components/ui/ViewToggle";
 import { Logo } from "@/game/components/ui/Logo";
 import { SceneBoard } from "./SceneBoard";
+import { FinishCinematic, IntroCinematic } from "./Cinematic";
 import { WorldBoard } from "./WorldBoard";
 import { CAR_PAINT } from "./sceneSync";
 import { SceneHand } from "./SceneHand";
@@ -25,6 +26,9 @@ import type { SceneDef } from "./scenePath";
  * The game screen on the illustrated 3D board. Same inputs as the classic
  * GameTable, so local and online games can show either.
  */
+/** Races whose opening flyover was already shown on this device. */
+const PLAYED_INTROS = new Set<string>();
+
 export function SceneTable({
   state,
   controls,
@@ -72,6 +76,27 @@ export function SceneTable({
   }, [over]);
 
   const yourTurn = viewerId ? current.id === viewerId : true;
+
+  // a fresh race on the 3D coast opens with the flyover (once per race on this device)
+  const fresh = !scene && !over && state.discard.length === 0 && state.players.every((p) => p.distance === 0);
+  const introKey = `${state.id}:${state.startedAt}`;
+  const [introFor, setIntroFor] = useState<string | null>(() => (fresh && !PLAYED_INTROS.has(introKey) ? introKey : null));
+  const [prevStart, setPrevStart] = useState(state.startedAt);
+  if (state.startedAt !== prevStart) {
+    setPrevStart(state.startedAt);
+    setIntroFor(fresh && !PLAYED_INTROS.has(introKey) ? introKey : null);
+  }
+  // it starts once the world is on screen, not while it loads
+  const [worldReady, setWorldReady] = useState(false);
+  const onWorldReady = useCallback(() => setWorldReady(true), []);
+  const intro = introFor === introKey && worldReady;
+  const endIntro = useCallback(() => {
+    PLAYED_INTROS.add(introKey);
+    setIntroFor(null);
+  }, [introKey]);
+  const winner = over ? state.players.find((p) => p.id === state.winnerId) : undefined;
+  // while a cinematic plays, the interface steps aside
+  const cinema = intro || (!!winner && !scene && !victoryReady);
   // from 4 pilots on, each one fits on a single line so the road stays visible
   const crowded = state.players.length >= 4;
 
@@ -84,12 +109,17 @@ export function SceneTable({
       ) : null}
 
       {/* the 3D world fills the screen; the picture keeps its portrait proportions */}
-      {!scene ? <WorldBoard state={state} event={currentEvent} bottomInset={handBox.height} overview={overview} /> : null}
+      {!scene ? <WorldBoard state={state} event={currentEvent} bottomInset={handBox.height} overview={overview} intro={intro} onReady={onWorldReady} /> : null}
       <div className={clsx("absolute inset-0 mx-auto", scene && "max-w-[min(100vw,calc(100dvh*0.78))]")}>
         {scene ? <SceneBoard state={state} event={currentEvent} def={scene} bottomInset={handBox.height} /> : null}
 
         {/* top: players · logo · turn */}
-        <div className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-black/45 via-black/15 to-transparent pb-10">
+        <div
+          className={clsx(
+            "pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-black/45 via-black/15 to-transparent pb-10 transition-opacity duration-700",
+            cinema && "opacity-0",
+          )}
+        >
           <div className="flex items-start justify-between gap-2 px-2.5 pt-[max(0.625rem,env(safe-area-inset-top))]">
             <div className={clsx("pointer-events-auto flex min-w-0 max-w-[16rem] flex-1 flex-col sm:w-[46%] sm:flex-none", crowded ? "gap-1" : "gap-1.5")}>
               {state.players.map((p, i) => {
@@ -167,7 +197,12 @@ export function SceneTable({
         </div>
 
         {/* bottom: piles and the hand */}
-        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/55 to-transparent pt-10">
+        <div
+          className={clsx(
+            "absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/55 to-transparent pt-10 transition-opacity duration-700",
+            cinema && "pointer-events-none opacity-0",
+          )}
+        >
           {notice ? <div className="pointer-events-none relative z-[55] mb-1 flex justify-center px-3">{notice}</div> : null}
           <div ref={handRef} className="pb-[env(safe-area-inset-bottom)]">
             <SceneHand
@@ -222,6 +257,8 @@ export function SceneTable({
           </motion.div>
         ) : null}
       </AnimatePresence>
+      {intro ? <IntroCinematic title="KILOMAX" subtitle={`Corniche d'Azur · ${state.target} km`} onDone={endIntro} /> : null}
+      {winner && !scene && !victoryReady ? <FinishCinematic name={winner.name} color={CAR_PAINT[winner.color]} /> : null}
       {isMyTurn ? (
         <TargetPicker pending={controls.pendingTarget} state={state} onPick={controls.resolveTarget} onCancel={controls.cancelTarget} />
       ) : null}

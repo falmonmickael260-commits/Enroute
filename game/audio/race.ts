@@ -199,6 +199,15 @@ class RaceAudio {
     mixer.play("engineMid", { bus: "effects", gain: level * 1.4, rate: 1.25, duration: 0.75, fadeOut: 0.45, lowpass: 2400, pan: 0.3 });
   }
 
+  /** Start count: a beep per number, a higher one and the engines revving on "go" (0). */
+  countdown(remaining: number) {
+    if (remaining > 0) mixer.play("tick", { bus: "ui", gain: 0.5, rate: 0.85 });
+    else {
+      mixer.play("tick", { bus: "ui", gain: 0.6, rate: 1.7 });
+      this.launch("sprint");
+    }
+  }
+
   /** The launch of a move, from the style of card played. */
   launch(style: "turbo" | "sprint" | "fast" | "drive" | "overtake" | "shortcut") {
     if (style === "turbo" || style === "sprint") this.engine.boost(style === "turbo" ? 900 : 700);
