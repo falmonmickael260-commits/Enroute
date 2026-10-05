@@ -152,12 +152,12 @@ function canvasTexture(w: number, h: number, draw: (g: CanvasRenderingContext2D)
 
 const asphaltTexture = () =>
   canvasTexture(256, 512, (g) => {
-    g.fillStyle = "#4b4f56";
+    g.fillStyle = "#33363c";
     g.fillRect(0, 0, 256, 512);
     const r = rng(7);
     // resurfaced patches, a shade darker or lighter
     for (let i = 0; i < 5; i++) {
-      g.fillStyle = r() > 0.5 ? "rgba(0,0,0,0.09)" : "rgba(255,255,255,0.05)";
+      g.fillStyle = r() > 0.5 ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.04)";
       g.fillRect(20 + r() * 180, r() * 480, 30 + r() * 50, 40 + r() * 90);
     }
     // where the tyres run, polished darker
