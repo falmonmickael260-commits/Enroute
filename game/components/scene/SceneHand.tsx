@@ -33,7 +33,9 @@ function whyNot(player: PlayerState, def: CardDef, state: GameState): string {
   if (def.category === "defense") {
     if (def.defense && player.shields.includes(def.defense)) return "Cette protection est déjà posée.";
     if (player.shields.length >= MAX_SHIELDS && !player.hazard && !player.limited)
-      return `Maximum ${MAX_SHIELDS} protections à la fois : gardez-la pour réparer.`;
+      return MAX_SHIELDS === 1
+        ? "Une seule protection à la fois : gardez-la pour réparer."
+        : `Maximum ${MAX_SHIELDS} protections à la fois : gardez-la pour réparer.`;
     if (player.hazard && def.counters && !hazardActive(player, def.counters))
       return `Ce n'est pas la bonne parade contre : ${hazardLabel(player.hazard).toLowerCase()}.`;
     return "Parade inutile pour l'instant.";

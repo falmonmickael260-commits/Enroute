@@ -23,4 +23,4 @@ export const MAX_PLAYERS = 6;
  * Anti-blocage : au-delà de ce nombre de pioches consécutives en étant arrêté,
  * le joueur pioche directement la carte de réparation qui lui manque.
  */
-export const STUCK_TURNS_LIMIT = 4;
+export const STUCK_TURNS_LIMIT = 3;

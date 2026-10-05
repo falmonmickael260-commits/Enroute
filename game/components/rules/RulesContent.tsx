@@ -1,6 +1,7 @@
 import { Card } from "@/game/components/cards/Card";
 import { CARD_CATALOG } from "@/game/lib/engine/cardCatalog";
 import { STUCK_TURNS_LIMIT } from "@/game/lib/engine/deck";
+import { MAX_SHIELDS } from "@/game/lib/engine/rules";
 
 const HAZARD_PAIRS: [string, string][] = [
   ["collision", "reparation"],
@@ -51,8 +52,9 @@ export function RulesContent() {
         <p className="mb-4 text-white/80">
           Une attaque arrête un adversaire (ou le limite à 50 km pour le RADAR) jusqu&apos;à ce qu&apos;il joue la défense
           correspondante. Arrêté, on ne peut que réparer ou défausser. Une défense jouée <em>avant</em> d&apos;être attaqué
-          devient un bouclier permanent contre ce danger — et offre un tour bonus. Chaque pilote peut avoir au maximum 2 boucliers
-          à la fois : les autres cartes de défense servent alors uniquement à réparer.
+          devient un bouclier permanent contre ce danger — et offre un tour bonus. Chaque pilote ne peut avoir{" "}
+          {MAX_SHIELDS === 1 ? "qu'un seul bouclier" : `que ${MAX_SHIELDS} boucliers`} à la fois : les autres cartes de défense servent
+          alors uniquement à réparer.
         </p>
         <div className="grid gap-3 sm:grid-cols-2">
           {HAZARD_PAIRS.map(([hazardId, defenseId]) => (

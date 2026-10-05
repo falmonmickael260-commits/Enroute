@@ -47,7 +47,7 @@ export function canPlayDefenseReactive(player: PlayerState, def: CardDef): boole
 }
 
 /** How many protections a player can have in front of them at once. */
-export const MAX_SHIELDS = 2;
+export const MAX_SHIELDS = 1;
 
 export function canPlayDefenseShield(player: PlayerState, def: CardDef): boolean {
   if (!def.defense || !def.counters) return false;
