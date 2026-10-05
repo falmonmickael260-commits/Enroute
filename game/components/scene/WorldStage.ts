@@ -34,7 +34,9 @@ const ROAD_POINTS: [number, number, number][] = [
 ];
 const START_INDEX = 1;
 const FINISH_INDEX = 13;
-const HALF_WIDTH = 1.35;
+const HALF_WIDTH = 2;
+/** Lane offsets come in car lengths for a 2.7-wide road; the road is wider now. */
+const LANE_SCALE = 1.7;
 const SEA_LEVEL = -1.4;
 
 /** Where the cliffs meet the sea, as x for a given z (the sea is on the right). */
@@ -149,19 +151,51 @@ function canvasTexture(w: number, h: number, draw: (g: CanvasRenderingContext2D)
 }
 
 const asphaltTexture = () =>
-  canvasTexture(128, 256, (g) => {
+  canvasTexture(256, 512, (g) => {
     g.fillStyle = "#4b4f56";
-    g.fillRect(0, 0, 128, 256);
+    g.fillRect(0, 0, 256, 512);
     const r = rng(7);
-    for (let i = 0; i < 900; i++) {
-      g.fillStyle = `rgba(${r() > 0.5 ? "255,255,255" : "0,0,0"},${0.04 + r() * 0.05})`;
-      g.fillRect(r() * 128, r() * 256, 1.5, 1.5);
+    // resurfaced patches, a shade darker or lighter
+    for (let i = 0; i < 5; i++) {
+      g.fillStyle = r() > 0.5 ? "rgba(0,0,0,0.09)" : "rgba(255,255,255,0.05)";
+      g.fillRect(20 + r() * 180, r() * 480, 30 + r() * 50, 40 + r() * 90);
     }
+    // where the tyres run, polished darker
+    for (const x of [52, 92, 164, 204]) {
+      const grad = g.createLinearGradient(x - 14, 0, x + 14, 0);
+      grad.addColorStop(0, "rgba(0,0,0,0)");
+      grad.addColorStop(0.5, "rgba(0,0,0,0.14)");
+      grad.addColorStop(1, "rgba(0,0,0,0)");
+      g.fillStyle = grad;
+      g.fillRect(x - 14, 0, 28, 512);
+    }
+    // grain
+    for (let i = 0; i < 4200; i++) {
+      g.fillStyle = `rgba(${r() > 0.5 ? "255,255,255" : "0,0,0"},${0.04 + r() * 0.06})`;
+      g.fillRect(r() * 256, r() * 512, 1.5, 1.5);
+    }
+    // a few tar-sealed cracks
+    g.strokeStyle = "rgba(20,20,24,0.28)";
+    g.lineWidth = 1.2;
+    for (let i = 0; i < 4; i++) {
+      let x = 20 + r() * 216;
+      let y = r() * 512;
+      g.beginPath();
+      g.moveTo(x, y);
+      for (let k = 0; k < 6; k++) {
+        x += (r() - 0.5) * 18;
+        y += 6 + r() * 12;
+        g.lineTo(x, y);
+      }
+      g.stroke();
+    }
+    // edge lines and the dashed centre line
     g.fillStyle = "#f4f4ef";
-    g.fillRect(4, 0, 4, 256);
-    g.fillRect(120, 0, 4, 256);
+    g.fillRect(7, 0, 6, 512);
+    g.fillRect(243, 0, 6, 512);
     g.fillStyle = "#fff6d8";
-    g.fillRect(62, 0, 4, 120);
+    g.fillRect(125, 0, 6, 220);
+    g.fillRect(125, 256, 6, 220);
   });
 
 const kerbTexture = () =>
@@ -381,6 +415,8 @@ export class WorldStage implements Stage {
     this.buildScenery(scene);
     this.buildMountainsAndClouds(scene);
     this.buildStartAndFinish(scene);
+    this.buildRoadside(scene);
+    this.buildGulls(scene);
   }
 
   // ------------------------------------------------------------ world building
@@ -460,7 +496,7 @@ export class WorldStage implements Stage {
     const kerbMat = new THREE.MeshStandardMaterial({ map: kerb, roughness: 0.6 });
     const shoulderMat = new THREE.MeshStandardMaterial({ color: "#d9c79c", roughness: 1 });
     const parts: [THREE.BufferGeometry, THREE.Material][] = [
-      [ribbon(this.road, -HALF_WIDTH, HALF_WIDTH, 0.03, 8), roadMat],
+      [ribbon(this.road, -HALF_WIDTH, HALF_WIDTH, 0.03, 10), roadMat],
       [ribbon(this.road, HALF_WIDTH, HALF_WIDTH + 0.28, 0.05, 1.6), kerbMat],
       [ribbon(this.road, -HALF_WIDTH - 0.28, -HALF_WIDTH, 0.05, 1.6), kerbMat],
       [ribbon(this.road, HALF_WIDTH + 0.28, HALF_WIDTH + 1.1, 0.02, 4), shoulderMat],
@@ -546,7 +582,7 @@ export class WorldStage implements Stage {
       const bottom = Math.max(SEA_LEVEL - 1, ground);
       const h = point.y - bottom;
       const yaw = Math.atan2(forward.x, forward.z);
-      piers.push({ m: mat4(point.x, bottom + h / 2 - 0.3, point.z, 3.4, h, 1.1, yaw) });
+      piers.push({ m: mat4(point.x, bottom + h / 2 - 0.3, point.z, HALF_WIDTH * 2 + 1.6, h, 1.1, yaw) });
       const mid = this.road.at(l + step / 2);
       arches.push({
         m: new THREE.Matrix4().compose(
@@ -558,7 +594,7 @@ export class WorldStage implements Stage {
     }
     const archGeo = new THREE.TorusGeometry(step / 2 - 0.4, 0.35, 6, 14, Math.PI);
     archGeo.rotateZ(Math.PI);
-    archGeo.scale(1, 1.3, 5.5);
+    archGeo.scale(1, 1.3, HALF_WIDTH * 2 + 2.8);
     const meshes: THREE.Mesh[] = [instanced(new THREE.BoxGeometry(1, 1, 1), stone, piers), instanced(archGeo, stone, arches)];
     // the deck follows the road exactly (slope and bends), wide enough to carry the
     // verges and the rail, with a low parapet on the hill side
@@ -665,6 +701,184 @@ export class WorldStage implements Stage {
     sail.translate(0, 1.2, 0);
     add(hull, new THREE.MeshStandardMaterial({ color: "#ffffff" }), boats, false);
     add(sail, new THREE.MeshStandardMaterial({ color: "#fbfbf6", flatShading: true }), boats, false);
+  }
+
+  /** The things that make a road feel driven on: posts, signs, lamps, rocks, flowers. */
+  private buildRoadside(scene: THREE.Scene) {
+    const r = rng(5150);
+    const yawAt = (f: THREE.Vector3) => Math.atan2(f.x, f.z);
+    const posts: { m: THREE.Matrix4 }[] = [];
+    const reflectors: { m: THREE.Matrix4 }[] = [];
+    const chevrons: { m: THREE.Matrix4 }[] = [];
+    const chevronPoles: { m: THREE.Matrix4 }[] = [];
+    const lampPoles: { m: THREE.Matrix4 }[] = [];
+    const lampArms: { m: THREE.Matrix4 }[] = [];
+    const lampHeads: { m: THREE.Matrix4 }[] = [];
+    const rocks: { m: THREE.Matrix4; c: THREE.Color }[] = [];
+    const tufts: { m: THREE.Matrix4; c: THREE.Color }[] = [];
+    const start = this.road.startLen - 6;
+
+    // white edge posts with a red reflector on the hill side, as on French country roads
+    for (let l = start; l < this.road.total; l += 6) {
+      if (this.onBridge(l)) continue;
+      const { point, right, forward } = this.road.at(l);
+      const k = -(HALF_WIDTH + 0.8);
+      const x = point.x + right.x * k;
+      const z = point.z + right.z * k;
+      posts.push({ m: mat4(x, point.y + 0.3, z, 0.09, 0.6, 0.09, yawAt(forward)) });
+      reflectors.push({ m: mat4(x - forward.x * 0.046, point.y + 0.48, z - forward.z * 0.046, 0.07, 0.1, 0.01, yawAt(forward)) });
+    }
+
+    // chevron boards on the outside of the tight bends, facing the cars coming
+    for (let l = start; l < this.road.total - 2; l += 2.6) {
+      const a = this.road.at(l - 1.5).forward;
+      const b = this.road.at(l + 1.5).forward;
+      const turn = a.x * b.z - a.z * b.x; // > 0: bending one way, < 0: the other
+      const radius = 3 / Math.max(1e-4, a.angleTo(b));
+      if (radius > 16) continue;
+      const { point, right, forward } = this.road.at(l);
+      const side = turn > 0 ? 1 : -1;
+      const k = side * (HALF_WIDTH + 1.25);
+      const x = point.x + right.x * k;
+      const z = point.z + right.z * k;
+      const ground = Math.max(point.y, this.onBridge(l) ? point.y : this.terrainHeight(x, z));
+      // the board's arrows point where the road goes
+      chevrons.push({
+        m: new THREE.Matrix4().compose(
+          new THREE.Vector3(x, ground + 0.85, z),
+          new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yawAt(forward) + Math.PI, 0)),
+          new THREE.Vector3(side > 0 ? -0.55 : 0.55, 0.42, 1),
+        ),
+      });
+      chevronPoles.push({ m: mat4(x, ground + 0.4, z, 0.05, 0.8, 0.05) });
+    }
+
+    // street lamps where the road passes the villages
+    // (none right at the start: the camera waits there, behind the cars)
+    for (let l = this.road.startLen + 12; l < this.road.total; l += 15) {
+      if (this.onBridge(l)) continue;
+      const { point, right } = this.road.at(l);
+      const k = -(HALF_WIDTH + 1.05);
+      const x = point.x + right.x * k;
+      const z = point.z + right.z * k;
+      lampPoles.push({ m: mat4(x, point.y + 1.3, z, 0.07, 2.6, 0.07) });
+      const ax = x + right.x * 0.38;
+      const az = z + right.z * 0.38;
+      lampArms.push({ m: mat4(ax, point.y + 2.58, az, 0.05, 0.05, 0.8, yawAt(right)) });
+      lampHeads.push({ m: mat4(x + right.x * 0.74, point.y + 2.52, z + right.z * 0.74, 0.22, 0.08, 0.34, yawAt(right)) });
+    }
+
+    // rocks where the cliffs meet the water
+    for (let i = 0; i < 160; i++) {
+      const z = 20 - r() * 175;
+      const x = coastX(z) + (r() - 0.3) * 3.5;
+      if (this.road.nearest(x, z).dist < HALF_WIDTH + 2.5) continue;
+      const y = Math.max(SEA_LEVEL - 0.2, this.terrainHeight(x, z));
+      const s = 0.35 + r() * r() * 1.4;
+      rocks.push({ m: mat4(x, y + s * 0.2, z, s * (1 + r() * 0.5), s * (0.6 + r() * 0.4), s, r() * 6), c: new THREE.Color().setHSL(0.09, 0.15 + r() * 0.1, 0.55 + r() * 0.15) });
+    }
+
+    // grass and wild flowers along the verge on the hill side
+    const flowerColors = ["#f7d23e", "#ffffff", "#d9468f", "#9b6ee8"];
+    for (let l = start; l < this.road.total; l += 0.9) {
+      if (this.onBridge(l) || r() < 0.35) continue;
+      const { point, right } = this.road.at(l);
+      const k = -(HALF_WIDTH + 1.15 + r() * 1.2);
+      const x = point.x + right.x * k + (r() - 0.5) * 0.4;
+      const z = point.z + right.z * k + (r() - 0.5) * 0.4;
+      const y = this.terrainHeight(x, z);
+      const flower = r() < 0.3;
+      const s = 0.18 + r() * 0.2;
+      tufts.push({
+        m: mat4(x, y + s * 0.5, z, s * 0.9, s, s * 0.9, r() * 6),
+        c: flower ? new THREE.Color(flowerColors[Math.floor(r() * flowerColors.length)]) : new THREE.Color().setHSL(0.24 + r() * 0.05, 0.5, 0.3 + r() * 0.1),
+      });
+    }
+
+    const add = (geo: THREE.BufferGeometry, material: THREE.Material, items: { m: THREE.Matrix4; c?: THREE.Color }[], shadows = true) => {
+      if (!items.length) return;
+      scene.add(instanced(geo, material, items, shadows));
+      this.disposables.push(geo, material);
+    };
+    add(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: "#f2f2ee", roughness: 0.6 }), posts);
+    add(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: "#d11f1f", emissive: "#ff2a1a", emissiveIntensity: 0.35 }), reflectors, false);
+    const chevronTex = canvasTexture(
+      128,
+      96,
+      (g) => {
+        g.fillStyle = "#d42a20";
+        g.fillRect(0, 0, 128, 96);
+        g.fillStyle = "#ffffff";
+        for (const x0 of [22, 66]) {
+          g.beginPath();
+          g.moveTo(x0, 14);
+          g.lineTo(x0 + 18, 14);
+          g.lineTo(x0 + 46, 48);
+          g.lineTo(x0 + 18, 82);
+          g.lineTo(x0, 82);
+          g.lineTo(x0 + 28, 48);
+          g.closePath();
+          g.fill();
+        }
+      },
+      false,
+    );
+    add(new THREE.PlaneGeometry(1, 1), new THREE.MeshStandardMaterial({ map: chevronTex, roughness: 0.5, side: THREE.DoubleSide }), chevrons);
+    this.disposables.push(chevronTex);
+    add(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: "#7d838b", metalness: 0.5, roughness: 0.4 }), chevronPoles);
+    const lampMetal = new THREE.MeshStandardMaterial({ color: "#3b4048", metalness: 0.6, roughness: 0.35 });
+    add(new THREE.CylinderGeometry(0.5, 0.6, 1, 6), lampMetal, lampPoles);
+    add(new THREE.BoxGeometry(1, 1, 1), lampMetal.clone(), lampArms);
+    add(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: "#fff3c4", emissive: "#ffd98a", emissiveIntensity: 0.6 }), lampHeads, false);
+    add(new THREE.DodecahedronGeometry(0.6, 0), new THREE.MeshStandardMaterial({ roughness: 0.95, flatShading: true }), rocks);
+    add(new THREE.ConeGeometry(0.5, 1, 5), new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true }), tufts, false);
+  }
+
+  private gulls: { bird: THREE.Group; wings: THREE.Mesh[]; radius: number; height: number; speed: number; phase: number; centre: THREE.Vector3 }[] = [];
+
+  /** A few gulls wheeling over the water. */
+  private buildGulls(scene: THREE.Scene) {
+    const r = rng(77);
+    const wing = new THREE.BufferGeometry();
+    wing.setAttribute("position", new THREE.Float32BufferAttribute([0, 0, 0.12, 0, 0, -0.12, 0.7, 0.02, -0.05], 3));
+    wing.computeVertexNormals();
+    const mat = new THREE.MeshStandardMaterial({ color: "#fbfbf8", side: THREE.DoubleSide, roughness: 0.8 });
+    for (let i = 0; i < 7; i++) {
+      const bird = new THREE.Group();
+      const wings = [1, -1].map((side) => {
+        const w = new THREE.Mesh(wing, mat);
+        w.scale.x = side;
+        bird.add(w);
+        return w;
+      });
+      const body = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, 0.36), mat);
+      bird.add(body);
+      this.disposables.push(body.geometry);
+      scene.add(bird);
+      const z = 10 - r() * 150;
+      this.gulls.push({
+        bird,
+        wings,
+        radius: 5 + r() * 9,
+        height: 5 + r() * 6,
+        speed: (0.18 + r() * 0.15) * (r() < 0.5 ? 1 : -1),
+        phase: r() * Math.PI * 2,
+        centre: new THREE.Vector3(coastX(z) + 6 + r() * 14, 0, z),
+      });
+    }
+    this.disposables.push(wing, mat);
+  }
+
+  private flyGulls(t: number) {
+    for (const g of this.gulls) {
+      const a = g.phase + t * g.speed;
+      g.bird.position.set(g.centre.x + Math.cos(a) * g.radius, g.height + Math.sin(t * 0.7 + g.phase) * 0.6, g.centre.z + Math.sin(a) * g.radius);
+      // heading along the circle, banking into it
+      g.bird.rotation.set(0, -a + (g.speed > 0 ? Math.PI : 0), 0.35 * Math.sign(g.speed));
+      const flap = Math.sin(t * 7 + g.phase * 3) * 0.5 * Math.max(0, Math.sin(t * 0.9 + g.phase)); // flaps, then glides
+      g.wings[0].rotation.z = flap;
+      g.wings[1].rotation.z = -flap;
+    }
   }
 
   private buildMountainsAndClouds(scene: THREE.Scene) {
@@ -796,7 +1010,7 @@ export class WorldStage implements Stage {
     if (target !== this.finishTarget) this.buildSigns(target);
     // une longueur de voiture vaut 1 unité du monde : on recule le long de la route
     const { point, forward, right } = this.road.at(this.road.kmToLen(km, target) + along);
-    const position = point.clone().addScaledVector(right, lateral * 1.0);
+    const position = point.clone().addScaledVector(right, lateral * LANE_SCALE);
     position.y += 0.04;
     return { position, yaw: Math.atan2(forward.x, forward.z), scale: 1 };
   }
@@ -823,7 +1037,8 @@ export class WorldStage implements Stage {
     this.shot = shot;
   }
 
-  frame(dt: number, _t: number, cars: StageCar[], target: number) {
+  frame(dt: number, t: number, cars: StageCar[], target: number) {
+    this.flyGulls(t);
     const wantPos = new THREE.Vector3();
     const wantLook = new THREE.Vector3();
     const byId = new Map(cars.map((c) => [c.id, c]));

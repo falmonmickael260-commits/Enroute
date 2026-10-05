@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect } from "react";
+import { useCallback, useEffect, useMemo } from "react";
 import type { GameState } from "@/game/types/game";
 import type { GameAction } from "@/game/lib/engine/gameReducer";
 import type { ConnectionState, RoomMeta } from "@/game/hooks/useOnlineRoom";
@@ -34,6 +34,15 @@ export function OnlineGame({
   onNewGame: () => void;
 }) {
   const controls = useGameControls(game, dispatch);
+
+  // A host on an older version of the site deals without the cars: take them
+  // from the lobby, where every pilot picked theirs.
+  const lobbyCars = meta.players.map((p) => `${p.id}:${p.car ?? ""}`).join(",");
+  const shown = useMemo(() => {
+    if (game.players.every((p) => p.car)) return game;
+    const cars = new Map(lobbyCars.split(",").map((e) => e.split(":") as [string, string]));
+    return { ...game, players: game.players.map((p) => (p.car ? p : { ...p, car: cars.get(p.id) || undefined })) };
+  }, [game, lobbyCars]);
   const consumeAnimation = useCallback(() => dispatch({ type: "CLEAR_ANIMATION" }), [dispatch]);
 
   const isHost = meta.hostId === playerId;
@@ -81,7 +90,7 @@ export function OnlineGame({
 
   return (
     <GameScreen
-      state={game}
+      state={shown}
       controls={controls}
       consumeAnimation={consumeAnimation}
       viewerId={playerId}

@@ -9,7 +9,8 @@ import { CardArt } from "@/game/components/cards/CardArt";
  * them (red), the radar limiting them (amber), the protections they hold
  * (green), or a clear road.
  */
-export function PlayerStatus({ player, compact = false }: { player: PlayerState; compact?: boolean }) {
+export function PlayerStatus({ player, compact = false, mini = false }: { player: PlayerState; compact?: boolean; mini?: boolean }) {
+  if (mini) return <MiniStatus player={player} />;
   const chip = "flex items-center gap-1 rounded-md font-hud font-bold uppercase leading-none";
   const size = compact ? "h-[18px] px-1 text-[0.58rem]" : "h-5 px-1.5 text-[0.62rem]";
   const icon = compact ? "h-3 w-3" : "h-3.5 w-3.5";
@@ -49,5 +50,43 @@ export function PlayerStatus({ player, compact = false }: { player: PlayerState;
         );
       })}
     </div>
+  );
+}
+
+/** Icons only, to fit on the player's single line when the table is crowded. */
+function MiniStatus({ player }: { player: PlayerState }) {
+  const box = "flex h-4 w-4 shrink-0 items-center justify-center rounded";
+  return (
+    <span className="flex shrink-0 items-center gap-0.5">
+      {player.hazard ? (
+        <span title={hazardLabel(player.hazard)} className={clsx(box, "bg-[#e0342c] shadow-[0_0_6px_rgba(224,52,44,0.7)]")}>
+          <span className="h-3 w-3">
+            <CardArt def={getCardDef(player.hazard)} />
+          </span>
+        </span>
+      ) : null}
+      {player.limited ? (
+        <span title="Radar 50" className={clsx(box, "bg-[#ffb020]")}>
+          <span className="h-3 w-3">
+            <CardArt def={getCardDef("radar")} />
+          </span>
+        </span>
+      ) : null}
+      {!player.hazard && !player.limited ? (
+        <span title="Route libre" className={clsx(box, "bg-[#1f9a55]/85 text-[0.6rem] font-bold text-white")}>
+          ✓
+        </span>
+      ) : null}
+      {player.shields.map((shield) => {
+        const def = getCardDef(shield);
+        return (
+          <span key={shield} title={`Protégé : ${def.title.toLowerCase()}`} className={clsx(box, "bg-[#1f9a55]")}>
+            <span className="h-3 w-3">
+              <CardArt def={def} />
+            </span>
+          </span>
+        );
+      })}
+    </span>
   );
 }

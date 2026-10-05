@@ -9,7 +9,7 @@ import { PLAYER_COLOR } from "@/game/components/players/PlayerPiece";
 import { MAX_PLAYERS } from "@/game/lib/engine/deck";
 import { InnerPage, SectionLabel } from "@/game/components/ui/InnerPage";
 import { CarPicker } from "@/game/components/ui/CarPicker";
-import { DEFAULT_CAR, carInfo, carThumb, isCarId } from "@/game/lib/cars";
+import { carFor, carInfo, carThumb } from "@/game/lib/cars";
 
 function ShareButton({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
@@ -86,7 +86,7 @@ export function OnlineLobby({
       <div className="flex flex-col gap-2.5">
         {meta.players.map((p, i) => {
           const online = p.id === playerId || meta.online.includes(p.id);
-          const car = isCarId(p.car) ? p.car : DEFAULT_CAR;
+          const car = carFor(p.car, i);
           return (
             <motion.div
               key={p.id}

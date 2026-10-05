@@ -3,7 +3,7 @@
 import { create } from "zustand";
 import type { AmbianceId, PlayerColor } from "@/game/types/game";
 import { generateGameCode } from "@/game/lib/gameCode";
-import { DEFAULT_CAR, type CarId } from "@/game/lib/cars";
+import { defaultCar, type CarId } from "@/game/lib/cars";
 
 export interface SetupPlayer {
   id: string;
@@ -38,7 +38,7 @@ export const useSetupStore = create<SetupState>((set, get) => ({
       id: `p${i + 1}-${Math.random().toString(36).slice(2, 7)}`,
       name: name.trim() || `Joueur ${i + 1}`,
       color: PLAYER_COLORS[i % PLAYER_COLORS.length],
-      car: DEFAULT_CAR,
+      car: defaultCar(i),
       ready: false,
     }));
     set({ code, players, ambiance, target });

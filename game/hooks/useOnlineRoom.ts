@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { RealtimeChannel } from "@supabase/supabase-js";
 import type { AnimationEvent, GameState } from "@/game/types/game";
 import { createGame, gameReducer, type GameAction } from "@/game/lib/engine/gameReducer";
+import { carFor } from "@/game/lib/cars";
 import { supabase } from "@/game/lib/online/client";
 import {
   commitState,
@@ -240,7 +241,7 @@ export function useOnlineRoom(code: string, seat: Seat | null) {
     if (!seat || !meta) return Promise.resolve();
     const state = createGame({
       id: code,
-      players: meta.players.map((p) => ({ id: p.id, name: p.name, color: p.color, car: p.car })),
+      players: meta.players.map((p, i) => ({ id: p.id, name: p.name, color: p.color, car: carFor(p.car, i) })),
       ambiance: meta.settings.ambiance,
       target: meta.settings.target,
     });

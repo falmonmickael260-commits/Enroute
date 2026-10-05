@@ -72,6 +72,8 @@ export function SceneTable({
   }, [over]);
 
   const yourTurn = viewerId ? current.id === viewerId : true;
+  // from 4 pilots on, each one fits on a single line so the road stays visible
+  const crowded = state.players.length >= 4;
 
   return (
     <main className="relative isolate h-dvh overflow-hidden bg-[#0d1420] text-white">
@@ -89,7 +91,7 @@ export function SceneTable({
         {/* top: players · logo · turn */}
         <div className="pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-black/45 via-black/15 to-transparent pb-10">
           <div className="flex items-start justify-between gap-2 px-2.5 pt-[max(0.625rem,env(safe-area-inset-top))]">
-            <div className="pointer-events-auto flex w-[46%] max-w-[16rem] flex-col gap-1.5">
+            <div className={clsx("pointer-events-auto flex min-w-0 max-w-[16rem] flex-1 flex-col sm:w-[46%] sm:flex-none", crowded ? "gap-1" : "gap-1.5")}>
               {state.players.map((p, i) => {
                 const active = p.id === current.id && !over;
                 const offline = offlineIds?.includes(p.id) ?? false;
@@ -97,7 +99,8 @@ export function SceneTable({
                   <div
                     key={p.id}
                     className={clsx(
-                      "flex flex-col gap-1 rounded-xl border px-2 py-1 backdrop-blur-md transition-all",
+                      "flex flex-col gap-1 rounded-xl border px-2 backdrop-blur-md transition-all",
+                      crowded ? "py-0.5" : "py-1",
                       active ? "border-white/60 bg-[#12305c]/85 shadow-[0_0_18px_rgba(80,160,255,0.55)]" : "border-white/10 bg-black/45",
                       offline && "opacity-60",
                     )}
@@ -109,31 +112,33 @@ export function SceneTable({
                       >
                         {i + 1}
                       </span>
-                      <span className="min-w-0 flex-1 truncate font-hud text-sm font-bold">
+                      <span className={clsx("min-w-0 flex-1 truncate font-hud font-bold", crowded ? "text-[0.8rem]" : "text-sm")}>
                         {p.name}
-                        {p.id === viewerId ? <span className="ml-1 font-semibold text-white/50">(vous)</span> : null}
+                        {p.id === viewerId && !crowded ? <span className="ml-1 font-semibold text-white/50">(vous)</span> : null}
                       </span>
+                      {crowded && !offline ? <PlayerStatus player={p} mini /> : null}
                       {offline ? (
                         <span className="font-hud text-[0.55rem] font-bold uppercase tracking-wider text-[#ff8a7e]">Hors ligne</span>
                       ) : (
-                        <span className="font-display text-lg leading-none text-[#ffd23f] drop-shadow">
+                        <span className={clsx("shrink-0 font-display leading-none text-[#ffd23f] drop-shadow", crowded ? "text-base" : "text-lg")}>
                           {p.distance}
                           <span className="ml-0.5 text-[0.65em] text-white/70">km</span>
                         </span>
                       )}
                       {p.distance === leaderKm && leaderKm > 0 && !offline ? <span className="text-xs">👑</span> : null}
                     </div>
-                    <PlayerStatus player={p} compact />
+                    {crowded ? null : <PlayerStatus player={p} compact />}
                   </div>
                 );
               })}
             </div>
 
-            <div className="flex flex-col items-center pt-0.5">
+            {/* phones: no room for three columns, the logo moves under the buttons */}
+            <div className="hidden flex-col items-center pt-0.5 sm:flex">
               <Logo size="sm" />
             </div>
 
-            <div className="pointer-events-auto flex w-[34%] max-w-[13rem] flex-col items-end gap-1.5">
+            <div className="pointer-events-auto flex w-[7.5rem] shrink-0 flex-col items-end gap-1.5 sm:w-[34%] sm:max-w-[13rem]">
               <div className="flex gap-1.5">
                 {showViewToggle ? <ViewToggle /> : null}
                 <SoundToggle enabled={soundOn} onToggle={toggleSound} />
@@ -141,6 +146,7 @@ export function SceneTable({
                   ✕
                 </button>
               </div>
+              <Logo size="sm" className="pointer-events-none -my-1 !w-full sm:hidden" />
               {!over ? (
                 <div className="w-full rounded-xl border border-white/15 bg-black/50 px-2.5 py-1.5 text-right backdrop-blur-md">
                   <p className="font-hud text-[0.6rem] uppercase tracking-[0.2em] text-white/60">{yourTurn && viewerId ? "À vous" : "Tour de"}</p>

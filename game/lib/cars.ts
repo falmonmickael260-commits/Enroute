@@ -26,6 +26,18 @@ export type CarId = (typeof CARS)[number]["id"];
 
 export const DEFAULT_CAR: CarId = "sedan-sports";
 
+/** Until they pick one, each seat gets a different car (nobody races a clone). */
+const SEAT_CARS: CarId[] = ["sedan-sports", "hatchback-sports", "suv", "race", "van", "truck"];
+
+export function defaultCar(seat: number): CarId {
+  return SEAT_CARS[((seat % SEAT_CARS.length) + SEAT_CARS.length) % SEAT_CARS.length];
+}
+
+/** The car a pilot races: theirs if they picked a known one, else their seat's. */
+export function carFor(car: unknown, seat: number): CarId {
+  return isCarId(car) ? car : defaultCar(seat);
+}
+
 export function isCarId(value: unknown): value is CarId {
   return typeof value === "string" && CARS.some((c) => c.id === value);
 }
