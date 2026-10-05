@@ -198,6 +198,35 @@ const asphaltTexture = () =>
     g.fillRect(125, 256, 6, 220);
   });
 
+/** Soft ripples on the sea (multiplies its colour). */
+const rippleTexture = () =>
+  canvasTexture(128, 128, (g) => {
+    g.fillStyle = "#ffffff";
+    g.fillRect(0, 0, 128, 128);
+    const r = rng(31);
+    for (let i = 0; i < 60; i++) {
+      g.strokeStyle = `rgba(10,70,110,${0.03 + r() * 0.06})`;
+      g.lineWidth = 0.8 + r() * 1.6;
+      const x = r() * 128;
+      const y = r() * 128;
+      g.beginPath();
+      g.arc(x, y, 3 + r() * 14, Math.PI * (1.05 + r() * 0.2), Math.PI * (1.6 + r() * 0.3));
+      g.stroke();
+    }
+  });
+
+/** Sun glints: a few bright specks on black, used as glow. */
+const glintTexture = () =>
+  canvasTexture(128, 128, (g) => {
+    g.fillStyle = "#000000";
+    g.fillRect(0, 0, 128, 128);
+    const r = rng(32);
+    for (let i = 0; i < 26; i++) {
+      g.fillStyle = `rgba(255,255,255,${0.5 + r() * 0.5})`;
+      g.fillRect(r() * 128, r() * 128, 2 + r() * 3, 1);
+    }
+  });
+
 const kerbTexture = () =>
   canvasTexture(16, 64, (g) => {
     g.fillStyle = "#f4f2ec";
@@ -417,6 +446,8 @@ export class WorldStage implements Stage {
     this.buildStartAndFinish(scene);
     this.buildRoadside(scene);
     this.buildGulls(scene);
+    this.buildCelebration(scene);
+    this.buildLighthouse(scene);
   }
 
   // ------------------------------------------------------------ world building
@@ -475,7 +506,16 @@ export class WorldStage implements Stage {
   private buildSea(scene: THREE.Scene) {
     const geo = new THREE.PlaneGeometry(400, 400);
     geo.rotateX(-Math.PI / 2);
-    const sea = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: "#16a2c9", roughness: 0.12, metalness: 0.25, ...BEHIND }));
+    // ripples drift one way and the sun glints sparkle the other
+    const ripples = rippleTexture();
+    const glints = glintTexture();
+    ripples.repeat.set(37, 41);
+    glints.repeat.set(70, 70);
+    this.seaMaps = [ripples, glints];
+    const sea = new THREE.Mesh(
+      geo,
+      new THREE.MeshStandardMaterial({ color: "#16a2c9", map: ripples, emissive: "#ffffff", emissiveMap: glints, emissiveIntensity: 0.55, roughness: 0.12, metalness: 0.25, ...BEHIND }),
+    );
     sea.position.set(120, SEA_LEVEL, -80);
     sea.receiveShadow = true;
     scene.add(sea);
@@ -486,7 +526,7 @@ export class WorldStage implements Stage {
     );
     shallow.position.y = SEA_LEVEL + 0.02;
     scene.add(shallow);
-    this.disposables.push(geo, sea.material as THREE.Material, shallow.geometry, shallow.material as THREE.Material);
+    this.disposables.push(geo, ripples, glints, sea.material as THREE.Material, shallow.geometry, shallow.material as THREE.Material);
   }
 
   private buildRoad(scene: THREE.Scene) {
@@ -680,7 +720,9 @@ export class WorldStage implements Stage {
     for (let i = 0; i < 9; i++) {
       const z = 10 - r() * 170;
       const x = coastX(z) + 8 + r() * 30;
-      boats.push({ m: mat4(x, SEA_LEVEL, z, 1, 1, 1, r() * 6) });
+      const yaw = r() * 6;
+      boats.push({ m: mat4(x, SEA_LEVEL, z, 1, 1, 1, yaw) });
+      this.boats.push({ x, z, yaw, radius: 6 + (i % 4) * 3, speed: (0.012 + (i % 3) * 0.006) * (i % 2 ? 1 : -1), phase: i * 1.7 });
     }
 
     const add = (geo: THREE.BufferGeometry, material: THREE.Material, items: { m: THREE.Matrix4; c?: THREE.Color }[], shadows = true) => {
@@ -699,8 +741,12 @@ export class WorldStage implements Stage {
     const hull = new THREE.BoxGeometry(0.6, 0.25, 1.8);
     const sail = new THREE.ConeGeometry(0.55, 2, 3);
     sail.translate(0, 1.2, 0);
-    add(hull, new THREE.MeshStandardMaterial({ color: "#ffffff" }), boats, false);
-    add(sail, new THREE.MeshStandardMaterial({ color: "#fbfbf6", flatShading: true }), boats, false);
+    this.boatMeshes = [instanced(hull, new THREE.MeshStandardMaterial({ color: "#ffffff" }), boats, false), instanced(sail, new THREE.MeshStandardMaterial({ color: "#fbfbf6", flatShading: true }), boats, false)];
+    for (const m of this.boatMeshes) {
+      m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      scene.add(m);
+      this.disposables.push(m.geometry, m.material as THREE.Material);
+    }
   }
 
   /** The things that make a road feel driven on: posts, signs, lamps, rocks, flowers. */
@@ -834,6 +880,184 @@ export class WorldStage implements Stage {
     add(new THREE.ConeGeometry(0.5, 1, 5), new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true }), tufts, false);
   }
 
+  private seaMaps: THREE.Texture[] = [];
+  private clouds: THREE.InstancedMesh | null = null;
+  private boats: { x: number; z: number; yaw: number; radius: number; speed: number; phase: number }[] = [];
+  private boatMeshes: THREE.InstancedMesh[] = [];
+  private crowd: { x: number; y: number; z: number; yaw: number; phase: number; flag: boolean }[] = [];
+  private crowdMeshes: { body: THREE.InstancedMesh; head: THREE.InstancedMesh; flag: THREE.InstancedMesh } | null = null;
+  private pennants: { base: THREE.Matrix4; phase: number }[] = [];
+  private pennantMesh: THREE.InstancedMesh | null = null;
+  private beacon: THREE.MeshStandardMaterial | null = null;
+
+  /**
+   * Start and finish feel like an event: bunting across the road and a few
+   * spectators on the hillside, cheering and waving flags.
+   */
+  private buildCelebration(scene: THREE.Scene) {
+    const r = rng(404);
+    const people: { m: THREE.Matrix4; c: THREE.Color }[] = [];
+    const heads: { m: THREE.Matrix4; c: THREE.Color }[] = [];
+    const flags: { m: THREE.Matrix4; c: THREE.Color }[] = [];
+    const shirts = ["#e8352b", "#1f86ea", "#ffc21a", "#2fae55", "#f04aa6", "#ffffff", "#8e4cf0", "#ff7a1a"];
+    const skins = ["#f1c7a5", "#d9a37c", "#a8714b", "#6e4429"];
+    const poles: { m: THREE.Matrix4 }[] = [];
+    const pennants: { m: THREE.Matrix4; c: THREE.Color }[] = [];
+
+    for (const [at, from, to] of [
+      [this.road.startLen, -3, 7],
+      [this.road.finishLen, -7, 3],
+    ] as const) {
+      // spectators behind the wall, facing the road
+      for (let i = 0; i < 16; i++) {
+        const l = at + from + r() * (to - from);
+        const { point, right } = this.road.at(l);
+        const k = -(HALF_WIDTH + 2.1 + r() * 1.8);
+        const x = point.x + right.x * k;
+        const z = point.z + right.z * k;
+        const y = this.terrainHeight(x, z);
+        const yaw = Math.atan2(right.x, right.z);
+        const flag = r() < 0.4;
+        this.crowd.push({ x, y, z, yaw, phase: r() * Math.PI * 2, flag });
+        const shirt = new THREE.Color(shirts[Math.floor(r() * shirts.length)]);
+        people.push({ m: new THREE.Matrix4(), c: shirt });
+        heads.push({ m: new THREE.Matrix4(), c: new THREE.Color(skins[Math.floor(r() * skins.length)]) });
+        flags.push({ m: new THREE.Matrix4(), c: flag ? new THREE.Color(shirts[Math.floor(r() * 5)]) : shirt });
+      }
+
+      // bunting on two striped masts across the road
+      // past the start line (the camera waits behind it), just before the finish arch
+      const { point, right, forward } = this.road.at(at + (at === this.road.startLen ? 9 : -1.5));
+      const yaw = Math.atan2(forward.x, forward.z);
+      const span = HALF_WIDTH + 0.7;
+      for (const side of [-1, 1]) poles.push({ m: mat4(point.x + right.x * side * span, point.y + 1.75, point.z + right.z * side * span, 0.09, 3.5, 0.09) });
+      const n = 18;
+      for (let i = 0; i < n; i++) {
+        const u = (i + 0.5) / n;
+        const k = (u * 2 - 1) * span;
+        const sag = 0.55 * (1 - Math.pow(u * 2 - 1, 2));
+        const base = new THREE.Matrix4().compose(
+          new THREE.Vector3(point.x + right.x * k, point.y + 3.4 - sag, point.z + right.z * k),
+          new THREE.Quaternion().setFromEuler(new THREE.Euler(0, yaw, 0)),
+          new THREE.Vector3(1, 1, 1),
+        );
+        this.pennants.push({ base, phase: i * 0.7 });
+        pennants.push({ m: base.clone(), c: new THREE.Color(shirts[i % 5]) });
+      }
+    }
+
+    const body = new THREE.CapsuleGeometry(0.13, 0.3, 3, 8);
+    body.translate(0, 0.28, 0);
+    const head = new THREE.SphereGeometry(0.1, 10, 8);
+    head.translate(0, 0.6, 0);
+    const flag = new THREE.BoxGeometry(0.02, 0.2, 0.28);
+    flag.translate(0, 0.95, 0.14);
+    const mat = () => new THREE.MeshStandardMaterial({ roughness: 0.8 });
+    this.crowdMeshes = { body: instanced(body, mat(), people), head: instanced(head, mat(), heads), flag: instanced(flag, mat(), flags, false) };
+    for (const m of Object.values(this.crowdMeshes)) {
+      m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      scene.add(m);
+      this.disposables.push(m.geometry, m.material as THREE.Material);
+    }
+
+    const pennant = new THREE.BufferGeometry();
+    pennant.setAttribute("position", new THREE.Float32BufferAttribute([-0.13, 0, 0, 0.13, 0, 0, 0, -0.3, 0], 3));
+    pennant.computeVertexNormals();
+    this.pennantMesh = instanced(pennant, new THREE.MeshStandardMaterial({ side: THREE.DoubleSide, roughness: 0.7 }), pennants, false);
+    this.pennantMesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+    const poleMesh = instanced(new THREE.CylinderGeometry(1, 1, 1, 8), new THREE.MeshStandardMaterial({ color: "#f2f2ee", roughness: 0.5 }), poles);
+    scene.add(this.pennantMesh, poleMesh);
+    this.disposables.push(pennant, this.pennantMesh.material as THREE.Material, poleMesh.geometry, poleMesh.material as THREE.Material);
+  }
+
+  /** A lighthouse on the point past the finish, its lamp flashing. */
+  private buildLighthouse(scene: THREE.Scene) {
+    const z = -152;
+    const x = coastX(z) + 0.5;
+    const y = Math.max(SEA_LEVEL, this.terrainHeight(x, z));
+    const g = new THREE.Group();
+    const white = new THREE.MeshStandardMaterial({ color: "#f4f1ea", roughness: 0.6 });
+    const red = new THREE.MeshStandardMaterial({ color: "#c8302a", roughness: 0.6 });
+    const parts: [THREE.BufferGeometry, THREE.Material, number][] = [
+      [new THREE.CylinderGeometry(1.6, 2.1, 1.2, 12), new THREE.MeshStandardMaterial({ color: "#9a8f7c", roughness: 1 }), 0.6],
+      [new THREE.CylinderGeometry(0.9, 1.25, 3, 12), white, 2.7],
+      [new THREE.CylinderGeometry(0.75, 0.9, 2.2, 12), red, 5.3],
+      [new THREE.CylinderGeometry(0.65, 0.75, 2, 12), white, 7.4],
+      [new THREE.CylinderGeometry(1, 1, 0.2, 12), red, 8.5],
+      [new THREE.ConeGeometry(0.75, 0.9, 12), red, 9.75],
+    ];
+    for (const [geo, material, h] of parts) {
+      const m = new THREE.Mesh(geo, material);
+      m.position.y = h;
+      m.castShadow = true;
+      g.add(m);
+      this.disposables.push(geo, material);
+    }
+    const lamp = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.8, 12), new THREE.MeshStandardMaterial({ color: "#fff6c8", emissive: "#ffe9a0", emissiveIntensity: 1.2 }));
+    lamp.position.y = 9;
+    g.add(lamp);
+    g.position.set(x, y, z);
+    scene.add(g);
+    this.beacon = lamp.material as THREE.MeshStandardMaterial;
+    this.disposables.push(lamp.geometry, lamp.material as THREE.Material);
+  }
+
+  private animateWorld(t: number) {
+    const s = t / 1000;
+    // the sea moves
+    if (this.seaMaps.length) {
+      this.seaMaps[0].offset.set(s * 0.018, s * 0.011);
+      this.seaMaps[1].offset.set(-s * 0.03, s * 0.022);
+    }
+    // the clouds drift
+    if (this.clouds) this.clouds.position.x = Math.sin(s * 0.012) * 24;
+    // the boats sail slow circles, rocking on the swell
+    const m = new THREE.Matrix4();
+    const q = new THREE.Quaternion();
+    const e = new THREE.Euler();
+    const v = new THREE.Vector3();
+    const one = new THREE.Vector3(1, 1, 1);
+    this.boats.forEach((b, i) => {
+      const a = b.phase + s * b.speed;
+      v.set(b.x + Math.cos(a) * b.radius - b.radius, SEA_LEVEL + Math.sin(s * 1.3 + b.phase) * 0.05, b.z + Math.sin(a) * b.radius);
+      e.set(Math.sin(s * 1.1 + b.phase) * 0.05, -a + (b.speed > 0 ? Math.PI : 0), Math.sin(s * 0.9 + b.phase) * 0.08);
+      m.compose(v, q.setFromEuler(e), one);
+      for (const mesh of this.boatMeshes) mesh.setMatrixAt(i, m);
+    });
+    for (const mesh of this.boatMeshes) mesh.instanceMatrix.needsUpdate = true;
+    // the crowd cheers: little hops in waves, flags waving
+    if (this.crowdMeshes) {
+      const { body, head, flag } = this.crowdMeshes;
+      const fm = new THREE.Matrix4();
+      this.crowd.forEach((c, i) => {
+        const excite = 0.5 + 0.5 * Math.sin(s * 0.7 + c.phase);
+        const hop = Math.max(0, Math.sin(s * 9 + c.phase * 3)) * 0.12 * excite;
+        v.set(c.x, c.y + hop, c.z);
+        m.compose(v, q.setFromEuler(e.set(0, c.yaw + Math.sin(s * 1.5 + c.phase) * 0.3, 0)), one);
+        body.setMatrixAt(i, m);
+        head.setMatrixAt(i, m);
+        if (c.flag) fm.compose(v, q.setFromEuler(e.set(Math.sin(s * 6 + c.phase) * 0.5, c.yaw, 0)), one);
+        else fm.makeScale(0, 0, 0);
+        flag.setMatrixAt(i, fm);
+      });
+      body.instanceMatrix.needsUpdate = head.instanceMatrix.needsUpdate = flag.instanceMatrix.needsUpdate = true;
+    }
+    // bunting flutters in the breeze
+    if (this.pennantMesh) {
+      const sway = new THREE.Matrix4();
+      this.pennants.forEach((p, i) => {
+        sway.makeRotationX(Math.sin(s * 3.2 + p.phase) * 0.35);
+        this.pennantMesh!.setMatrixAt(i, m.multiplyMatrices(p.base, sway));
+      });
+      this.pennantMesh.instanceMatrix.needsUpdate = true;
+    }
+    // the lighthouse flashes twice every few seconds
+    if (this.beacon) {
+      const f = s % 4;
+      this.beacon.emissiveIntensity = f < 0.25 || (f > 0.5 && f < 0.75) ? 3 : 0.6;
+    }
+  }
+
   private gulls: { bird: THREE.Group; wings: THREE.Mesh[]; radius: number; height: number; speed: number; phase: number; centre: THREE.Vector3 }[] = [];
 
   /** A few gulls wheeling over the water. */
@@ -914,6 +1138,7 @@ export class WorldStage implements Stage {
     }
     const cloudMesh = instanced(new THREE.SphereGeometry(1, 10, 7), cloudMat, puffs, false);
     scene.add(cloudMesh);
+    this.clouds = cloudMesh;
     this.disposables.push(mGeo, mMat, cloudMesh.geometry, cloudMat);
   }
 
@@ -981,7 +1206,7 @@ export class WorldStage implements Stage {
     arch.add(banner);
     const line = new THREE.Mesh(
       new THREE.PlaneGeometry(HALF_WIDTH * 2, 0.6),
-      new THREE.MeshStandardMaterial({ map: signTexture("", true), roughness: 0.7 }),
+      new THREE.MeshStandardMaterial({ map: signTexture("", true), roughness: 0.7, ...IN_FRONT }),
     );
     line.rotation.x = -Math.PI / 2;
     line.position.y = 0.06;
@@ -1039,6 +1264,7 @@ export class WorldStage implements Stage {
 
   frame(dt: number, t: number, cars: StageCar[], target: number) {
     this.flyGulls(t);
+    this.animateWorld(t);
     const wantPos = new THREE.Vector3();
     const wantLook = new THREE.Vector3();
     const byId = new Map(cars.map((c) => [c.id, c]));
