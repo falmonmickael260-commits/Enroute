@@ -14,6 +14,7 @@ import { TargetPicker } from "@/game/components/ui/TargetPicker";
 import { SoundToggle } from "@/game/components/ui/SoundToggle";
 import { ViewToggle } from "@/game/components/ui/ViewToggle";
 import { Logo } from "@/game/components/ui/Logo";
+import { RulesButton } from "@/game/components/rules/RulesButton";
 import { SceneBoard } from "./SceneBoard";
 import { FinishCinematic, IntroCinematic } from "./Cinematic";
 import { WorldBoard } from "./WorldBoard";
@@ -168,15 +169,16 @@ export function SceneTable({
               <Logo size="sm" />
             </div>
 
-            <div className="pointer-events-auto flex w-[7.5rem] shrink-0 flex-col items-end gap-1.5 sm:w-[34%] sm:max-w-[13rem]">
+            <div className="pointer-events-auto flex min-w-[7.5rem] shrink-0 flex-col items-end gap-1.5 sm:w-[34%] sm:max-w-[13rem]">
               <div className="flex gap-1.5">
                 {showViewToggle ? <ViewToggle /> : null}
+                <RulesButton />
                 <SoundToggle enabled={soundOn} onToggle={toggleSound} />
                 <button onClick={onExit} aria-label="Quitter" className="btn-enroute-ghost panel-leather !h-9 !w-9 !p-0 !text-sm">
                   ✕
                 </button>
               </div>
-              <Logo size="sm" className="pointer-events-none -my-1 !w-full sm:hidden" />
+              <Logo size="sm" className="pointer-events-none -my-1 sm:hidden" />
               {!over ? (
                 <div className="w-full rounded-xl border border-white/15 bg-black/50 px-2.5 py-1.5 text-right backdrop-blur-md">
                   <p className="font-hud text-[0.6rem] uppercase tracking-[0.2em] text-white/60">{yourTurn && viewerId ? "À vous" : "Tour de"}</p>

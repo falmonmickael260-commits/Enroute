@@ -16,6 +16,7 @@ import { TurnBanner } from "@/game/components/animations/TurnBanner";
 import { EventToast } from "@/game/components/animations/EventToast";
 import { VictoryOverlay } from "@/game/components/animations/VictoryOverlay";
 import { TargetPicker } from "@/game/components/ui/TargetPicker";
+import { RulesButton } from "@/game/components/rules/RulesButton";
 import { SoundToggle } from "@/game/components/ui/SoundToggle";
 import { TableBackdrop } from "@/game/components/ui/TableBackdrop";
 import { TurnPlate } from "./TurnPlate";
@@ -87,6 +88,7 @@ export function GameTable({
           </div>
           {/* On phones the logo spans most of the width: keep controls small and in the corner. */}
           <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
+            <RulesButton />
             <SoundToggle enabled={soundOn} onToggle={toggleSound} />
             <button onClick={onExit} aria-label="Quitter la partie" className="btn-enroute-ghost panel-leather !h-9 !w-9 !p-0 !text-sm sm:!h-10 sm:!w-auto sm:!px-4">
               <span className="sm:hidden">✕</span>
