@@ -64,6 +64,25 @@ export type SceneCue =
   | { kind: "gps" };
 
 const LANES: Record<number, number[]> = { 1: [0], 2: [-0.42, 0.42], 3: [-0.56, 0, 0.56], 4: [-0.62, -0.2, 0.22, 0.64] };
+/** Au-delà de 4 voitures groupées, on les range en rangées de 3 (la route est trop étroite). */
+const ROW_SIZE = 3;
+/** Recul de la rangée arrière, en longueurs de voiture dans l'axe de la route. */
+const ROW_GAP = 1.3;
+
+/**
+ * Place de chaque voiture d'un groupe (trié du plus en retard au plus en
+ * avance) : décalage latéral et recul longitudinal, en longueurs de voiture.
+ * Jusqu'à 4 voitures : une seule ligne de front. À 5 ou 6 : les 3 premières
+ * forment la rangée avant, les autres la rangée arrière, reculée de ROW_GAP.
+ */
+function slotsFor(count: number): { lateral: number; along: number }[] {
+  if (count <= 4) return (LANES[count] ?? [0]).map((lateral) => ({ lateral, along: 0 }));
+  const back = count - ROW_SIZE;
+  return [
+    ...LANES[back].map((lateral) => ({ lateral, along: -ROW_GAP })),
+    ...LANES[ROW_SIZE].map((lateral) => ({ lateral, along: 0 })),
+  ];
+}
 
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const easeOutBack = (t: number) => {
@@ -118,6 +137,9 @@ interface CarEntity {
   pendingStyle: MoveStyle | null;
   lateral: number;
   lateralTarget: number;
+  /** Recul dans l'axe de la route (rangée arrière), animé comme `lateral`. */
+  along: number;
+  alongTarget: number;
   props: Map<HazardType, Prop>;
   equipment: Map<DefenseType, Equipment>;
   lastPuff: number;
@@ -176,7 +198,7 @@ export class SceneRenderer {
 
   /** Pose of a car frame at `km` with a lateral lane offset (in car lengths). */
   private place(car: CarEntity, km: number, extraLateral = 0) {
-    const pl = this.stage.place(km, this.target, car.lateral + extraLateral);
+    const pl = this.stage.place(km, this.target, car.lateral + extraLateral, car.along);
     car.frame.position.copy(pl.position);
     car.frame.rotation.y = pl.yaw;
     car.frame.scale.setScalar(pl.scale);
@@ -221,19 +243,25 @@ export class SceneRenderer {
       if (c && Math.abs(c[c.length - 1].km - p.km) <= target * 0.03) c.push(p);
       else clusters.push([p]);
     }
-    const lane = new Map<string, number>();
-    for (const c of clusters) c.forEach((p, i) => lane.set(p.id, LANES[c.length]?.[i] ?? 0));
+    const lane = new Map<string, { lateral: number; along: number }>();
+    for (const c of clusters) {
+      const slots = slotsFor(c.length);
+      c.forEach((p, i) => lane.set(p.id, slots[i] ?? { lateral: 0, along: 0 }));
+    }
 
     for (const p of players) {
       seen.add(p.id);
       let car = this.cars.get(p.id);
       if (!car) {
         car = this.createCarEntity(p);
-        car.lateral = car.lateralTarget = lane.get(p.id) ?? 0;
+        const slot = lane.get(p.id);
+        car.lateral = car.lateralTarget = slot?.lateral ?? 0;
+        car.along = car.alongTarget = slot?.along ?? 0;
         this.cars.set(p.id, car);
         this.place(car, p.km);
       }
-      car.lateralTarget = lane.get(p.id) ?? 0;
+      car.lateralTarget = lane.get(p.id)?.lateral ?? 0;
+      car.alongTarget = lane.get(p.id)?.along ?? 0;
       this.ensureModel(car, p);
       if (p.km !== car.toKm) {
         const dist = Math.abs(p.km - car.km);
@@ -291,6 +319,8 @@ export class SceneRenderer {
       pendingStyle: null,
       lateral: 0,
       lateralTarget: 0,
+      along: 0,
+      alongTarget: 0,
       props: new Map(),
       equipment: new Map(),
       lastPuff: 0,
@@ -676,6 +706,7 @@ export class SceneRenderer {
       if (flameOn) car.flame.scale.set(1, 1, 0.8 + Math.random() * 0.5);
 
       car.lateral += (car.lateralTarget - car.lateral) * Math.min(1, dt * 5);
+      car.along += (car.alongTarget - car.along) * Math.min(1, dt * 5);
       this.place(car, car.km, swerve);
       m.body.rotation.y = swerve * 0.35;
       // wheels spin with the distance covered

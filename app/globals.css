@@ -34,6 +34,8 @@
   --color-player-azure: #3e8fe0;
   --color-player-amber: #e0a93e;
   --color-player-emerald: #3eab6f;
+  --color-player-violet: #8e5ae0;
+  --color-player-rose: #e05aa8;
 
   /* Brass trim */
   --color-brass-100: #fff1b8;
@@ -81,6 +83,8 @@
   --color-player-azure: var(--color-player-azure);
   --color-player-amber: var(--color-player-amber);
   --color-player-emerald: var(--color-player-emerald);
+  --color-player-violet: var(--color-player-violet);
+  --color-player-rose: var(--color-player-rose);
 
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);

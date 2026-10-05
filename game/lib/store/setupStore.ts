@@ -13,7 +13,7 @@ export interface SetupPlayer {
   ready: boolean;
 }
 
-export const PLAYER_COLORS: PlayerColor[] = ["crimson", "azure", "amber", "emerald"];
+export const PLAYER_COLORS: PlayerColor[] = ["crimson", "azure", "amber", "emerald", "violet", "rose"];
 
 interface SetupState {
   code: string | null;

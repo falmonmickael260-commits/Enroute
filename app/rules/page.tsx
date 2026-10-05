@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Card } from "@/game/components/cards/Card";
 import { CARD_CATALOG } from "@/game/lib/engine/cardCatalog";
 import { InnerPage } from "@/game/components/ui/InnerPage";
+import { STUCK_TURNS_LIMIT } from "@/game/lib/engine/deck";
 
 const HAZARD_PAIRS: [string, string][] = [
   ["collision", "reparation"],
@@ -21,8 +22,8 @@ export default function RulesPage() {
       <section>
         <H2>Le principe</H2>
         <p className="leading-relaxed text-white/80">
-          KILOMAX se joue de 2 à 4 joueurs. Chacun pilote son véhicule sur une route qui traverse la campagne, la ville, la
-          montagne et la côte. Le premier à parcourir la distance choisie (400, 700 ou 1000 km) franchit la ligne
+          KILOMAX se joue de 2 à 6 joueurs. Chacun pilote son véhicule sur une route qui traverse la campagne, la ville, la
+          montagne et la côte. Le premier à parcourir la distance choisie (700, 1000 ou 1500 km) franchit la ligne
           d&apos;arrivée et remporte la partie.
         </p>
       </section>
@@ -66,6 +67,16 @@ export default function RulesPage() {
             </div>
           ))}
         </div>
+      </section>
+
+      <section>
+        <H2>Anti-blocage</H2>
+        <p className="leading-relaxed text-white/80">
+          Personne ne reste coincé au bord de la route&nbsp;: si vous êtes arrêté (collision, crevaison, panne ou barrage — le
+          radar ne compte pas) pendant plus de {STUCK_TURNS_LIMIT} pioches d&apos;affilée, vous piochez directement la carte de
+          réparation qu&apos;il vous faut, prise dans la pioche ou, à défaut, dans la défausse. Le compteur repart de zéro à
+          chaque nouvel arrêt.
+        </p>
       </section>
 
       <section>

@@ -30,7 +30,8 @@ export interface CardInstance {
   defId: string;
 }
 
-export type PlayerColor = 'crimson' | 'azure' | 'amber' | 'emerald';
+/** Couleurs des pilotes : une par joueur, 6 au maximum. */
+export type PlayerColor = 'crimson' | 'azure' | 'amber' | 'emerald' | 'violet' | 'rose';
 
 export interface PlayerState {
   id: string;
@@ -54,6 +55,12 @@ export interface PlayerState {
   finishTurn: number | null;
   connected: boolean;
   ready: boolean;
+  /**
+   * Anti-blocage : nombre de pioches consécutives faites en étant arrêté
+   * (collision, crevaison, panne ou barrage — pas le radar). Optionnel pour
+   * rester compatible avec les parties en ligne déjà enregistrées.
+   */
+  blockedTurns?: number;
 }
 
 export type GamePhase = 'draw' | 'action' | 'gameover';

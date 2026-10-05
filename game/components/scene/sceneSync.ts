@@ -10,6 +10,8 @@ export const CAR_PAINT: Record<PlayerColor, string> = {
   azure: "#1f86ea",
   amber: "#ffc21a",
   emerald: "#2fae55",
+  violet: "#8e4cf0",
+  rose: "#f04aa6",
 };
 
 /** Which card was just played, read from how the state changed. */

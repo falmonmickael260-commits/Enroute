@@ -2,13 +2,15 @@
 
 import { motion } from "framer-motion";
 import { useState } from "react";
-import type { GameState } from "@/game/types/game";
+import type { GameState, PlayerColor } from "@/game/types/game";
 
-const COLOR_VAR: Record<string, string> = {
+const COLOR_VAR: Record<PlayerColor, string> = {
   crimson: "var(--color-player-crimson)",
   azure: "var(--color-player-azure)",
   amber: "var(--color-player-amber)",
   emerald: "var(--color-player-emerald)",
+  violet: "var(--color-player-violet)",
+  rose: "var(--color-player-rose)",
 };
 
 function Confetti() {

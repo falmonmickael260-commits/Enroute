@@ -6,6 +6,7 @@ import clsx from "clsx";
 import { AMBIANCES } from "@/game/lib/ambiances";
 import type { RoomMeta } from "@/game/hooks/useOnlineRoom";
 import { PLAYER_COLOR } from "@/game/components/players/PlayerPiece";
+import { MAX_PLAYERS } from "@/game/lib/engine/deck";
 import { InnerPage, SectionLabel } from "@/game/components/ui/InnerPage";
 import { CarPicker } from "@/game/components/ui/CarPicker";
 import { DEFAULT_CAR, carInfo, carThumb, isCarId } from "@/game/lib/cars";
@@ -140,9 +141,9 @@ export function OnlineLobby({
             </motion.div>
           );
         })}
-        {meta.players.length < 4 ? (
+        {meta.players.length < MAX_PLAYERS ? (
           <p className="rounded-2xl border border-dashed border-white/15 px-4 py-3 text-center font-hud text-sm text-white/45">
-            Place libre — partagez le code pour inviter jusqu&apos;à {4 - meta.players.length} pilote{4 - meta.players.length > 1 ? "s" : ""} de plus
+            Place libre — partagez le code pour inviter jusqu&apos;à {MAX_PLAYERS - meta.players.length} pilote{MAX_PLAYERS - meta.players.length > 1 ? "s" : ""} de plus
           </p>
         ) : null}
       </div>

@@ -8,7 +8,7 @@ import type {
   PlayerColor,
   PlayerState,
 } from "@/game/types/game";
-import { buildDeck, DEFAULT_TARGET, HAND_LIMIT } from "./deck";
+import { buildDeck, DEFAULT_TARGET, HAND_LIMIT, STUCK_TURNS_LIMIT } from "./deck";
 import { getCardDef, HAZARD_TO_DEFENSE } from "./cardCatalog";
 import {
   canPlayAttack,
@@ -49,6 +49,7 @@ export function createGame(options: NewGameOptions): GameState {
     finishTurn: null,
     connected: true,
     ready: true,
+    blockedTurns: 0,
   }));
 
   for (const player of players) {
@@ -112,6 +113,19 @@ function drawOne(state: GameState): CardInstance | null {
   return state.deck.shift() ?? null;
 }
 
+/**
+ * Anti-blocage : retire de la pioche (ou, à défaut, de la défausse) une carte
+ * qui répare le danger donné. Renvoie null si aucune n'est disponible.
+ */
+function takeRepairCard(state: GameState, hazard: HazardType): CardInstance | null {
+  const wanted = HAZARD_TO_DEFENSE[hazard];
+  for (const pile of [state.deck, state.discard]) {
+    const idx = pile.findIndex((c) => getCardDef(c.defId).defense === wanted);
+    if (idx !== -1) return pile.splice(idx, 1)[0];
+  }
+  return null;
+}
+
 function removeFromHand(player: PlayerState, cardUid: string): CardInstance {
   const idx = player.hand.findIndex((c) => c.uid === cardUid);
   if (idx === -1) throw new Error("Card not in hand");
@@ -169,6 +183,30 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
   switch (action.type) {
     case "DRAW_CARD": {
       if (draft.phase !== "draw") return draft;
+
+      // Anti-blocage : un joueur arrêté (le radar ne compte pas, il ne fait
+      // que limiter la vitesse) accumule ses tours bloqués. Passé la limite,
+      // il pioche directement la réparation correspondante.
+      if (player.hazard) {
+        player.blockedTurns = (player.blockedTurns ?? 0) + 1;
+        if (player.blockedTurns > STUCK_TURNS_LIMIT) {
+          const repair = takeRepairCard(draft, player.hazard);
+          if (repair) {
+            player.hand.push(repair);
+            player.blockedTurns = 0;
+            log(
+              draft,
+              player.id,
+              `${player.name} est bloqué depuis trop longtemps : il pioche directement ${getCardDef(repair.defId).title}.`,
+              "system",
+            );
+            pushAnim(draft, { kind: "draw", playerId: player.id });
+            draft.phase = "action";
+            return draft;
+          }
+        }
+      }
+
       const card = drawOne(draft);
       if (card) {
         player.hand.push(card);
@@ -215,6 +253,8 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
         victim.limited = true;
       } else {
         victim.hazard = def.hazard;
+        // Nouvel arrêt : le compteur anti-blocage repart de zéro.
+        victim.blockedTurns = 0;
       }
       player.cardsPlayed += 1;
       player.attacksSent += 1;
