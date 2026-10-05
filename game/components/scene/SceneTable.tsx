@@ -177,8 +177,11 @@ export function SceneTable({
                     onClick={() => setOverview((v) => !v)}
                     className="flex items-center gap-1.5 rounded-full border-2 border-white/40 bg-[#0e1522]/80 px-3 py-1.5 font-hud text-xs font-bold text-white shadow-[0_6px_16px_rgba(0,0,0,0.4)] backdrop-blur-md active:scale-95 sm:text-sm"
                   >
-                    <span className="text-sm leading-none">{overview ? "🚗" : "🗺️"}</span>
-                    {overview ? "Vue normale" : "Vue d'ensemble"}
+                    <span className="text-sm leading-none" aria-label={overview ? "Vue normale" : "Vue d'ensemble"}>
+                      {overview ? "🚗" : "🗺️"}
+                    </span>
+                    {/* narrow phones: the icon alone, so the bigger draw pile keeps its room */}
+                    <span className="hidden min-[400px]:inline">{overview ? "Vue normale" : "Vue d'ensemble"}</span>
                   </button>
                 ) : null
               }

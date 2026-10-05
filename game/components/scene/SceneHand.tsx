@@ -196,18 +196,18 @@ export function SceneHand({
       </AnimatePresence>
 
       {/* piles and prompt */}
-      <div className="flex items-end justify-between px-3 pb-1.5">
+      <div className="flex items-end justify-between gap-1.5 px-2 pb-1.5 min-[400px]:px-3">
         <button
           type="button"
           aria-label="Piocher une carte"
           disabled={!mustDraw}
           onClick={onDraw}
           className={clsx(
-            "flex items-center gap-2.5 rounded-2xl border-2 px-2.5 py-1.5 transition-all",
+            "flex shrink-0 items-center gap-2 rounded-2xl border-2 px-2 py-1.5 transition-all min-[400px]:gap-2.5 min-[400px]:px-2.5",
             mustDraw ? "animate-pulse border-[#ffd23f] bg-[#ffd23f]/20 shadow-[0_0_22px_rgba(255,210,63,0.55)]" : "border-white/15 bg-black/45",
           )}
         >
-          <span className="relative h-[3.6rem] w-[2.5rem] shrink-0">
+          <span className="relative h-[4.3rem] w-[3rem] shrink-0">
             <span className="absolute inset-0 translate-x-[3px] -translate-y-[3px] opacity-70">
               <Card size="xs" faceDown className="!h-full !w-full" />
             </span>
@@ -216,7 +216,7 @@ export function SceneHand({
             </span>
           </span>
           <span className="text-left leading-tight">
-            <span className="block font-display text-xl text-white">{mustDraw ? "PIOCHER" : "Pioche"}</span>
+            <span className="block font-display text-xl text-white min-[400px]:text-2xl">{mustDraw ? "PIOCHER" : "Pioche"}</span>
             <span className="block font-hud text-xs text-white/65">{state.deck.length} cartes</span>
           </span>
         </button>
@@ -226,7 +226,7 @@ export function SceneHand({
             {mustDraw ? "↖ Touchez la pioche" : canAct ? "Touchez une carte" : ""}
           </p>
         </div>
-        <div className="flex items-center gap-2 rounded-2xl border-2 border-white/15 bg-black/45 px-2.5 py-1.5">
+        <div className="flex shrink-0 items-center gap-2 rounded-2xl border-2 border-white/15 bg-black/45 px-2 py-1.5 min-[400px]:px-2.5">
           <span className="text-right leading-tight">
             <span className="block font-display text-lg text-white">Défausse</span>
             <span className="block font-hud text-xs text-white/65">{state.discard.length} cartes</span>
