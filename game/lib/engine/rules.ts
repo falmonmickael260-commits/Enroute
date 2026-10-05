@@ -46,11 +46,15 @@ export function canPlayDefenseReactive(player: PlayerState, def: CardDef): boole
   return hazardActive(player, def.counters);
 }
 
+/** How many protections a player can have in front of them at once. */
+export const MAX_SHIELDS = 2;
+
 export function canPlayDefenseShield(player: PlayerState, def: CardDef): boolean {
   if (!def.defense || !def.counters) return false;
   if (!isRoadClear(player)) return false; // stopped: only the matching repair can be played
   if (hazardActive(player, def.counters)) return false; // reactive is the right move here
   if (player.shields.includes(def.defense)) return false; // already immune
+  if (player.shields.length >= MAX_SHIELDS) return false; // nobody gets to be untouchable
   return true;
 }
 

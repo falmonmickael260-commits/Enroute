@@ -25,6 +25,7 @@ import {
   drawWarning,
   type CarModel,
 } from "./models";
+import { loadCarModel } from "./carModels";
 
 /**
  * Draws and animates the 3D pieces of a race: cars, hazards, protections and
@@ -35,6 +36,9 @@ import {
 export interface ScenePlayer {
   id: string;
   color: string;
+  /** Car model (game/lib/cars.ts); the drawn KILOMAX car when absent. */
+  car?: string;
+  repaint?: boolean;
   km: number;
   hazard: HazardType | null;
   limited: boolean;
@@ -121,6 +125,8 @@ interface CarEntity {
   beamAt: number;
   active: boolean;
   scale: number;
+  /** Which car model is shown (or on its way). */
+  carId: string;
 }
 
 export class SceneRenderer {
@@ -228,6 +234,7 @@ export class SceneRenderer {
         this.place(car, p.km);
       }
       car.lateralTarget = lane.get(p.id) ?? 0;
+      this.ensureModel(car, p);
       if (p.km !== car.toKm) {
         const dist = Math.abs(p.km - car.km);
         car.fromKm = car.km;
@@ -291,7 +298,40 @@ export class SceneRenderer {
       beamAt: -1e9,
       active: p.active,
       scale: 1,
+      carId: "kilomax",
     };
+  }
+
+  /** Swaps in the pilot's chosen car once its file is loaded (the drawn car stands in meanwhile). */
+  private ensureModel(car: CarEntity, p: ScenePlayer) {
+    const wanted = p.car && p.car !== "kilomax" ? p.car : "kilomax";
+    if (car.carId === wanted) return;
+    car.carId = wanted;
+    const ready =
+      wanted === "kilomax" ? Promise.resolve(createCar(p.color)) : loadCarModel(wanted, p.color, p.repaint ?? true, this.stage.castShadows);
+    void ready.then((model) => {
+      if (!model || car.carId !== wanted || !this.cars.has(car.id) || this.disposed) return;
+      this.swapModel(car, model);
+    });
+  }
+
+  private swapModel(car: CarEntity, model: CarModel) {
+    const old = car.model;
+    car.frame.remove(old.root);
+    car.frame.add(model.root);
+    // keep what was mounted on the old car: flame, protections
+    car.flame.position.copy(model.exhaust);
+    model.body.add(car.flame);
+    for (const [d, item] of car.equipment) {
+      const mount = d === "reparation" ? model.mounts.front : d === "roueSecours" ? model.mounts.rear : model.mounts.roof;
+      mount.add(item.root);
+    }
+    if (this.stage.castShadows)
+      model.root.traverse((o) => {
+        if ((o as THREE.Mesh).isMesh) o.castShadow = true;
+      });
+    model.brakeLights.emissiveIntensity = old.brakeLights.emissiveIntensity;
+    car.model = model;
   }
 
   // ------------------------------------------------------------ protections

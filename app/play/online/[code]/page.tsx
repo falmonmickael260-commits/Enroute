@@ -67,6 +67,7 @@ function OnlineRoom({ code, seat }: { code: string; seat: Seat }) {
         error={room.error}
         onReady={room.toggleReady}
         onStart={room.deal}
+        onCar={room.chooseCar}
         onLeave={async () => {
           await room.leave();
           router.push("/");

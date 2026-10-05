@@ -21,7 +21,7 @@ import { uid } from "@/game/utils/array";
 
 export interface NewGameOptions {
   id: string;
-  players: { id: string; name: string; color: PlayerColor; isBot?: boolean }[];
+  players: { id: string; name: string; color: PlayerColor; car?: string; isBot?: boolean }[];
   target?: number;
   ambiance?: AmbianceId;
 }
@@ -32,6 +32,7 @@ export function createGame(options: NewGameOptions): GameState {
     id: p.id,
     name: p.name,
     color: p.color,
+    car: p.car,
     isBot: p.isBot,
     hand: [],
     distance: 0,

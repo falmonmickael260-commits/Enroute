@@ -9,6 +9,8 @@ export interface RoomPlayer {
   id: string;
   name: string;
   color: PlayerColor;
+  /** Chosen car (game/lib/cars.ts); absent until the pilot picks one. */
+  car?: string;
   ready: boolean;
 }
 
@@ -98,6 +100,10 @@ export function roomInfo(code: string) {
 
 export function setReady(code: string, seat: Seat, ready: boolean) {
   return call<void>("set_ready", { p_code: code, p_player_id: seat.playerId, p_secret: seat.secret, p_ready: ready });
+}
+
+export function setCar(code: string, seat: Seat, car: string) {
+  return call<void>("set_car", { p_code: code, p_player_id: seat.playerId, p_secret: seat.secret, p_car: car });
 }
 
 export function leaveRoom(code: string, seat: Seat) {

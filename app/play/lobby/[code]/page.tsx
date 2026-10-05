@@ -8,11 +8,12 @@ import { useSetupStore } from "@/game/lib/store/setupStore";
 import { AMBIANCES } from "@/game/lib/ambiances";
 import { PLAYER_COLOR } from "@/game/components/players/PlayerPiece";
 import { InnerPage, SectionLabel } from "@/game/components/ui/InnerPage";
+import { CarPicker } from "@/game/components/ui/CarPicker";
 
 export default function LobbyPage({ params }: { params: Promise<{ code: string }> }) {
   const { code } = use(params);
   const router = useRouter();
-  const { code: storeCode, players, ambiance, target, toggleReady } = useSetupStore();
+  const { code: storeCode, players, ambiance, target, toggleReady, setCar } = useSetupStore();
 
   if (storeCode !== code || players.length === 0) {
     return (
@@ -45,16 +46,19 @@ export default function LobbyPage({ params }: { params: Promise<{ code: string }
             initial={{ opacity: 0, x: -16 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: i * 0.06 }}
-            className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/30 px-4 py-3"
+            className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-2xl border border-white/10 bg-black/30 px-4 py-3"
           >
-            <div className="flex items-center gap-3">
+            <div className="flex min-w-0 items-center gap-3">
               <span
                 className="flex h-9 w-9 items-center justify-center rounded-full font-display text-lg text-white shadow-[inset_0_-2px_0_rgba(0,0,0,0.3)]"
                 style={{ background: PLAYER_COLOR[p.color] }}
               >
                 {i + 1}
               </span>
-              <span className="font-hud text-lg font-bold">{p.name}</span>
+              <span className="truncate font-hud text-lg font-bold">{p.name}</span>
+            </div>
+            <div className="order-last flex w-full justify-center sm:order-none sm:w-auto">
+              <CarPicker value={p.car} color={p.color} onChange={(car) => setCar(p.id, car)} disabled={p.ready} />
             </div>
             <button
               onClick={() => toggleReady(p.id)}

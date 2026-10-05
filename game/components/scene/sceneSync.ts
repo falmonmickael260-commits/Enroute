@@ -2,6 +2,7 @@ import type { GameState, PlayerColor } from "@/game/types/game";
 import { getCardDef } from "@/game/lib/engine/cardCatalog";
 import type { MoveStyle, SceneCue, SceneRenderer } from "./SceneRenderer";
 import { raceAudio } from "@/game/audio/race";
+import { carInfo, DEFAULT_CAR, isCarId } from "@/game/lib/cars";
 
 /** Car paint: livelier than the UI tokens, they have to pop on the landscape. */
 export const CAR_PAINT: Record<PlayerColor, string> = {
@@ -50,6 +51,8 @@ export function pushState(renderer: SceneRenderer, prev: GameState | null, state
     state.players.map((p) => ({
       id: p.id,
       color: CAR_PAINT[p.color],
+      car: p.car ?? DEFAULT_CAR,
+      repaint: carInfo(isCarId(p.car) ? p.car : DEFAULT_CAR).repaint,
       km: p.distance,
       hazard: p.hazard,
       limited: p.limited,

@@ -39,8 +39,12 @@ const SEA_LEVEL = -1.4;
 
 /** Where the cliffs meet the sea, as x for a given z (the sea is on the right). */
 function coastX(z: number) {
-  const cove = Math.exp(-Math.pow((z + 76) / 16, 2)); // the inlet under the viaduct
-  return 12.5 + 2.6 * Math.sin(z / 13) + 1.4 * Math.sin(z / 5.3) - cove * 9;
+  return 12.5 + 2.6 * Math.sin(z / 13) + 1.4 * Math.sin(z / 5.3) - coveAt(z) * 9;
+}
+
+/** 0..1: how deep into the inlet the viaduct crosses. */
+function coveAt(z: number) {
+  return Math.exp(-Math.pow((z + 76) / 16, 2));
 }
 
 // deterministic randomness so the scenery is the same for everyone
@@ -247,6 +251,46 @@ function ribbon(road: Road, from: number, to: number, lift: number, vScale: numb
   return geo;
 }
 
+/** A solid block following the road: lateral offsets [left, right], heights [bottom, top] above it. */
+function slab(road: Road, fromLen: number, toLen: number, left: number, right: number, bottom: number, top: number) {
+  const corners: [number, number][] = [
+    [left, bottom],
+    [left, top],
+    [right, top],
+    [right, bottom],
+  ];
+  const positions: number[] = [];
+  const index: number[] = [];
+  const rows: { point: THREE.Vector3; right: THREE.Vector3 }[] = [];
+  for (let l = fromLen; l < toLen; l += 0.3) rows.push(road.at(l));
+  rows.push(road.at(toLen));
+  const vertex = (r: { point: THREE.Vector3; right: THREE.Vector3 }, [k, y]: [number, number]) =>
+    positions.push(r.point.x + r.right.x * k, r.point.y + y, r.point.z + r.right.z * k);
+  // four long faces, each with its own vertices so the edges stay sharp
+  for (let f = 0; f < 4; f++) {
+    const base = positions.length / 3;
+    rows.forEach((r, i) => {
+      vertex(r, corners[f]);
+      vertex(r, corners[(f + 1) % 4]);
+      if (i > 0) {
+        const a = base + (i - 1) * 2;
+        index.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
+      }
+    });
+  }
+  // the two ends
+  for (const r of [rows[0], rows[rows.length - 1]]) {
+    const base = positions.length / 3;
+    corners.forEach((c) => vertex(r, c));
+    index.push(base, base + 1, base + 2, base, base + 2, base + 3);
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geo.setIndex(index);
+  geo.computeVertexNormals();
+  return geo;
+}
+
 function instanced(geo: THREE.BufferGeometry, mat: THREE.Material, items: { m: THREE.Matrix4; c?: THREE.Color }[], shadows = true) {
   const mesh = new THREE.InstancedMesh(geo, mat, Math.max(1, items.length));
   items.forEach((it, i) => {
@@ -266,6 +310,21 @@ const mat4 = (x: number, y: number, z: number, sx: number, sy: number, sz: numbe
     new THREE.Vector3(sx, sy, sz),
   );
 
+/**
+ * Layers laid flat on one another (sea and shallows, ground and road, road and
+ * paint) are a few centimetres apart: on phones with a coarse depth buffer they
+ * would flicker into each other in the distance. Polygon offset keeps the order
+ * whatever the precision.
+ */
+const BEHIND = { polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 4 } as const;
+const IN_FRONT = { polygonOffset: true, polygonOffsetFactor: -2, polygonOffsetUnits: -4 } as const;
+
+/** Where the sun shines from, relative to what the camera looks at; and its axes. */
+const SUN_OFFSET = new THREE.Vector3(-26, 40, 18);
+const SUN_TO_WORLD = new THREE.Matrix4().lookAt(SUN_OFFSET, new THREE.Vector3(), new THREE.Vector3(0, 1, 0));
+const SUN_FROM_WORLD = SUN_TO_WORLD.clone().transpose();
+const SUN_SNAP = new THREE.Vector3();
+
 // ---------------------------------------------------------------- the stage
 
 export class WorldStage implements Stage {
@@ -280,6 +339,8 @@ export class WorldStage implements Stage {
   private camPos = new THREE.Vector3(0, 6, 36);
   private camLook = new THREE.Vector3(0, 0, 0);
   private placed = false;
+  /** Stretches of road carried by the viaduct (no ground under them). */
+  private bridges: [number, number][] = [];
   private readonly disposables: { dispose: () => void }[] = [];
   private finishTarget = 1000;
   private signs: THREE.Group | null = null;
@@ -298,7 +359,7 @@ export class WorldStage implements Stage {
     scene.environmentIntensity = 0.35;
     renderer.toneMappingExposure = 0.95;
     scene.add(new THREE.HemisphereLight("#dcecff", "#6f7a45", 0.85));
-    this.sun.position.set(-30, 45, 20);
+    this.sun.position.copy(SUN_OFFSET);
     this.sun.castShadow = true;
     this.sun.shadow.mapSize.set(1024, 1024);
     const sc = this.sun.shadow.camera;
@@ -312,6 +373,7 @@ export class WorldStage implements Stage {
     this.sun.shadow.normalBias = 0.04;
     scene.add(this.sun, this.sun.target);
 
+    this.bridges = this.findBridges();
     this.buildTerrain(scene);
     this.buildSea(scene);
     this.buildRoad(scene);
@@ -327,11 +389,14 @@ export class WorldStage implements Stage {
     const { dist, y: roadY } = this.road.nearest(x, z);
     // hills rise inland (to the left), cliffs drop into the sea on the right
     const inland = Math.max(0, -x - 4) * 0.32 + Math.max(0, noise2(x, z)) * 2.2 + 0.3;
-    const flat = THREE.MathUtils.smoothstep(dist, HALF_WIDTH + 1.2, HALF_WIDTH + 7);
-    let h = THREE.MathUtils.lerp(roadY - 0.05, roadY + inland, flat);
+    const flat = THREE.MathUtils.smoothstep(dist, HALF_WIDTH + 1.4, HALF_WIDTH + 7);
+    let h = THREE.MathUtils.lerp(roadY - 0.1, roadY + inland, flat);
     const toSea = x - coastX(z);
     if (toSea > -1.5) {
-      const drop = THREE.MathUtils.smoothstep(toSea, -1.5, 1.5);
+      // the road keeps solid ground under it where it skirts the cliff; only the
+      // viaduct over the inlet crosses open water
+      const bed = (1 - THREE.MathUtils.smoothstep(dist, HALF_WIDTH + 2.2, HALF_WIDTH + 5)) * (1 - THREE.MathUtils.smoothstep(coveAt(z), 0.15, 0.4));
+      const drop = THREE.MathUtils.smoothstep(toSea, -1.5, 1.5) * (1 - bed);
       h = THREE.MathUtils.lerp(h, SEA_LEVEL - 2.5, drop);
     }
     return h;
@@ -364,7 +429,8 @@ export class WorldStage implements Stage {
     }
     geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
     geo.computeVertexNormals();
-    const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, flatShading: false }));
+    // drawn a hair behind what lies on it, so the road never flickers through the grass
+    const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, ...BEHIND }));
     mesh.receiveShadow = true;
     scene.add(mesh);
     this.disposables.push(geo, mesh.material as THREE.Material);
@@ -373,7 +439,7 @@ export class WorldStage implements Stage {
   private buildSea(scene: THREE.Scene) {
     const geo = new THREE.PlaneGeometry(400, 400);
     geo.rotateX(-Math.PI / 2);
-    const sea = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: "#16a2c9", roughness: 0.12, metalness: 0.25 }));
+    const sea = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ color: "#16a2c9", roughness: 0.12, metalness: 0.25, ...BEHIND }));
     sea.position.set(120, SEA_LEVEL, -80);
     sea.receiveShadow = true;
     scene.add(sea);
@@ -406,7 +472,15 @@ export class WorldStage implements Stage {
       scene.add(mesh);
       this.disposables.push(geo);
     }
-    this.disposables.push(asphalt, kerb, roadMat, kerbMat, shoulderMat);
+    // the verges' outer edges reach down into the ground: no sliver of light under the road on slopes
+    const skirtMat = new THREE.MeshStandardMaterial({ color: "#c9b78c", roughness: 1, side: THREE.DoubleSide });
+    for (const k of [-1, 1]) {
+      const skirt = new THREE.Mesh(railBand(this.road, k * (HALF_WIDTH + 1.1), -0.45, 0.02), skirtMat);
+      skirt.receiveShadow = true;
+      scene.add(skirt);
+      this.disposables.push(skirt.geometry);
+    }
+    this.disposables.push(asphalt, kerb, roadMat, kerbMat, shoulderMat, skirtMat);
 
     // guard rail on the sea side
     const railGeo = railBand(this.road, HALF_WIDTH + 0.95, 0.32, 0.5);
@@ -426,7 +500,7 @@ export class WorldStage implements Stage {
     const walls: { m: THREE.Matrix4; c: THREE.Color }[] = [];
     const r = rng(11);
     for (let l = 4; l < this.road.total; l += 1.6) {
-      if (Math.sin(l / 9) < 0.1) continue;
+      if (Math.sin(l / 9) < 0.1 || this.onBridge(l)) continue;
       const { point, right, forward } = this.road.at(l);
       const k = -(HALF_WIDTH + 1.35);
       walls.push({
@@ -439,11 +513,31 @@ export class WorldStage implements Stage {
     this.disposables.push(wallMesh.geometry, wallMesh.material as THREE.Material);
   }
 
+  /** Lengths of road with open air under them (the ground drops away below the verge). */
+  private findBridges() {
+    const out: [number, number][] = [];
+    const edge = HALF_WIDTH + 1.1;
+    for (let l = 0; l <= this.road.total; l += 0.25) {
+      const { point, right } = this.road.at(l);
+      const open = [-edge, 0, edge].some((k) => this.terrainHeight(point.x + right.x * k, point.z + right.z * k) < point.y - 0.3);
+      if (!open) continue;
+      const last = out[out.length - 1];
+      if (last && l - last[1] <= 1) last[1] = l;
+      else out.push([l, l]);
+    }
+    // run a little into the hillside at both ends
+    return out.map(([a, b]): [number, number] => [Math.max(0, a - 1.5), Math.min(this.road.total, b + 1.5)]);
+  }
+
+  private onBridge(l: number) {
+    return this.bridges.some(([a, b]) => l >= a && l <= b);
+  }
+
   private buildViaduct(scene: THREE.Scene) {
     const stone = new THREE.MeshStandardMaterial({ color: "#d8c7a4", roughness: 0.9 });
+    const deckStone = new THREE.MeshStandardMaterial({ color: "#d8c7a4", roughness: 0.9, side: THREE.DoubleSide, ...BEHIND });
     const piers: { m: THREE.Matrix4 }[] = [];
     const arches: { m: THREE.Matrix4 }[] = [];
-    const deck: { m: THREE.Matrix4 }[] = [];
     const step = 5;
     for (let l = 0; l < this.road.total; l += step) {
       const { point, forward } = this.road.at(l);
@@ -456,23 +550,29 @@ export class WorldStage implements Stage {
       const mid = this.road.at(l + step / 2);
       arches.push({
         m: new THREE.Matrix4().compose(
-          new THREE.Vector3(mid.point.x, point.y - 0.55, mid.point.z),
+          new THREE.Vector3(mid.point.x, mid.point.y - 0.55, mid.point.z),
           new THREE.Quaternion().setFromEuler(new THREE.Euler(0, Math.atan2(mid.forward.x, mid.forward.z) + Math.PI / 2, 0)),
           new THREE.Vector3(1, 1, 1),
         ),
       });
-      deck.push({ m: mat4(mid.point.x, point.y - 0.25, mid.point.z, 3.6, 0.5, step + 0.2, Math.atan2(mid.forward.x, mid.forward.z)) });
     }
     const archGeo = new THREE.TorusGeometry(step / 2 - 0.4, 0.35, 6, 14, Math.PI);
     archGeo.rotateZ(Math.PI);
     archGeo.scale(1, 1.3, 5.5);
-    const meshes = [
-      instanced(new THREE.BoxGeometry(1, 1, 1), stone, piers),
-      instanced(archGeo, stone, arches),
-      instanced(new THREE.BoxGeometry(1, 1, 1), stone, deck),
-    ];
+    const meshes: THREE.Mesh[] = [instanced(new THREE.BoxGeometry(1, 1, 1), stone, piers), instanced(archGeo, stone, arches)];
+    // the deck follows the road exactly (slope and bends), wide enough to carry the
+    // verges and the rail, with a low parapet on the hill side
+    const deckEdge = HALF_WIDTH + 1.2;
+    for (const [a, b] of this.bridges) {
+      for (const geo of [slab(this.road, a, b, -deckEdge, deckEdge, -0.6, -0.01), slab(this.road, a, b, -deckEdge, -deckEdge + 0.22, -0.01, 0.3)]) {
+        const mesh = new THREE.Mesh(geo, deckStone);
+        mesh.castShadow = true;
+        mesh.receiveShadow = true;
+        meshes.push(mesh);
+      }
+    }
     meshes.forEach((m) => scene.add(m));
-    this.disposables.push(stone, ...meshes.map((m) => m.geometry));
+    this.disposables.push(stone, deckStone, ...meshes.map((m) => m.geometry));
   }
 
   private buildScenery(scene: THREE.Scene) {
@@ -613,7 +713,7 @@ export class WorldStage implements Stage {
         }
     });
     const start = this.road.at(this.road.startLen);
-    const line = new THREE.Mesh(new THREE.PlaneGeometry(HALF_WIDTH * 2, 0.5), new THREE.MeshStandardMaterial({ map: chk, roughness: 0.7 }));
+    const line = new THREE.Mesh(new THREE.PlaneGeometry(HALF_WIDTH * 2, 0.5), new THREE.MeshStandardMaterial({ map: chk, roughness: 0.7, ...IN_FRONT }));
     line.rotation.set(-Math.PI / 2, 0, Math.atan2(start.forward.x, start.forward.z));
     line.position.copy(start.point).setY(start.point.y + 0.05);
     line.receiveShadow = true;
@@ -794,9 +894,13 @@ export class WorldStage implements Stage {
     this.camera.position.copy(this.camPos);
     this.camera.lookAt(this.camLook);
 
-    // shadows follow what we look at
-    this.sun.position.copy(this.camLook).add(new THREE.Vector3(-26, 40, 18));
-    this.sun.target.position.copy(this.camLook);
+    // shadows follow what we look at, by whole shadow-map texels: moved by less,
+    // their edges would shimmer while the camera glides
+    const texel = (this.sun.shadow.camera.right - this.sun.shadow.camera.left) / this.sun.shadow.mapSize.x;
+    const p = SUN_SNAP.copy(this.camLook).applyMatrix4(SUN_FROM_WORLD);
+    p.set(Math.round(p.x / texel) * texel, Math.round(p.y / texel) * texel, p.z).applyMatrix4(SUN_TO_WORLD);
+    this.sun.target.position.copy(p);
+    this.sun.position.copy(p).add(SUN_OFFSET);
     this.sun.target.updateMatrixWorld();
   }
 

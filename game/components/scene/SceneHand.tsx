@@ -12,6 +12,7 @@ import {
   hazardLabel,
   isCardPlayable,
   isRoadClear,
+  MAX_SHIELDS,
 } from "@/game/lib/engine/rules";
 import { useElementSize } from "@/game/hooks/useElementSize";
 import { Card, CATEGORY_STYLE } from "@/game/components/cards/Card";
@@ -31,6 +32,8 @@ function whyNot(player: PlayerState, def: CardDef, state: GameState): string {
   }
   if (def.category === "defense") {
     if (def.defense && player.shields.includes(def.defense)) return "Cette protection est déjà posée.";
+    if (player.shields.length >= MAX_SHIELDS && !player.hazard && !player.limited)
+      return `Maximum ${MAX_SHIELDS} protections à la fois : gardez-la pour réparer.`;
     if (player.hazard && def.counters && !hazardActive(player, def.counters))
       return `Ce n'est pas la bonne parade contre : ${hazardLabel(player.hazard).toLowerCase()}.`;
     return "Parade inutile pour l'instant.";

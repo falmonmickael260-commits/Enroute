@@ -7,6 +7,8 @@ import { AMBIANCES } from "@/game/lib/ambiances";
 import type { RoomMeta } from "@/game/hooks/useOnlineRoom";
 import { PLAYER_COLOR } from "@/game/components/players/PlayerPiece";
 import { InnerPage, SectionLabel } from "@/game/components/ui/InnerPage";
+import { CarPicker } from "@/game/components/ui/CarPicker";
+import { DEFAULT_CAR, carInfo, carThumb, isCarId } from "@/game/lib/cars";
 
 function ShareButton({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
@@ -44,6 +46,7 @@ export function OnlineLobby({
   error,
   onReady,
   onStart,
+  onCar,
   onLeave,
 }: {
   meta: RoomMeta;
@@ -51,6 +54,7 @@ export function OnlineLobby({
   error: string | null;
   onReady: (ready: boolean) => Promise<void>;
   onStart: () => Promise<void>;
+  onCar: (car: string) => Promise<void>;
   onLeave: () => void;
 }) {
   const [busy, setBusy] = useState(false);
@@ -81,15 +85,16 @@ export function OnlineLobby({
       <div className="flex flex-col gap-2.5">
         {meta.players.map((p, i) => {
           const online = p.id === playerId || meta.online.includes(p.id);
+          const car = isCarId(p.car) ? p.car : DEFAULT_CAR;
           return (
             <motion.div
               key={p.id}
               initial={{ opacity: 0, x: -16 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: i * 0.06 }}
-              className="flex items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/30 px-4 py-3"
+              className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-2xl border border-white/10 bg-black/30 px-4 py-3"
             >
-              <div className="flex min-w-0 items-center gap-3">
+              <div className="flex min-w-0 flex-1 items-center gap-3">
                 <span
                   className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full font-display text-lg text-white shadow-[inset_0_-2px_0_rgba(0,0,0,0.3)]"
                   style={{ background: PLAYER_COLOR[p.color] }}
@@ -121,6 +126,17 @@ export function OnlineLobby({
               >
                 {p.ready ? "PRÊT ✓" : "EN ATTENTE"}
               </span>
+              {p.id === playerId ? (
+                <div className="w-full">
+                  <CarPicker value={car} color={p.color} onChange={(c) => act(() => onCar(c))} disabled={p.ready || busy} />
+                </div>
+              ) : (
+                <div className="flex w-full items-center justify-center gap-2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={carThumb(car, p.color)} alt="" width={240} height={160} draggable={false} className="h-auto w-[5.5rem]" />
+                  <span className="font-menu text-sm font-bold uppercase tracking-wide text-white/70">{carInfo(car).label}</span>
+                </div>
+              )}
             </motion.div>
           );
         })}

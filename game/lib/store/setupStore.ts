@@ -3,11 +3,13 @@
 import { create } from "zustand";
 import type { AmbianceId, PlayerColor } from "@/game/types/game";
 import { generateGameCode } from "@/game/lib/gameCode";
+import { DEFAULT_CAR, type CarId } from "@/game/lib/cars";
 
 export interface SetupPlayer {
   id: string;
   name: string;
   color: PlayerColor;
+  car: CarId;
   ready: boolean;
 }
 
@@ -21,6 +23,7 @@ interface SetupState {
   createLocalGame: (playerNames: string[], ambiance: AmbianceId, target: number) => string;
   joinByCode: (code: string) => void;
   toggleReady: (id: string) => void;
+  setCar: (id: string, car: CarId) => void;
   reset: () => void;
 }
 
@@ -35,6 +38,7 @@ export const useSetupStore = create<SetupState>((set, get) => ({
       id: `p${i + 1}-${Math.random().toString(36).slice(2, 7)}`,
       name: name.trim() || `Joueur ${i + 1}`,
       color: PLAYER_COLORS[i % PLAYER_COLORS.length],
+      car: DEFAULT_CAR,
       ready: false,
     }));
     set({ code, players, ambiance, target });
@@ -46,6 +50,9 @@ export const useSetupStore = create<SetupState>((set, get) => ({
   },
   toggleReady: (id) => {
     set({ players: get().players.map((p) => (p.id === id ? { ...p, ready: !p.ready } : p)) });
+  },
+  setCar: (id, car) => {
+    set({ players: get().players.map((p) => (p.id === id ? { ...p, car } : p)) });
   },
   reset: () => set({ code: null, players: [], ambiance: "jour", target: 1000 }),
 }));

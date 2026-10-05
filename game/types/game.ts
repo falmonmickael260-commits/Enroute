@@ -36,6 +36,8 @@ export interface PlayerState {
   id: string;
   name: string;
   color: PlayerColor;
+  /** The car this pilot drives (see game/lib/cars.ts); the default one if absent. */
+  car?: string;
   isBot?: boolean;
   hand: CardInstance[];
   distance: number;

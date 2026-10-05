@@ -11,6 +11,7 @@ import {
   OnlineError,
   roomSync,
   setReady,
+  setCar,
   startGame,
   type RoomSnapshot,
   type Seat,
@@ -239,7 +240,7 @@ export function useOnlineRoom(code: string, seat: Seat | null) {
     if (!seat || !meta) return Promise.resolve();
     const state = createGame({
       id: code,
-      players: meta.players.map((p) => ({ id: p.id, name: p.name, color: p.color })),
+      players: meta.players.map((p) => ({ id: p.id, name: p.name, color: p.color, car: p.car })),
       ambiance: meta.settings.ambiance,
       target: meta.settings.target,
     });
@@ -258,5 +259,11 @@ export function useOnlineRoom(code: string, seat: Seat | null) {
 
   const clearError = useCallback(() => setError(null), []);
 
-  return { meta, game, connection, lost, error, clearError, dispatch, toggleReady, deal, leave, nudgeOthers };
+  /** This pilot's car, chosen in the lobby. */
+  const chooseCar = useCallback(
+    (car: string) => (seat ? run(() => setCar(code, seat, car)) : Promise.resolve()),
+    [code, seat, run],
+  );
+
+  return { meta, game, connection, lost, error, clearError, dispatch, toggleReady, chooseCar, deal, leave, nudgeOthers };
 }

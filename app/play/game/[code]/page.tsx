@@ -20,7 +20,7 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
     setup.players.length >= 2
       ? {
           id: code,
-          players: setup.players.map((p) => ({ id: p.id, name: p.name, color: p.color })),
+          players: setup.players.map((p) => ({ id: p.id, name: p.name, color: p.color, car: p.car })),
           ambiance: setup.ambiance,
           target: setup.target,
         }
