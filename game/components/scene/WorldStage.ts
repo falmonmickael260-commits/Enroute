@@ -501,6 +501,14 @@ export class WorldStage implements Stage {
   private camLook = new THREE.Vector3(0, 0, 0);
   private placed = false;
   private shotSince = 0;
+  /** Which side of the car the current close-up films (picked on its first frame). */
+  private shotSide = 0;
+  /** The driving style the chase cam last framed (an overtake gets its own angle). */
+  private followStyle: string | undefined;
+  /** Camera shake: when it started and how hard. */
+  private shake = { at: 0, amp: 0 };
+  private baseFov = 50;
+  private fovKick = 0;
   /** Stretches of road carried by the viaduct (no ground under them). */
   private bridges: [number, number][] = [];
   private readonly disposables: { dispose: () => void }[] = [];
@@ -1504,7 +1512,8 @@ export class WorldStage implements Stage {
     const virtualH = height + bottomInset;
     this.virtualHeight = virtualH;
     this.camera.aspect = width / virtualH;
-    this.camera.fov = width / Math.max(1, height - bottomInset) < 0.8 ? 52 : 42;
+    this.baseFov = width / Math.max(1, height - bottomInset) < 0.8 ? 52 : 42;
+    this.camera.fov = this.baseFov;
     this.camera.setViewOffset(width, virtualH, 0, bottomInset, width, height);
     this.camera.updateProjectionMatrix();
   }
@@ -1558,12 +1567,69 @@ export class WorldStage implements Stage {
   }
 
   setShot(shot: Shot) {
+    const prev = this.shot;
+    const changed =
+      shot.kind !== prev.kind ||
+      (shot.kind === "finish" && prev.kind === "finish" && shot.winnerId !== prev.winnerId) ||
+      (shot.kind === "car" && prev.kind === "car" && (shot.id !== prev.id || shot.hazard !== prev.hazard));
     // the scripted shots start from their first frame, with a cut
-    if (shot.kind !== this.shot.kind || (shot.kind === "finish" && this.shot.kind === "finish" && shot.winnerId !== this.shot.winnerId)) {
+    if (changed) {
       this.shotSince = performance.now();
-      if (shot.kind === "intro" || shot.kind === "finish") this.placed = false;
+      this.shotSide = 0;
+      // cut in on an attack, and cut back out of it rather than drifting through the scenery
+      if (shot.kind === "intro" || shot.kind === "finish" || (shot.kind === "car" && shot.hazard) || (prev.kind === "car" && prev.hazard)) this.placed = false;
+      if (shot.kind === "car" && (shot.hazard === "collision" || shot.hazard === "barrage")) {
+        // the hit lands a moment after the cut
+        this.shake = { at: this.shotSince + (shot.hazard === "barrage" ? 650 : 60), amp: shot.hazard === "barrage" ? 0.1 : 0.16 };
+      }
     }
+    if (shot.kind !== "follow") this.followStyle = undefined;
     this.shot = shot;
+  }
+
+  /** Close-ups for each attack, framed in the car's own axes. */
+  private hazardShot(car: StageCar, hazard: string, cars: StageCar[], wantPos: THREE.Vector3, wantLook: THREE.Vector3) {
+    const fwd = new THREE.Vector3(Math.sin(car.yaw), 0, Math.cos(car.yaw));
+    const side = new THREE.Vector3(Math.cos(car.yaw), 0, -Math.sin(car.yaw));
+    // film from the side with no other car in the way
+    if (!this.shotSide) {
+      const clearance = (s: number) => {
+        const probe = car.position.clone().addScaledVector(side, s * 1.6);
+        return Math.min(99, ...cars.filter((c) => c.id !== car.id).map((c) => c.position.distanceTo(probe)));
+      };
+      this.shotSide = clearance(1) >= clearance(-1) ? 1 : -1;
+    }
+    const k = this.shotSide;
+    const e = (performance.now() - this.shotSince) / 1000;
+    const at = (f: number, s: number, up: number) => car.position.clone().addScaledVector(fwd, f).addScaledVector(side, s * k).add(new THREE.Vector3(0, up, 0));
+    switch (hazard) {
+      case "collision":
+        // low, in front, pushing in on the impact
+        wantPos.copy(at(4.4 - Math.min(e, 1.5) * 0.6, 2.4, 1.05));
+        wantLook.copy(at(0, 0, 0.3));
+        return 7;
+      case "crevaison":
+        // down at the wheel
+        wantPos.copy(at(1.7, 1.75, 0.4));
+        wantLook.copy(at(0.3, 0.3, 0.12));
+        return 7;
+      case "radar":
+        // from behind the speed camera: the flash goes off right at us
+        wantPos.copy(at(1.8 + e * 0.15, 2.6, 1.5));
+        wantLook.copy(at(0, 0, 0.35));
+        return 7;
+      case "barrage":
+        // in front, low: the barrier drops between us and the car
+        wantPos.copy(at(4.8, 0.7, 1.7));
+        wantLook.copy(at(0.6, 0, 0.45));
+        return 7;
+      case "panne":
+      default:
+        // profile, the car coughing to a stop
+        wantPos.copy(at(0.3 + e * 0.25, 3.8, 1.5));
+        wantLook.copy(at(0.2, 0, 0.3));
+        return 5;
+    }
   }
 
   frame(dt: number, t: number, cars: StageCar[], target: number) {
@@ -1575,14 +1641,41 @@ export class WorldStage implements Stage {
     const shot = this.shot;
     let stiffness = 2.2;
 
+    let kick = 0;
     if (shot.kind === "follow" && byId.has(shot.id)) {
-      // chase cam: behind and above the car, looking down the road ahead
       const car = byId.get(shot.id)!;
       const fwd = new THREE.Vector3(Math.sin(car.yaw), 0, Math.cos(car.yaw));
-      wantPos.copy(car.position).addScaledVector(fwd, -10).add(new THREE.Vector3(0, 5.2, 0));
-      wantLook.copy(car.position).addScaledVector(fwd, 12);
-      wantLook.y = wantPos.y - 22 * Math.tan(THREE.MathUtils.degToRad(17));
-      stiffness = 4;
+      const side = new THREE.Vector3(Math.cos(car.yaw), 0, -Math.sin(car.yaw));
+      // a new kind of move gets its own angle, with a cut
+      if (car.style && car.style !== this.followStyle && ["overtake", "turbo", "shortcut"].includes(car.style)) this.placed = false;
+      if (car.style) this.followStyle = car.style;
+      const style = this.followStyle;
+      if (style === "overtake") {
+        // tracking shot alongside, low, as it pulls out and past the others
+        const left = this.road.at(this.road.kmToLen(car.km, target)).right.clone().negate();
+        wantPos.copy(car.position).addScaledVector(left, 4.6).addScaledVector(fwd, -0.4).add(new THREE.Vector3(0, 1.6, 0));
+        wantLook.copy(car.position).addScaledVector(fwd, 1.9).add(new THREE.Vector3(0, 0.25, 0));
+        stiffness = 9;
+      } else if (style === "turbo") {
+        // tucked in low behind it, the lens widening with the speed
+        wantPos.copy(car.position).addScaledVector(fwd, -4.2).add(new THREE.Vector3(0, 1.35, 0));
+        wantLook.copy(car.position).addScaledVector(fwd, 7).add(new THREE.Vector3(0, 0.4, 0));
+        stiffness = 10;
+        kick = car.style === "turbo" ? 1 : 0;
+      } else if (style === "shortcut") {
+        // crane shot: high above, watching it cut across
+        wantPos.copy(car.position).addScaledVector(fwd, -3).addScaledVector(side, 2).add(new THREE.Vector3(0, 10, 0));
+        wantLook.copy(car.position).addScaledVector(fwd, 3);
+        stiffness = 4;
+      } else {
+        // chase cam: behind and above the car, looking down the road ahead
+        wantPos.copy(car.position).addScaledVector(fwd, -10).add(new THREE.Vector3(0, 5.2, 0));
+        wantLook.copy(car.position).addScaledVector(fwd, 12);
+        wantLook.y = wantPos.y - 22 * Math.tan(THREE.MathUtils.degToRad(17));
+        stiffness = 4;
+      }
+    } else if (shot.kind === "car" && shot.hazard && byId.has(shot.id)) {
+      stiffness = this.hazardShot(byId.get(shot.id)!, shot.hazard, cars, wantPos, wantLook);
     } else if (shot.kind === "car" && byId.has(shot.id)) {
       // three-quarter view on a car something happens to
       const car = byId.get(shot.id)!;
@@ -1651,6 +1744,19 @@ export class WorldStage implements Stage {
     this.camLook.lerp(wantLook, k);
     this.camera.position.copy(this.camPos);
     this.camera.lookAt(this.camLook);
+    // a hit shakes the picture, briefly
+    const since = (performance.now() - this.shake.at) / 1000;
+    if (this.shake.amp && since > 0 && since < 0.6) {
+      const a = this.shake.amp * (1 - since / 0.6);
+      this.camera.position.add(new THREE.Vector3((Math.random() - 0.5) * a, (Math.random() - 0.5) * a, (Math.random() - 0.5) * a));
+    }
+    // turbo: the lens widens with the speed, then settles
+    this.fovKick += (kick - this.fovKick) * Math.min(1, dt * (kick ? 5 : 2.5));
+    const fov = this.baseFov + this.fovKick * 14;
+    if (Math.abs(this.camera.fov - fov) > 0.01) {
+      this.camera.fov = fov;
+      this.camera.updateProjectionMatrix();
+    }
 
     // shadows follow what we look at, by whole shadow-map texels: moved by less,
     // their edges would shimmer while the camera glides

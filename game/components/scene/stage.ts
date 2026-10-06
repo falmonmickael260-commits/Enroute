@@ -20,7 +20,8 @@ export type Shot =
   | { kind: "pack" }
   | { kind: "overview" }
   | { kind: "follow"; id: string }
-  | { kind: "car"; id: string }
+  /** On one car; `hazard` picks the cinematic angle for the attack it takes. */
+  | { kind: "car"; id: string; hazard?: string }
   | { kind: "finish"; winnerId?: string }
   /** Opening flyover: over the sea, along the coast, down to the grid. */
   | { kind: "intro" };
@@ -30,6 +31,8 @@ export interface StageCar {
   km: number;
   position: THREE.Vector3;
   yaw: number;
+  /** How it is driving right now (turbo, overtake…), when it moves. */
+  style?: string;
 }
 
 /**

@@ -117,7 +117,8 @@ export function WorldBoard({
     else if (intro) shot = { kind: "intro" };
     else if (overview) shot = { kind: "overview" };
     else if (event?.kind === "move") shot = { kind: "follow", id: event.playerId };
-    else if (event?.kind === "hazard" || event?.kind === "shield") shot = { kind: "car", id: event.playerId };
+    else if (event?.kind === "hazard") shot = { kind: "car", id: event.playerId, hazard: event.hazard };
+    else if (event?.kind === "shield") shot = { kind: "car", id: event.playerId };
     if (shot) {
       renderer.setShot(shot);
       return;
@@ -140,8 +141,8 @@ export function WorldBoard({
           <div className="h-10 w-10 animate-spin rounded-full border-4 border-white/30 border-t-[#ffd23f]" />
         </div>
       ) : null}
-      {/* names over the cars, out of the way during the opening flyover */}
-      <div className="transition-opacity duration-500" style={{ opacity: intro ? 0 : 1 }}>
+      {/* names over the cars, out of the way during the opening flyover and the close-ups on an attack */}
+      <div className="transition-opacity duration-300" style={{ opacity: intro || event?.kind === "hazard" ? 0 : 1 }}>
         {state.players.map((p, i) => (
           <div
             key={p.id}

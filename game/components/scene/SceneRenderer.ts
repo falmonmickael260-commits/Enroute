@@ -754,7 +754,13 @@ export class SceneRenderer {
     }
 
     if (t < this.fireworksUntil && t - this.lastFirework > 220) this.firework(t);
-    const stageCars: StageCar[] = [...this.cars.values()].map((c) => ({ id: c.id, km: c.km, position: c.frame.position, yaw: c.frame.rotation.y }));
+    const stageCars: StageCar[] = [...this.cars.values()].map((c) => ({
+      id: c.id,
+      km: c.km,
+      position: c.frame.position,
+      yaw: c.frame.rotation.y,
+      style: c.km !== c.toKm ? c.style : undefined,
+    }));
     this.stage.frame(dt, t, stageCars, this.target);
 
     for (let i = this.particles.length - 1; i >= 0; i--) {
