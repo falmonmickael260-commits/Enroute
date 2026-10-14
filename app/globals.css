@@ -334,7 +334,7 @@ img {
     gap: 0.5rem;
     overflow-x: auto;
   }
-  /* Two players share the row; with three or four it scrolls sideways. */
+  /* Two players share the row. */
   .player-panel > * {
     flex: 1 0 10.5rem;
     min-width: 0;
@@ -484,5 +484,56 @@ img {
       width: 3rem;
       height: 4.5rem;
     }
+  }
+}
+
+/* Outside the layers on purpose: these must win over the utility classes of the
+   plaques (padding, sizes, the card counter's flex). */
+/* Three pilots or more on a phone or tablet held upright: a compact grid, everyone
+   visible at once (no sideways scrolling). */
+@media (max-width: 1023px) and (orientation: portrait), (max-width: 1023px) and (min-height: 521px) {
+  .player-panel[data-crowded] {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.35rem;
+    overflow: visible;
+  }
+  .player-panel[data-crowded="3"] {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+  .player-panel[data-crowded] > .player-plaque {
+    padding: 0.3rem 0.45rem;
+    border-radius: 0.75rem;
+  }
+  .player-panel[data-crowded] .plaque-num {
+    width: 1.3rem;
+    height: 1.3rem;
+    font-size: 0.8rem;
+  }
+  .player-panel[data-crowded] .plaque-name {
+    font-size: 0.8rem;
+  }
+  .player-panel[data-crowded] .plaque-bar {
+    margin-top: 0.3rem;
+    height: 0.3rem;
+  }
+  .player-panel[data-crowded] .plaque-meta {
+    margin-top: 0.15rem;
+  }
+  .player-panel[data-crowded] .plaque-target,
+  .player-panel[data-crowded] .plaque-cards,
+  .player-panel[data-crowded] .plaque-tag {
+    display: none;
+  }
+}
+
+/* Short landscape phones: the players' column has to hold up to six one-line plaques. */
+@media (orientation: landscape) and (max-height: 520px) {
+  .player-panel[data-crowded] {
+    gap: 0.3rem;
+  }
+  .player-panel[data-crowded] > .player-plaque {
+    padding-top: 0.2rem;
+    padding-bottom: 0.2rem;
   }
 }

@@ -1,9 +1,11 @@
 "use client";
 
 import { motion } from "framer-motion";
+import clsx from "clsx";
 import { useState } from "react";
 import type { GameState, PlayerColor, PlayerState } from "@/game/types/game";
 import { carFor, carThumb } from "@/game/lib/cars";
+import { useShortLandscape } from "@/game/hooks/useShortLandscape";
 
 const COLOR_VAR: Record<PlayerColor, string> = {
   crimson: "var(--color-player-crimson)",
@@ -23,13 +25,7 @@ function Confetti() {
       left: Math.random() * 100,
       delay: Math.random() * 1.2,
       duration: 2.6 + Math.random() * 1.8,
-      color: [
-        "var(--color-brand-gold)",
-        "var(--color-brand-crimson)",
-        "var(--color-player-azure)",
-        "var(--color-player-emerald)",
-        "#ffffff",
-      ][i % 5],
+      color: ["var(--color-brand-gold)", "var(--color-brand-crimson)", "var(--color-player-azure)", "var(--color-player-emerald)", "#ffffff"][i % 5],
       rotate: Math.random() * 360,
     })),
   );
@@ -84,7 +80,14 @@ function Podium({ ranked }: { ranked: { p: PlayerState; seat: number }[] }) {
             >
               {i === 0 ? <span className="absolute -top-5 text-xl drop-shadow">👑</span> : null}
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={carThumb(carFor(p.car, seat), p.color)} alt="" width={240} height={160} draggable={false} className="-mb-1 h-auto w-full max-w-[5.75rem]" />
+              <img
+                src={carThumb(carFor(p.car, seat), p.color)}
+                alt=""
+                width={240}
+                height={160}
+                draggable={false}
+                className="-mb-1 h-auto w-full max-w-[5.75rem]"
+              />
               <p className="w-full truncate px-0.5 font-hud text-sm font-bold" style={{ color: COLOR_VAR[p.color] }}>
                 {p.name}
               </p>
@@ -122,6 +125,8 @@ export function VictoryOverlay({
 }) {
   const winner = state.players.find((p) => p.id === state.winnerId);
   const ranked = standings(state);
+  // phone held sideways: podium on the left, ranking and buttons on the right
+  const short = useShortLandscape();
   // Captured once, when the overlay first mounts for this victory — not recomputed on re-render.
   const [elapsedMs] = useState(() => Date.now() - state.startedAt);
   if (!winner) return null;
@@ -140,60 +145,67 @@ export function VictoryOverlay({
         initial={{ scale: 0.85, y: 30, opacity: 0 }}
         animate={{ scale: 1, y: 0, opacity: 1 }}
         transition={{ type: "spring", stiffness: 220, damping: 20, delay: 0.15 }}
-        className="panel-leather relative z-10 max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-3xl border-2 px-4 py-5 text-center sm:p-7"
+        className={clsx(
+          "panel-leather relative z-10 max-h-[calc(100dvh-2rem)] w-full overflow-y-auto rounded-3xl border-2 text-center",
+          short ? "grid max-w-3xl grid-cols-2 items-center gap-6 px-5 py-3" : "max-w-md px-4 py-5 sm:p-7",
+        )}
         style={{ borderColor: COLOR_VAR[winner.color] }}
       >
-        <p className="font-hud tracking-[0.4em] uppercase text-xs text-white/60">🏁 Victoire</p>
-        <h2 className="font-display text-4xl sm:text-5xl mt-1 text-brand-shadow" style={{ color: COLOR_VAR[winner.color] }}>
-          {winner.name.toUpperCase()}
-        </h2>
-        <p className="font-sans text-sm text-white/70 mb-6">remporte la partie KILOMAX</p>
+        <div>
+          <p className="font-hud tracking-[0.4em] uppercase text-xs text-white/60">🏁 Victoire</p>
+          <h2 className="font-display text-4xl sm:text-5xl mt-1 text-brand-shadow" style={{ color: COLOR_VAR[winner.color] }}>
+            {winner.name.toUpperCase()}
+          </h2>
+          <p className={clsx("font-sans text-sm text-white/70", short ? "mb-3" : "mb-6")}>remporte la partie KILOMAX</p>
 
-        <Podium ranked={ranked} />
+          <Podium ranked={ranked} />
+        </div>
 
-        {ranked.length > 3 ? (
-          <ol className="mb-3 flex flex-col gap-1 text-left">
-            {ranked.slice(3).map(({ p }, i) => (
-              <motion.li
-                key={p.id}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ delay: 1.4 + i * 0.1 }}
-                className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-0.5"
-              >
-                <span className="w-6 font-display text-lg text-white/50">{i + 4}</span>
-                <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: COLOR_VAR[p.color] }} />
-                <span className="min-w-0 flex-1 truncate font-hud text-sm font-bold">{p.name}</span>
-                <span className="font-hud text-xs text-white/60">{p.distance} km</span>
-              </motion.li>
-            ))}
-          </ol>
-        ) : null}
-
-        {/* with a big table the ranking takes the room of the winner's stats */}
-        {ranked.length <= 4 ? (
-          <div className="grid grid-cols-3 gap-2 mb-4 text-left">
-            <Stat label="Durée" value={`${minutes}m ${seconds}s`} />
-            <Stat label="Cartes jouées" value={`${winner.cardsPlayed}`} />
-            <Stat label="Attaques" value={`${winner.attacksSent}`} />
-          </div>
-        ) : null}
-
-        <div className="flex flex-col gap-3">
-          {onReplay ? (
-            <button className="btn-enroute-primary w-full" onClick={onReplay}>
-              REJOUER
-            </button>
-          ) : replayHint ? (
-            <p className="rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 font-hud text-sm text-white/70">{replayHint}</p>
+        <div>
+          {ranked.length > 3 ? (
+            <ol className="mb-3 flex flex-col gap-1 text-left">
+              {ranked.slice(3).map(({ p }, i) => (
+                <motion.li
+                  key={p.id}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 1.4 + i * 0.1 }}
+                  className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-0.5"
+                >
+                  <span className="w-6 font-display text-lg text-white/50">{i + 4}</span>
+                  <span className="h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: COLOR_VAR[p.color] }} />
+                  <span className="min-w-0 flex-1 truncate font-hud text-sm font-bold">{p.name}</span>
+                  <span className="font-hud text-xs text-white/60">{p.distance} km</span>
+                </motion.li>
+              ))}
+            </ol>
           ) : null}
-          <div className="flex gap-3">
-            <button className="btn-enroute-secondary flex-1 !text-base" onClick={onNewGame}>
-              NOUVELLE PARTIE
-            </button>
-            <button className="btn-enroute-ghost flex-1 !text-base" onClick={onMenu}>
-              MENU
-            </button>
+
+          {/* with a big table the ranking takes the room of the winner's stats */}
+          {ranked.length <= 4 ? (
+            <div className="grid grid-cols-3 gap-2 mb-4 text-left">
+              <Stat label="Durée" value={`${minutes}m ${seconds}s`} />
+              <Stat label="Cartes jouées" value={`${winner.cardsPlayed}`} />
+              <Stat label="Attaques" value={`${winner.attacksSent}`} />
+            </div>
+          ) : null}
+
+          <div className="flex flex-col gap-3">
+            {onReplay ? (
+              <button className="btn-enroute-primary w-full" onClick={onReplay}>
+                REJOUER
+              </button>
+            ) : replayHint ? (
+              <p className="rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 font-hud text-sm text-white/70">{replayHint}</p>
+            ) : null}
+            <div className="flex gap-3">
+              <button className="btn-enroute-secondary flex-1 !text-base" onClick={onNewGame}>
+                NOUVELLE PARTIE
+              </button>
+              <button className="btn-enroute-ghost flex-1 !text-base" onClick={onMenu}>
+                MENU
+              </button>
+            </div>
           </div>
         </div>
       </motion.div>

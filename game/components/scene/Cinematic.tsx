@@ -40,6 +40,8 @@ export function IntroCinematic({ title, subtitle, onDone }: { title: string; sub
   const [closing, setClosing] = useState(false);
 
   useEffect(() => {
+    // skipped (or over): the count stops, no beep after the tap
+    if (closing) return;
     const start = performance.now();
     let raf = 0;
     let beeped = -1;
@@ -59,7 +61,7 @@ export function IntroCinematic({ title, subtitle, onDone }: { title: string; sub
     };
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, []);
+  }, [closing]);
 
   useEffect(() => {
     if (!closing) return;
@@ -123,7 +125,7 @@ export function FinishCinematic({ name, color }: { name: string; color: string }
         transition={{ delay: 0.5, duration: 0.5, ease: "easeOut" }}
       >
         <p className="font-hud text-sm font-bold uppercase tracking-[0.4em] text-white/80 drop-shadow">Ligne d&apos;arrivée</p>
-        <p className="font-display text-5xl drop-shadow-[0_4px_16px_rgba(0,0,0,0.7)] sm:text-7xl" style={{ color }}>
+        <p className="max-w-full truncate px-4 font-display text-[clamp(2.2rem,12vw,4.5rem)] leading-none drop-shadow-[0_4px_16px_rgba(0,0,0,0.7)]" style={{ color }}>
           {name.toUpperCase()}
         </p>
       </motion.div>

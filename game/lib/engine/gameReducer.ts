@@ -186,14 +186,15 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
 
       // Anti-blocage : un joueur arrêté (le radar ne compte pas, il ne fait
       // que limiter la vitesse) accumule ses tours bloqués. Passé la limite,
-      // il pioche directement la réparation correspondante.
+      // il pioche directement la réparation correspondante — et si toutes
+      // sont dans les mains des autres, une dépanneuse le remet en route.
       if (player.hazard) {
         player.blockedTurns = (player.blockedTurns ?? 0) + 1;
         if (player.blockedTurns > STUCK_TURNS_LIMIT) {
           const repair = takeRepairCard(draft, player.hazard);
+          player.blockedTurns = 0;
           if (repair) {
             player.hand.push(repair);
-            player.blockedTurns = 0;
             log(
               draft,
               player.id,
@@ -204,6 +205,10 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
             draft.phase = "action";
             return draft;
           }
+          const cleared = player.hazard;
+          player.hazard = null;
+          log(draft, player.id, `Aucune réparation disponible : une dépanneuse remet ${player.name} en route.`, "system");
+          pushAnim(draft, { kind: "shield", playerId: player.id, defense: HAZARD_TO_DEFENSE[cleared], towed: true });
         }
       }
 

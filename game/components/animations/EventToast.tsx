@@ -12,7 +12,7 @@ function describe(event: AnimationEvent, state: GameState): { text: string; tone
       return { text: `${player(event.playerId)} — ${hazardLabel(event.hazard).toUpperCase()} !`, tone: "attack" };
     case "shield":
       return {
-        text: `${player(event.playerId)} — ${getCardDef(event.defense).title} !`,
+        text: event.towed ? `${player(event.playerId)} — DÉPANNÉ !` : `${player(event.playerId)} — ${getCardDef(event.defense).title} !`,
         tone: "good",
       };
     case "move":

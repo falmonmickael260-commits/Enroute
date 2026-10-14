@@ -104,7 +104,8 @@ export type AnimationEvent = { id: string } & (
   | { kind: 'discard'; playerId: string; cardUid: string }
   | { kind: 'move'; playerId: string; from: number; to: number }
   | { kind: 'hazard'; playerId: string; hazard: HazardType }
-  | { kind: 'shield'; playerId: string; defense: DefenseType }
+  /** `towed`: no repair card was left anywhere, a tow truck put the car back on the road. */
+  | { kind: 'shield'; playerId: string; defense: DefenseType; towed?: boolean }
   | { kind: 'turnChange'; playerId: string }
   | { kind: 'victory'; playerId: string }
 );

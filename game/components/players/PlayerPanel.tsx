@@ -85,7 +85,7 @@ function PlayerPlaque({
         >
           {number}
         </span>
-        <span className="min-w-0 flex-1 truncate font-hud text-[0.95rem] font-bold text-[var(--color-paper)]">
+        <span className="plaque-name min-w-0 flex-1 truncate font-hud text-[0.95rem] font-bold text-[var(--color-paper)]">
           {player.name}
           {isViewer ? <span className="ml-1 font-semibold text-white/45">(vous)</span> : null}
         </span>
@@ -120,7 +120,7 @@ function PlayerPlaque({
         </span>
         <span className="flex items-center gap-2">
           <StatusChip player={player} />
-          <span title="Cartes en main" className="flex items-center gap-1">
+          <span title="Cartes en main" className="plaque-cards flex items-center gap-1">
             <span className="inline-block h-3 w-2 rounded-[2px] border border-[var(--color-brass-300)]/70 bg-[#2a1712]" />
             {player.hand.length}
           </span>
@@ -161,7 +161,11 @@ export function PlayerPanel({
 }) {
   const activeId = state.phase === "gameover" ? state.winnerId : state.players[state.currentPlayerIndex]?.id;
   return (
-    <div className="player-panel no-scrollbar w-full px-1 py-1">
+    // three pilots or more: a compact grid on phones, everyone visible at once
+    <div
+      className="player-panel no-scrollbar w-full px-1 py-1"
+      data-crowded={state.players.length >= 5 ? "3" : state.players.length >= 3 ? "2" : undefined}
+    >
       {state.players.map((p, i) => (
         <PlayerPlaque
           key={p.id}

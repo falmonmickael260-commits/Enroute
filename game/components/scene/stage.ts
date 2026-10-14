@@ -33,6 +33,8 @@ export interface StageCar {
   yaw: number;
   /** How it is driving right now (turbo, overtake…), when it moves. */
   style?: string;
+  /** Its driver is the one to play. */
+  active?: boolean;
 }
 
 /**

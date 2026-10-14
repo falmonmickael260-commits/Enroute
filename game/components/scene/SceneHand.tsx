@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import clsx from "clsx";
 import type { CardDef, CardInstance, GameState, PlayerState } from "@/game/types/game";
 import { getCardDef } from "@/game/lib/engine/cardCatalog";
+import { STUCK_TURNS_LIMIT } from "@/game/lib/engine/deck";
 import {
   canPlayDistance,
   canPlaySpecial,
@@ -15,6 +16,7 @@ import {
   MAX_SHIELDS,
 } from "@/game/lib/engine/rules";
 import { useElementSize } from "@/game/hooks/useElementSize";
+import { useShortLandscape } from "@/game/hooks/useShortLandscape";
 import { Card, CATEGORY_STYLE } from "@/game/components/cards/Card";
 import { CardArt } from "@/game/components/cards/CardArt";
 
@@ -116,14 +118,22 @@ export function SceneHand({
   const [selectedUid, setSelectedUid] = useState<string | null>(null);
   const canAct = isMyTurn && state.phase === "action";
   const mustDraw = isMyTurn && state.phase === "draw";
+  // phone held sideways: piles beside the cards, all on one low row
+  const short = useShortLandscape();
 
   const cards = player.hand;
   const n = cards.length;
   const width = row.width || 360;
-  // as big as the row allows, overlapping only as much as needed
-  const cardW = Math.max(66, Math.min(96, (width - 8) / Math.max(1, Math.min(n, 4.6))));
+  // as big as the row allows, overlapping only as much as needed (and low enough
+  // to leave the road in view when the screen has little height)
+  const cardW = short
+    ? Math.max(50, Math.min(68, (width - 8) / Math.max(1, Math.min(n, 5.5))))
+    : Math.max(66, Math.min(96, (width - 8) / Math.max(1, Math.min(n, 4.6))));
   const step = n > 1 ? Math.min(cardW + 6, (width - cardW) / (n - 1)) : 0;
   const offset = (width - (step * (n - 1) + cardW)) / 2;
+
+  // stopped: how many draws until the guaranteed repair (anti-blocage)
+  const rescueIn = player.hazard ? Math.max(1, STUCK_TURNS_LIMIT + 1 - (player.blockedTurns ?? 0)) : 0;
 
   const selected = cards.find((c) => c.uid === selectedUid) ?? null;
   const selectedDef = selected ? getCardDef(selected.defId) : null;
@@ -131,6 +141,85 @@ export function SceneHand({
   const top = state.discard[state.discard.length - 1];
 
   const close = () => setSelectedUid(null);
+
+  const drawPile = (
+    <button
+      type="button"
+      aria-label="Piocher une carte"
+      disabled={!mustDraw}
+      onClick={onDraw}
+      className={clsx(
+        "flex shrink-0 items-center rounded-2xl border-2 transition-all",
+        short ? "flex-col gap-0.5 px-1.5 py-1" : "gap-2 px-2 py-1.5 min-[400px]:gap-2.5 min-[400px]:px-2.5",
+        mustDraw ? "animate-pulse border-[#ffd23f] bg-[#ffd23f]/20 shadow-[0_0_22px_rgba(255,210,63,0.55)]" : "border-white/15 bg-black/45",
+      )}
+    >
+      <span className={clsx("relative shrink-0", short ? "h-[3.4rem] w-[2.4rem]" : "h-[4.3rem] w-[3rem]")}>
+        <span className="absolute inset-0 translate-x-[3px] -translate-y-[3px] opacity-70">
+          <Card size="xs" faceDown className="!h-full !w-full" />
+        </span>
+        <span className="absolute inset-0">
+          <Card size="xs" faceDown className="!h-full !w-full" />
+        </span>
+      </span>
+      <span className={clsx("leading-tight", short ? "text-center" : "text-left")}>
+        <span className={clsx("block font-display text-white", short ? "text-base" : "text-xl min-[400px]:text-2xl")}>{mustDraw ? "PIOCHER" : "Pioche"}</span>
+        <span className={clsx("block font-hud text-white/65", short ? "text-[0.6rem]" : "text-xs")}>{state.deck.length} cartes</span>
+      </span>
+    </button>
+  );
+
+  const discardPile = (
+    <div
+      className={clsx(
+        "flex shrink-0 items-center gap-2 rounded-2xl border-2 border-white/15 bg-black/45",
+        short ? "flex-col-reverse gap-0.5 px-1.5 py-1" : "px-2 py-1.5 min-[400px]:px-2.5",
+      )}
+    >
+      <span className={clsx("leading-tight", short ? "text-center" : "text-right")}>
+        <span className={clsx("block font-display text-white", short ? "text-base" : "text-lg")}>Défausse</span>
+        <span className={clsx("block font-hud text-white/65", short ? "text-[0.6rem]" : "text-xs")}>{state.discard.length} cartes</span>
+      </span>
+      <span className={clsx("shrink-0", short ? "h-[3rem] w-[2.1rem]" : "h-[3.2rem] w-[2.2rem]")}>
+        {top ? <Card size="xs" defId={top.defId} className="!h-full !w-full" /> : <span className="block h-full w-full rounded-md border-2 border-dashed border-white/25" />}
+      </span>
+    </div>
+  );
+
+  const prompt = (
+    <>
+      <p className="text-center font-hud text-[0.7rem] font-semibold leading-tight text-white/70">
+        {mustDraw ? (short ? "← Touchez la pioche" : "↖ Touchez la pioche") : canAct ? "Touchez une carte" : ""}
+      </p>
+      {isMyTurn && rescueIn ? (
+        <p className="text-center font-hud text-[0.66rem] font-bold leading-tight text-[#ffb3a8]">
+          {rescueIn === 1 ? "Dépannage garanti à cette pioche" : `Dépannage garanti dans ${rescueIn} pioches`}
+        </p>
+      ) : null}
+    </>
+  );
+
+  const hand = (
+    <div ref={rowRef} className={clsx("relative", short ? "mb-0.5 mt-1" : "mx-2 mb-2")} style={{ height: cardW * 1.42 + (short ? 8 : 14) }}>
+      {cards.map((c, i) => {
+        const def = getCardDef(c.defId);
+        const playable = canAct && isCardPlayable(player, c.defId, state);
+        const isSel = c.uid === selectedUid;
+        return (
+          <motion.div
+            key={c.uid}
+            className="absolute bottom-0"
+            style={{ width: cardW, height: cardW * 1.42, zIndex: isSel ? 40 : i }}
+            initial={{ opacity: 0, y: 80 }}
+            animate={{ opacity: 1, x: offset + i * step, y: isSel ? -14 : 0, scale: isSel ? 1.06 : 1 }}
+            transition={{ type: "spring", stiffness: 420, damping: 32 }}
+          >
+            <HandCard def={def} playable={playable} dim={canAct && !playable} selected={isSel} onClick={() => setSelectedUid(isSel ? null : c.uid)} />
+          </motion.div>
+        );
+      })}
+    </div>
+  );
 
   return (
     <div className="relative">
@@ -197,68 +286,35 @@ export function SceneHand({
         ) : null}
       </AnimatePresence>
 
-      {/* piles and prompt */}
-      <div className="flex items-end justify-between gap-1.5 px-2 pb-1.5 min-[400px]:px-3">
-        <button
-          type="button"
-          aria-label="Piocher une carte"
-          disabled={!mustDraw}
-          onClick={onDraw}
-          className={clsx(
-            "flex shrink-0 items-center gap-2 rounded-2xl border-2 px-2 py-1.5 transition-all min-[400px]:gap-2.5 min-[400px]:px-2.5",
-            mustDraw ? "animate-pulse border-[#ffd23f] bg-[#ffd23f]/20 shadow-[0_0_22px_rgba(255,210,63,0.55)]" : "border-white/15 bg-black/45",
-          )}
-        >
-          <span className="relative h-[4.3rem] w-[3rem] shrink-0">
-            <span className="absolute inset-0 translate-x-[3px] -translate-y-[3px] opacity-70">
-              <Card size="xs" faceDown className="!h-full !w-full" />
-            </span>
-            <span className="absolute inset-0">
-              <Card size="xs" faceDown className="!h-full !w-full" />
-            </span>
-          </span>
-          <span className="text-left leading-tight">
-            <span className="block font-display text-xl text-white min-[400px]:text-2xl">{mustDraw ? "PIOCHER" : "Pioche"}</span>
-            <span className="block font-hud text-xs text-white/65">{state.deck.length} cartes</span>
-          </span>
-        </button>
-        <div className="mb-0.5 flex min-w-0 flex-col items-center gap-1">
-          {middle}
-          <p className="font-hud text-[0.7rem] font-semibold text-white/70">
-            {mustDraw ? "↖ Touchez la pioche" : canAct ? "Touchez une carte" : ""}
-          </p>
-        </div>
-        <div className="flex shrink-0 items-center gap-2 rounded-2xl border-2 border-white/15 bg-black/45 px-2 py-1.5 min-[400px]:px-2.5">
-          <span className="text-right leading-tight">
-            <span className="block font-display text-lg text-white">Défausse</span>
-            <span className="block font-hud text-xs text-white/65">{state.discard.length} cartes</span>
-          </span>
-          <span className="h-[3.2rem] w-[2.2rem] shrink-0">
-            {top ? <Card size="xs" defId={top.defId} className="!h-full !w-full" /> : <span className="block h-full w-full rounded-md border-2 border-dashed border-white/25" />}
-          </span>
-        </div>
-      </div>
-
-      {/* the hand */}
-      <div ref={rowRef} className="relative mx-2 mb-2" style={{ height: cardW * 1.42 + 14 }}>
-        {cards.map((c, i) => {
-          const def = getCardDef(c.defId);
-          const playable = canAct && isCardPlayable(player, c.defId, state);
-          const isSel = c.uid === selectedUid;
-          return (
-            <motion.div
-              key={c.uid}
-              className="absolute bottom-0"
-              style={{ width: cardW, height: cardW * 1.42, zIndex: isSel ? 40 : i }}
-              initial={{ opacity: 0, y: 80 }}
-              animate={{ opacity: 1, x: offset + i * step, y: isSel ? -14 : 0, scale: isSel ? 1.06 : 1 }}
-              transition={{ type: "spring", stiffness: 420, damping: 32 }}
-            >
-              <HandCard def={def} playable={playable} dim={canAct && !playable} selected={isSel} onClick={() => setSelectedUid(isSel ? null : c.uid)} />
-            </motion.div>
-          );
-        })}
-      </div>
+      {short ? (
+        // sideways: hint and overview button float above, piles flank the cards
+        <>
+          <div className="pointer-events-none absolute inset-x-0 bottom-full mb-1 flex justify-center">
+            <div className="pointer-events-auto flex flex-col items-center gap-1">{middle}</div>
+          </div>
+          <div className="flex items-end gap-2 px-2 pb-1">
+            {drawPile}
+            <div className="flex min-w-0 flex-1 flex-col">
+              {prompt}
+              {hand}
+            </div>
+            {discardPile}
+          </div>
+        </>
+      ) : (
+        <>
+          {/* piles and prompt */}
+          <div className="flex items-end justify-between gap-1.5 px-2 pb-1.5 min-[400px]:px-3">
+            {drawPile}
+            <div className="mb-0.5 flex min-w-0 flex-col items-center gap-1">
+              {middle}
+              {prompt}
+            </div>
+            {discardPile}
+          </div>
+          {hand}
+        </>
+      )}
     </div>
   );
 }

@@ -46,6 +46,7 @@ export function WorldBoard({
   const stateRef = useRef(state);
   const labelRefs = useRef(new Map<string, HTMLDivElement>());
   const widthRef = useRef(0);
+  const wasIntro = useRef(false);
 
   useEffect(() => {
     if (!canvas) return;
@@ -119,8 +120,15 @@ export function WorldBoard({
     else if (event?.kind === "move") shot = { kind: "follow", id: event.playerId };
     else if (event?.kind === "hazard") shot = { kind: "car", id: event.playerId, hazard: event.hazard };
     else if (event?.kind === "shield") shot = { kind: "car", id: event.playerId };
+    const leavingIntro = wasIntro.current && !intro;
+    wasIntro.current = intro;
     if (shot) {
       renderer.setShot(shot);
+      return;
+    }
+    // the opening flyover is over (or skipped): straight back to the cars
+    if (leavingIntro) {
+      renderer.setShot({ kind: "pack" });
       return;
     }
     // nothing happening: stay on the last shot a moment, then back behind the pack

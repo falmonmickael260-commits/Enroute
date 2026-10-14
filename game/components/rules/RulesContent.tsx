@@ -75,8 +75,9 @@ export function RulesContent() {
         <p className="leading-relaxed text-white/80">
           Personne ne reste coincé au bord de la route&nbsp;: si vous êtes arrêté (collision, crevaison, panne ou barrage — le
           radar ne compte pas) pendant plus de {STUCK_TURNS_LIMIT} pioches d&apos;affilée, vous piochez directement la carte de
-          réparation qu&apos;il vous faut, prise dans la pioche ou, à défaut, dans la défausse. Le compteur repart de zéro à
-          chaque nouvel arrêt.
+          réparation qu&apos;il vous faut, prise dans la pioche ou, à défaut, dans la défausse. Si toutes ces cartes sont dans
+          les mains des autres pilotes, une dépanneuse vous remet directement en route. Le compteur repart de zéro à chaque
+          nouvel arrêt.
         </p>
       </section>
 

@@ -49,9 +49,13 @@ export function OnlineGame({
   const offlineIds = game.players.filter((p) => p.id !== playerId && !meta.online.includes(p.id)).map((p) => p.id);
   const current = game.players[game.currentPlayerIndex];
   const currentAway = game.phase !== "gameover" && offlineIds.includes(current.id);
-  const canSkip = currentAway && isHost;
+  // Who keeps the game moving when the current driver left: the host, or if the
+  // host is gone too, the first pilot still at the table (the server allows it).
+  const present = game.players.filter((p) => !offlineIds.includes(p.id));
+  const keeperId = present.some((p) => p.id === meta.hostId) ? meta.hostId : present[0]?.id;
+  const canSkip = currentAway && keeperId === playerId;
 
-  // The host's device keeps the game moving when the current driver left.
+  // The keeper's device passes the absent driver's turn.
   useEffect(() => {
     if (!canSkip) return;
     const timer = setTimeout(() => dispatch({ type: "SKIP_TURN" }), AUTO_SKIP_MS);

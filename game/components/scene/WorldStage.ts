@@ -501,6 +501,8 @@ export class WorldStage implements Stage {
   private camLook = new THREE.Vector3(0, 0, 0);
   private placed = false;
   private shotSince = 0;
+  /** Scratch camera to test a framing before using it. */
+  private readonly probe = new THREE.PerspectiveCamera();
   /** Which side of the car the current close-up films (picked on its first frame). */
   private shotSide = 0;
   /** The driving style the chase cam last framed (an overtake gets its own angle). */
@@ -1096,8 +1098,8 @@ export class WorldStage implements Stage {
       }
 
       // bunting on two striped masts across the road
-      // past the start line (the camera waits behind it), just before the finish arch
-      const { point, right, forward } = this.road.at(at + (at === this.road.startLen ? 9 : -1.5));
+      // past the start line (the camera waits behind it), a few metres before the finish arch
+      const { point, right, forward } = this.road.at(at + (at === this.road.startLen ? 9 : -5.5));
       const yaw = Math.atan2(forward.x, forward.z);
       const span = HALF_WIDTH + 0.7;
       for (const side of [-1, 1]) poles.push({ m: mat4(point.x + right.x * side * span, point.y + 1.75, point.z + right.z * side * span, 0.09, 3.5, 0.09) });
@@ -1545,8 +1547,34 @@ export class WorldStage implements Stage {
     return { x: ((v.x + 1) / 2) * this.width, y: ((1 - v.y) / 2) * this.height, size: v.z < 1 ? perUnit : 0 };
   }
 
-  /** Behind the last car, looking down the road past the leader. */
+  /**
+   * Between actions: the whole pack while it fits on screen; once the cars are
+   * spread along the road, the one whose turn it is (else the leader), so the
+   * picture never ends up on an empty stretch with the cars out of frame.
+   */
   private packShot(cars: StageCar[], target: number) {
+    const group = this.groupShot(cars, target);
+    if (cars.length < 2 || this.inView(group, cars)) return group;
+    const focus = cars.find((c) => c.active) ?? cars.reduce((a, b) => (b.km > a.km ? b : a));
+    return this.groupShot([focus], target);
+  }
+
+  /** Would every car be on screen (above the hand, clear of the edges) from there? */
+  private inView(shot: { pos: THREE.Vector3; look: THREE.Vector3 }, cars: StageCar[]) {
+    const cam = this.probe;
+    cam.copy(this.camera);
+    cam.position.copy(shot.pos);
+    cam.lookAt(shot.look);
+    cam.updateMatrixWorld();
+    const v = new THREE.Vector3();
+    return cars.every((c) => {
+      v.copy(c.position).project(cam);
+      return v.z < 1 && Math.abs(v.x) < 0.9 && v.y > -0.85 && v.y < 0.6;
+    });
+  }
+
+  /** Behind the last car, looking down the road past the leader. */
+  private groupShot(cars: StageCar[], target: number) {
     const kms = cars.map((c) => c.km);
     const rear = kms.length ? Math.min(...kms) : 0;
     const front = kms.length ? Math.max(...kms) : 0;
@@ -1577,7 +1605,14 @@ export class WorldStage implements Stage {
       this.shotSince = performance.now();
       this.shotSide = 0;
       // cut in on an attack, and cut back out of it rather than drifting through the scenery
-      if (shot.kind === "intro" || shot.kind === "finish" || (shot.kind === "car" && shot.hazard) || (prev.kind === "car" && prev.hazard)) this.placed = false;
+      if (
+        shot.kind === "intro" ||
+        shot.kind === "finish" ||
+        prev.kind === "intro" ||
+        (shot.kind === "car" && shot.hazard) ||
+        (prev.kind === "car" && prev.hazard)
+      )
+        this.placed = false;
       if (shot.kind === "car" && (shot.hazard === "collision" || shot.hazard === "barrage")) {
         // the hit lands a moment after the cut
         this.shake = { at: this.shotSince + (shot.hazard === "barrage" ? 650 : 60), amp: shot.hazard === "barrage" ? 0.1 : 0.16 };

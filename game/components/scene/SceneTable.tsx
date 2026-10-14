@@ -6,6 +6,7 @@ import clsx from "clsx";
 import type { GameTableProps } from "@/game/components/table/GameTable";
 import { useAnimationQueue } from "@/game/hooks/useAnimationQueue";
 import { useElementSize } from "@/game/hooks/useElementSize";
+import { useShortLandscape } from "@/game/hooks/useShortLandscape";
 import { useSound } from "@/game/hooks/useSound";
 import { useRaceAudio } from "@/game/audio/useRaceAudio";
 import { EventToast } from "@/game/components/animations/EventToast";
@@ -87,19 +88,42 @@ export function SceneTable({
     setPrevStart(state.startedAt);
     setIntroFor(fresh && !PLAYED_INTROS.has(introKey) ? introKey : null);
   }
-  // it starts once the world is on screen, not while it loads
+  // it starts once the world is on screen, not while it loads (the interface
+  // stays out of the way meanwhile, so it doesn't flash in and out)
   const [worldReady, setWorldReady] = useState(false);
   const onWorldReady = useCallback(() => setWorldReady(true), []);
-  const intro = introFor === introKey && worldReady;
+  const introPending = introFor === introKey;
+  const intro = introPending && worldReady;
   const endIntro = useCallback(() => {
     PLAYED_INTROS.add(introKey);
     setIntroFor(null);
   }, [introKey]);
+  // a world that never shows up (no 3D on this device) must not hold the game back
+  useEffect(() => {
+    if (!introPending || worldReady) return;
+    const t = setTimeout(endIntro, 12000);
+    return () => clearTimeout(t);
+  }, [introPending, worldReady, endIntro]);
   const winner = over ? state.players.find((p) => p.id === state.winnerId) : undefined;
+  const overviewButton =
+    !scene && !over ? (
+      <button
+        onClick={() => setOverview((v) => !v)}
+        className="flex items-center gap-1.5 rounded-full border-2 border-white/40 bg-[#0e1522]/80 px-3 py-1.5 font-hud text-xs font-bold text-white shadow-[0_6px_16px_rgba(0,0,0,0.4)] backdrop-blur-md active:scale-95 sm:text-sm"
+      >
+        <span className="text-sm leading-none" aria-label={overview ? "Vue normale" : "Vue d'ensemble"}>
+          {overview ? "🚗" : "🗺️"}
+        </span>
+        {/* narrow phones: the icon alone, so the bigger draw pile keeps its room */}
+        <span className="hidden min-[400px]:inline">{overview ? "Vue normale" : "Vue d'ensemble"}</span>
+      </button>
+    ) : null;
   // while a cinematic plays, the interface steps aside
-  const cinema = intro || (!!winner && !scene && !victoryReady);
-  // from 4 pilots on, each one fits on a single line so the road stays visible
-  const crowded = state.players.length >= 4;
+  const cinema = introPending || (!!winner && !scene && !victoryReady);
+  // from 4 pilots on (or on a phone held sideways), each one fits on a single
+  // line so the road stays visible
+  const short = useShortLandscape();
+  const crowded = state.players.length >= 4 || short;
 
   return (
     <main className="relative isolate h-dvh overflow-hidden bg-[#0d1420] text-white">
@@ -118,7 +142,8 @@ export function SceneTable({
         <div
           className={clsx(
             "pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-black/45 via-black/15 to-transparent pb-10 transition-opacity duration-700",
-            cinema && "opacity-0",
+            // faded out, its buttons must not catch a tap (the ✕ would quit the race)
+            cinema && "opacity-0 [&_*]:!pointer-events-none",
           )}
         >
           <div className="flex items-start justify-between gap-2 px-2.5 pt-[max(0.625rem,env(safe-area-inset-top))]">
@@ -190,6 +215,8 @@ export function SceneTable({
                   </p>
                 </div>
               ) : null}
+              {/* phone held sideways: the overview switch lives up here, off the cars */}
+              {short ? overviewButton : null}
               {headerExtra}
             </div>
           </div>
@@ -202,26 +229,13 @@ export function SceneTable({
         <div
           className={clsx(
             "absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/80 via-black/55 to-transparent pt-10 transition-opacity duration-700",
-            cinema && "pointer-events-none opacity-0",
+            cinema && "pointer-events-none opacity-0 [&_*]:!pointer-events-none",
           )}
         >
           {notice ? <div className="pointer-events-none relative z-[55] mb-1 flex justify-center px-3">{notice}</div> : null}
           <div ref={handRef} className="pb-[env(safe-area-inset-bottom)]">
             <SceneHand
-              middle={
-                !scene && !over ? (
-                  <button
-                    onClick={() => setOverview((v) => !v)}
-                    className="flex items-center gap-1.5 rounded-full border-2 border-white/40 bg-[#0e1522]/80 px-3 py-1.5 font-hud text-xs font-bold text-white shadow-[0_6px_16px_rgba(0,0,0,0.4)] backdrop-blur-md active:scale-95 sm:text-sm"
-                  >
-                    <span className="text-sm leading-none" aria-label={overview ? "Vue normale" : "Vue d'ensemble"}>
-                      {overview ? "🚗" : "🗺️"}
-                    </span>
-                    {/* narrow phones: the icon alone, so the bigger draw pile keeps its room */}
-                    <span className="hidden min-[400px]:inline">{overview ? "Vue normale" : "Vue d'ensemble"}</span>
-                  </button>
-                ) : null
-              }
+              middle={short ? null : overviewButton}
               player={handOwner}
               state={state}
               isMyTurn={isMyTurn}

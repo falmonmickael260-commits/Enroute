@@ -91,6 +91,9 @@ const easeOutBack = (t: number) => {
   return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
 };
 const clamp01 = (t: number) => Math.max(0, Math.min(1, t));
+const UNIT_SCALE = new THREE.Vector3(1, 1, 1);
+/** A wheel's own size, as its model made it (the Kenney cars shrink theirs). */
+const restScale = (wheel: THREE.Object3D): THREE.Vector3 => (wheel.userData.rest as THREE.Vector3 | undefined) ?? UNIT_SCALE;
 const pulse = (t: number) => Math.sin(clamp01(t) * Math.PI);
 
 interface Particle {
@@ -499,6 +502,11 @@ export class SceneRenderer {
         const a = clamp01((t - pr.born) / 500);
         nails.scale.setScalar(1.5 * easeOutBack(a) + 0.001);
         badge.scale.setScalar(0.44 * easeOutBack(clamp01((t - pr.born - 700) / 400)) + 0.025 * Math.sin(t / 180));
+        // the flat tyre is squashed from the wheel's own size (car files size their
+        // wheels), flat side down, and the car leans over onto it
+        const wheel = c.model.wheels[0];
+        const rest = restScale(wheel);
+        const lean = Math.sign(wheel.position.x) || 1;
         let k = easeInOut(clamp01((t - pr.born - 250) / 450));
         if (pr.leaving !== null) {
           const b = clamp01((t - pr.leaving) / 700);
@@ -508,16 +516,19 @@ export class SceneRenderer {
           if (b >= 1) {
             c.model.body.rotation.z = 0;
             c.model.body.position.y = 0;
-            c.model.wheels[0].scale.set(1, 1, 1);
+            wheel.scale.copy(rest);
             return true;
           }
         }
-        c.model.body.rotation.z = -0.2 * k;
+        c.model.body.rotation.z = -0.2 * k * lean;
         c.model.body.position.y = -0.03 * k;
-        c.model.wheels[0].scale.set(1, 1 - 0.55 * k, 1 - 0.1 * k);
+        wheel.rotation.x = 0;
+        wheel.scale.set(rest.x, rest.y * (1 - 0.55 * k), rest.z * (1 - 0.1 * k));
         if (t - pr.born > 250 && t - pr.born < 700 && t - c.lastPuff > 60) {
           c.lastPuff = t;
-          this.emit(c.model.root, new THREE.Vector3(-0.25, 0.1, 0.31), "#ffffff", 0.9, 700, 1.2);
+          // the air escapes at that wheel
+          const at = c.model.root.worldToLocal(wheel.getWorldPosition(new THREE.Vector3()));
+          this.emit(c.model.root, at.setY(0.1), "#ffffff", 0.9, 700, 1.2);
         }
       };
     } else if (kind === "collision") {
@@ -760,6 +771,7 @@ export class SceneRenderer {
       position: c.frame.position,
       yaw: c.frame.rotation.y,
       style: c.km !== c.toKm ? c.style : undefined,
+      active: c.active,
     }));
     this.stage.frame(dt, t, stageCars, this.target);
 

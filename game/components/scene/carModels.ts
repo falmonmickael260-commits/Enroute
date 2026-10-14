@@ -169,6 +169,8 @@ export async function loadCarModel(id: string, color: string, repaint: boolean, 
         if ((m as THREE.Mesh).isMesh && !m.name.startsWith("wheel")) bodies.push(m as THREE.Mesh);
       });
   });
+  // remember each wheel's size: animations squash it relative to that
+  for (const w of wheels) w.userData.rest = w.scale.clone();
   // the shell is the biggest mesh under "body"
   const vertices = (m: THREE.Mesh) => m.geometry.getAttribute("position")?.count ?? 0;
   const bodyMesh = bodies.sort((x, y) => vertices(y) - vertices(x))[0] ?? null;
