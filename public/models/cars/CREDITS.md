@@ -20,3 +20,21 @@ pilot's colour (game/components/scene/carModels.ts). The thumbnails in
 `public/images/cars/` are renders of these models.
 
 The "KILOMAX" car is the game's own procedural model (game/components/scene/models.ts).
+
+## Detailed cars — `supercar.glb`, `retro.glb`
+
+From the Khronos Group glTF Sample Assets
+(https://github.com/KhronosGroup/glTF-Sample-Assets):
+
+- `supercar.glb` — **"Car Concept"** by **Eric Chadwick** (Darmstadt Graphics
+  Group GmbH), 2024, licensed **CC BY 4.0**
+  (https://creativecommons.org/licenses/by/4.0/). Started from a public-domain
+  (CC0) model by **Unity Fan** on Sketchfab. Changes for KILOMAX: Khronos and
+  3D Commerce logos removed (licence plate, tyre sidewalls — logos are not
+  covered by the licence), interior and hidden parts removed, glass made
+  opaque, material variants and advanced material effects dropped, meshes
+  simplified, textures resized to 512 px WebP; the paint takes the pilot's
+  colour in game.
+- `retro.glb` — **"Toy Car"**, licensed **CC0 1.0**. Changes: display cloth
+  and cameras removed, glass made opaque, meshes simplified, textures resized
+  to 512 px WebP; the paint takes the pilot's colour in game.

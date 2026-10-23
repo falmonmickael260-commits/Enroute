@@ -509,9 +509,10 @@ export class SceneRenderer {
         badge.scale.setScalar(0.44 * easeOutBack(clamp01((t - pr.born - 700) / 400)) + 0.025 * Math.sin(t / 180));
         // the flat tyre is squashed from the wheel's own size (car files size their
         // wheels), flat side down, and the car leans over onto it
-        const wheel = c.model.wheels[0];
-        const rest = restScale(wheel);
-        const lean = Math.sign(wheel.position.x) || 1;
+        // (a car modelled in one piece has no wheel to squash: it only leans)
+        const wheel = c.model.wheels[0] as THREE.Object3D | undefined;
+        const rest = wheel ? restScale(wheel) : UNIT_SCALE;
+        const lean = wheel ? Math.sign(wheel.position.x) || 1 : 1;
         let k = easeInOut(clamp01((t - pr.born - 250) / 450));
         if (pr.leaving !== null) {
           const b = clamp01((t - pr.leaving) / 700);
@@ -521,14 +522,20 @@ export class SceneRenderer {
           if (b >= 1) {
             c.model.body.rotation.z = 0;
             c.model.body.position.y = 0;
-            wheel.scale.copy(rest);
+            wheel?.scale.copy(rest);
             return true;
           }
         }
         c.model.body.rotation.z = -0.2 * k * lean;
         c.model.body.position.y = -0.03 * k;
-        wheel.rotation.x = 0;
-        wheel.scale.set(rest.x, rest.y * (1 - 0.55 * k), rest.z * (1 - 0.1 * k));
+        if (!wheel) return;
+        // flat side down: back to its resting angle, squashed along its vertical axis
+        const axle = (wheel.userData.axle as "x" | "y" | "z" | undefined) ?? "x";
+        const up = (wheel.userData.up as "x" | "y" | "z" | undefined) ?? "y";
+        wheel.rotation[axle] = 0;
+        wheel.scale.copy(rest);
+        wheel.scale[up] *= 1 - 0.55 * k;
+        for (const ax of ["x", "y", "z"] as const) if (ax !== up && ax !== axle) wheel.scale[ax] *= 1 - 0.1 * k;
         if (t - pr.born > 250 && t - pr.born < 700 && t - c.lastPuff > 60) {
           c.lastPuff = t;
           // the air escapes at that wheel
@@ -727,7 +734,7 @@ export class SceneRenderer {
       m.body.rotation.y = swerve * 0.35;
       // wheels spin with the distance covered
       const spin = ((car.km - prevKm) / Math.max(1, this.target)) * 900;
-      for (const w of m.wheels) w.rotation.x += spin;
+      for (const w of m.wheels) w.rotation[(w.userData.axle as "x" | "y" | "z" | undefined) ?? "x"] += spin;
       // idle engine shimmer
       if (!car.props.size && car.km === car.toKm) m.body.position.y = Math.sin(t / 90 + car.id.length) * 0.004;
 

@@ -151,7 +151,35 @@ async function paintedMap(id: string, body: THREE.Mesh, map: THREE.Texture, colo
 // ---------------------------------------------------------------- model
 
 /**
- * Builds a Kenney car as a CarModel, painted `color` (unless `repaint` is
+ * How to read a car file. Kenney's cars share one layout (default); the
+ * detailed cars come from elsewhere and say where their wheels and paint are.
+ */
+interface CarSpec {
+  /** Names of the road wheels. */
+  wheels: RegExp;
+  /** Paint given by a material's colour (else: by the palette texture of the body). */
+  paintMaterial?: string;
+  /** Length on the board, in scene units (default: Kenney's units × SCALE). */
+  length?: number;
+}
+
+const KENNEY: CarSpec = { wheels: /^wheel-(front|back)-(left|right)$/ };
+const SPECS: Record<string, CarSpec> = {
+  // Car Concept (Khronos glTF sample, CC-BY 4.0) and Toy Car (CC0): see CREDITS.md
+  supercar: { wheels: /^Wheel(Front|Rear)[LR]$/, paintMaterial: "Paint 1 Carmine", length: 1.18 },
+  retro: { wheels: /^$^/, length: 1.12 },
+};
+
+/** Which of the node's own axes points along `world` (in the car's frame). */
+function localAxis(node: THREE.Object3D, world: THREE.Vector3): "x" | "y" | "z" {
+  const q = node.getWorldQuaternion(new THREE.Quaternion()).invert();
+  const v = world.clone().applyQuaternion(q);
+  const a = [Math.abs(v.x), Math.abs(v.y), Math.abs(v.z)];
+  return (["x", "y", "z"] as const)[a.indexOf(Math.max(...a))];
+}
+
+/**
+ * Builds a car from its file as a CarModel, painted `color` (unless `repaint` is
  * false). Resolves null if the file can't be loaded: the caller keeps the
  * car it already shows.
  */
@@ -159,41 +187,88 @@ export async function loadCarModel(id: string, color: string, repaint: boolean, 
   const gltf = await loadGltf(id);
   if (!gltf) return null;
   const scene = gltf.scene.clone(true);
+  const spec = SPECS[id] ?? KENNEY;
 
   const wheels: THREE.Object3D[] = [];
   const bodies: THREE.Mesh[] = [];
+  const all: THREE.Mesh[] = [];
   scene.traverse((o) => {
     // the four road wheels only (a spare wheel on the tailgate is part of the body)
-    if (/^wheel-(front|back)-(left|right)$/.test(o.name)) wheels.push(o);
+    if (spec.wheels.test(o.name)) wheels.push(o);
     else if (o.name === "body")
       o.traverse((m) => {
         if ((m as THREE.Mesh).isMesh && !m.name.startsWith("wheel")) bodies.push(m as THREE.Mesh);
       });
+    if ((o as THREE.Mesh).isMesh) all.push(o as THREE.Mesh);
   });
-  // remember each wheel's size: animations squash it relative to that
-  for (const w of wheels) w.userData.rest = w.scale.clone();
-  // the shell is the biggest mesh under "body"
-  const vertices = (m: THREE.Mesh) => m.geometry.getAttribute("position")?.count ?? 0;
-  const bodyMesh = bodies.sort((x, y) => vertices(y) - vertices(x))[0] ?? null;
-
-  // repaint: one material for the whole car, with its own copy of the palette
-  const source = bodyMesh ? (bodyMesh.material as THREE.MeshStandardMaterial) : null;
-  const material = source ? source.clone() : null;
-  if (material && source?.map && repaint && bodyMesh) {
-    const map = await paintedMap(id, bodyMesh, source.map, color);
-    if (map) material.map = map;
+  // remember each wheel's size and axes: animations spin it around its axle
+  // and squash it vertically, whatever the file's own orientation
+  scene.updateMatrixWorld(true);
+  if (spec !== KENNEY) {
+    // these files tilt or steer their wheels: each goes on a hub aligned with
+    // the car, which is what turns and squashes
+    wheels.forEach((w, i) => {
+      const parent = w.parent;
+      if (!parent) return;
+      const hub = new THREE.Group();
+      hub.name = `${w.name}-hub`;
+      parent.add(hub);
+      hub.position.copy(w.position);
+      hub.quaternion.copy(parent.getWorldQuaternion(new THREE.Quaternion()).invert());
+      hub.updateMatrixWorld(true);
+      hub.attach(w);
+      wheels[i] = hub;
+    });
+    scene.updateMatrixWorld(true);
   }
-  scene.traverse((o) => {
-    const mesh = o as THREE.Mesh;
-    if (!mesh.isMesh) return;
-    if (material) mesh.material = material;
-    mesh.castShadow = castShadow;
-  });
+  for (const w of wheels) {
+    w.userData.rest = w.scale.clone();
+    w.userData.axle = localAxis(w, new THREE.Vector3(1, 0, 0));
+    w.userData.up = localAxis(w, new THREE.Vector3(0, 1, 0));
+  }
+  // the shell is the biggest mesh under "body" (or in the whole car)
+  const vertices = (m: THREE.Mesh) => m.geometry.getAttribute("position")?.count ?? 0;
+  const bodyMesh = (bodies.length ? bodies : all).sort((x, y) => vertices(y) - vertices(x))[0] ?? null;
+
+  if (spec.paintMaterial) {
+    // the paint is a plain colour: this car gets its own copy, in the pilot's colour
+    const painted = new Map<THREE.Material, THREE.Material>();
+    for (const mesh of all) {
+      const m = mesh.material as THREE.MeshStandardMaterial;
+      if (m.name !== spec.paintMaterial) continue;
+      if (!painted.has(m)) {
+        const copy = m.clone();
+        if (repaint) copy.color.set(color);
+        // showroom chrome-like paint goes black on the road's light: keep it satin
+        copy.metalness = Math.min(copy.metalness, 0.45);
+        copy.roughness = Math.max(copy.roughness, 0.28);
+        painted.set(m, copy);
+      }
+      mesh.material = painted.get(m)!;
+    }
+  } else {
+    // repaint: the body's material gets its own copy of the palette
+    const source = bodyMesh ? (bodyMesh.material as THREE.MeshStandardMaterial) : null;
+    const material = source ? source.clone() : null;
+    if (material && source?.map && repaint && bodyMesh) {
+      const map = await paintedMap(id, bodyMesh, source.map, color);
+      if (map) material.map = map;
+    }
+    if (material && spec !== KENNEY) {
+      material.metalness = Math.min(material.metalness, 0.45);
+      material.roughness = Math.max(material.roughness, 0.28);
+    }
+    if (material) for (const mesh of all) if (mesh.material === source) mesh.material = material;
+  }
+  for (const mesh of all) mesh.castShadow = castShadow;
 
   // scale to the board and stand the wheels on the ground
   const inner = new THREE.Group();
   inner.add(scene);
-  inner.scale.setScalar(SCALE);
+  if (spec.length) {
+    const raw = new THREE.Box3().setFromObject(scene).getSize(new THREE.Vector3());
+    inner.scale.setScalar(spec.length / Math.max(raw.z, 1e-6));
+  } else inner.scale.setScalar(SCALE);
   const box = new THREE.Box3().setFromObject(inner);
   inner.position.y = -box.min.y;
   box.translate(new THREE.Vector3(0, -box.min.y, 0));
