@@ -157,6 +157,9 @@ interface CarEntity {
   scale: number;
   /** Which car model is shown (or on its way). */
   carId: string;
+  /** Heading last frame, to lean the body into the bends. */
+  prevYaw: number;
+  lastSkid: number;
 }
 
 export class SceneRenderer {
@@ -170,6 +173,9 @@ export class SceneRenderer {
   private disposed = false;
   private fireworksUntil = 0;
   private lastFirework = 0;
+  /** The winner does a few doughnuts past the line. */
+  private winnerId: string | null = null;
+  private celebrateAt = 0;
   onFrame: ((positions: Map<string, CarScreenPos>) => void) | null = null;
   /** Where each car is along the road this frame (read by the race audio). */
   onMotion: ((cars: { id: string; km: number }[]) => void) | null = null;
@@ -232,11 +238,14 @@ export class SceneRenderer {
     }
     this.cars.clear();
     this.fireworksUntil = 0;
+    this.winnerId = null;
   }
 
   /** Fireworks over the finish line. */
-  celebrate(now = performance.now()) {
+  celebrate(winnerId?: string | null, now = performance.now()) {
     this.fireworksUntil = now + 4200;
+    this.winnerId = winnerId ?? null;
+    this.celebrateAt = now;
   }
 
   update(players: ScenePlayer[], target: number, now = performance.now()) {
@@ -337,6 +346,8 @@ export class SceneRenderer {
       active: p.active,
       scale: 1,
       carId: "kilomax",
+      prevYaw: 0,
+      lastSkid: 0,
     };
   }
 
@@ -587,6 +598,11 @@ export class SceneRenderer {
         if (a < 1 && Math.sin(a * Math.PI * 6) > 0.95) this.emit(c.model.root, new THREE.Vector3(0, 0.12, -0.55), "#2b2b2e", 0.8, 700, 0.5);
         const blink = Math.sin(t / 220) > 0 ? 1 : 0.55;
         badge.scale.setScalar((0.44 * easeOutBack(clamp01((t - pr.born - 600) / 400)) + 0.001) * blink);
+        // a thin plume of smoke from the bonnet while it's stuck
+        if (pr.leaving === null && a >= 1 && t - c.lastPuff > 420) {
+          c.lastPuff = t;
+          this.emit(c.model.root, new THREE.Vector3((Math.random() - 0.5) * 0.1, 0.3, 0.3), "#3a3a3e", 0.5, 1600, 0.7);
+        }
         if (pr.leaving !== null) {
           const b = clamp01((t - pr.leaving) / 600);
           (badge.material as THREE.SpriteMaterial).color.set("#4cd07d");
@@ -691,6 +707,11 @@ export class SceneRenderer {
         const launch = car.style === "turbo" || car.style === "sprint" ? 2 : car.style === "fast" ? 1.4 : 1;
         m.body.rotation.x = -0.06 * accel * launch + 0.07 * brake;
         m.brakeLights.emissiveIntensity = 0.3 + brake * 2.4;
+        // tyres smoke as it pulls away
+        if (a < 0.16 && t - car.lastSkid > 35) {
+          car.lastSkid = t;
+          for (const side of [-1, 1]) this.emit(m.root, new THREE.Vector3(side * 0.17, 0.04, -0.36), "#d9d9d9", 0.55 * launch * 0.7, 900, 0.8);
+        }
 
         const behind = new THREE.Vector3((Math.random() - 0.5) * 0.3, 0.05, -0.55);
         if (car.style === "turbo") {
@@ -724,6 +745,17 @@ export class SceneRenderer {
         m.body.rotation.x *= 0.85;
         m.body.rotation.z *= 0.85;
         m.brakeLights.emissiveIntensity = 0.3;
+        m.brakeLights.emissive.set("#ff1f2a");
+      } else {
+        // stopped by an attack (the radar only slows): hazard lights blink
+        const stopped = [...car.props.values()].some((pr) => pr.kind !== "radar" && pr.leaving === null);
+        if (stopped) {
+          m.brakeLights.emissive.set("#ff9a1f");
+          m.brakeLights.emissiveIntensity = Math.sin(t / 260) > 0 ? 2.6 : 0.15;
+        } else {
+          m.brakeLights.emissive.set("#ff1f2a");
+          m.brakeLights.emissiveIntensity = 0.3;
+        }
       }
       car.flame.visible = flameOn;
       if (flameOn) car.flame.scale.set(1, 1, 0.8 + Math.random() * 0.5);
@@ -732,6 +764,24 @@ export class SceneRenderer {
       car.along += (car.alongTarget - car.along) * Math.min(1, dt * 5);
       this.place(car, car.km, swerve);
       m.body.rotation.y = swerve * 0.35;
+      // lean into the bends while driving
+      const yaw = car.frame.rotation.y;
+      let turn = yaw - car.prevYaw;
+      turn = Math.atan2(Math.sin(turn), Math.cos(turn));
+      car.prevYaw = yaw;
+      const roll = car.km !== car.toKm && dt > 0 ? THREE.MathUtils.clamp((-turn / dt) * 0.09, -0.13, 0.13) : 0;
+      m.root.rotation.z += (roll - m.root.rotation.z) * Math.min(1, dt * 6);
+      // the winner, once over the line: two doughnuts in a cloud of smoke
+      if (car.id === this.winnerId && car.km === car.toKm) {
+        const d = clamp01((t - this.celebrateAt - 1200) / 2800);
+        if (d > 0 && d < 1) {
+          m.root.rotation.y = easeInOut(d) * Math.PI * 4;
+          if (t - car.lastSkid > 45) {
+            car.lastSkid = t;
+            for (const side of [-1, 1]) this.emit(m.root, new THREE.Vector3(side * 0.17, 0.04, -0.36), "#e6e6e6", 0.7, 1300, 1.1);
+          }
+        } else if (d >= 1) m.root.rotation.y = 0;
+      }
       // wheels spin with the distance covered
       const spin = ((car.km - prevKm) / Math.max(1, this.target)) * 900;
       for (const w of m.wheels) w.rotation[(w.userData.axle as "x" | "y" | "z" | undefined) ?? "x"] += spin;

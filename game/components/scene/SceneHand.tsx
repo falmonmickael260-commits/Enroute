@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import clsx from "clsx";
 import type { CardDef, CardInstance, GameState, PlayerState } from "@/game/types/game";
@@ -116,6 +117,9 @@ export function SceneHand({
 }) {
   const [rowRef, row] = useElementSize<HTMLDivElement>();
   const [selectedUid, setSelectedUid] = useState<string | null>(null);
+  // the card just played flies from the hand up onto the road
+  const previewRef = useRef<HTMLDivElement>(null);
+  const [flying, setFlying] = useState<{ key: string; defId: string; x: number; y: number; w: number; h: number } | null>(null);
   const canAct = isMyTurn && state.phase === "action";
   const mustDraw = isMyTurn && state.phase === "draw";
   // phone held sideways: piles beside the cards, all on one low row
@@ -235,7 +239,9 @@ export function SceneHand({
             transition={{ type: "spring", stiffness: 360, damping: 28 }}
           >
             <div className="flex w-full max-w-sm items-stretch gap-3 rounded-3xl border border-white/15 bg-[#0e1522]/92 p-3 shadow-[0_20px_50px_rgba(0,0,0,0.6)] backdrop-blur-md">
-              <Card size="lg" defId={selectedDef.id} className="!h-[168px] !w-[112px] shrink-0" />
+              <div ref={previewRef} className="shrink-0">
+                <Card size="lg" defId={selectedDef.id} className="!h-[168px] !w-[112px]" />
+              </div>
               <div className="flex min-w-0 flex-1 flex-col">
                 <div className="flex items-start justify-between gap-2">
                   <p className="font-display text-2xl leading-none tracking-wide text-white">{selectedDef.title}</p>
@@ -262,6 +268,8 @@ export function SceneHand({
                   <button
                     disabled={!selectedPlayable}
                     onClick={() => {
+                      const r = previewRef.current?.getBoundingClientRect();
+                      if (r) setFlying({ key: selected.uid, defId: selected.defId, x: r.left, y: r.top, w: r.width, h: r.height });
                       onPlay(selected);
                       close();
                     }}
@@ -315,6 +323,28 @@ export function SceneHand({
           {hand}
         </>
       )}
+      {flying && typeof document !== "undefined"
+        ? createPortal(
+            <motion.div
+              key={flying.key}
+              className="pointer-events-none fixed left-0 top-0 z-[70]"
+              style={{ width: flying.w, height: flying.h }}
+              initial={{ x: flying.x, y: flying.y, scale: 1, rotate: 0, opacity: 1 }}
+              animate={{
+                x: window.innerWidth / 2 - flying.w / 2,
+                y: window.innerHeight * 0.32 - flying.h / 2,
+                scale: [1, 1.12, 0.35],
+                rotate: [0, -6, 10],
+                opacity: [1, 1, 0],
+              }}
+              transition={{ duration: 0.75, ease: [0.3, 0.7, 0.4, 1] }}
+              onAnimationComplete={() => setFlying((f) => (f?.key === flying.key ? null : f))}
+            >
+              <Card size="lg" defId={flying.defId} className="!h-full !w-full shadow-[0_0_30px_rgba(255,220,120,0.7)]" />
+            </motion.div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }

@@ -63,6 +63,6 @@ export function pushState(renderer: SceneRenderer, prev: GameState | null, state
     })),
     state.target,
   );
-  if (state.phase === "gameover" && prev?.phase !== "gameover") renderer.celebrate();
+  if (state.phase === "gameover" && prev?.phase !== "gameover") renderer.celebrate(state.winnerId);
 }
 

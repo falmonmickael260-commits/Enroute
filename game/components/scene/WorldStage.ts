@@ -1060,6 +1060,9 @@ export class WorldStage implements Stage {
   private pennants: { base: THREE.Matrix4; phase: number }[] = [];
   private pennantMesh: THREE.InstancedMesh | null = null;
   private beacon: THREE.MeshStandardMaterial | null = null;
+  /** The five start lamps, and whether the race has been given the green. */
+  private startLamps: THREE.MeshStandardMaterial[] = [];
+  private startGreen = false;
   private beam: THREE.Group | null = null;
 
   /**
@@ -1189,6 +1192,34 @@ export class WorldStage implements Stage {
     scene.add(g);
     this.beacon = lamp.material as THREE.MeshStandardMaterial;
     this.disposables.push(lamp.geometry, lamp.material as THREE.Material);
+  }
+
+  /**
+   * The start lamps follow the opening countdown (see Cinematic.tsx: 3 at 3.6 s,
+   * 2 at 4.3 s, 1 at 5 s, go at 5.7 s): red pair by pair, then all green.
+   */
+  private lightStart() {
+    if (!this.startLamps.length) return;
+    let red = 0;
+    if (this.shot.kind === "intro") {
+      const e = performance.now() - this.shotSince;
+      red = e >= 5700 ? 0 : e >= 5000 ? 5 : e >= 4300 ? 4 : e >= 3600 ? 2 : 0;
+      if (e >= 5700) this.startGreen = true;
+    } else if (this.shotSince && !this.startGreen) {
+      // the opening was skipped (or not shown): the race is under way
+      this.startGreen = true;
+    }
+    this.startLamps.forEach((lamp, i) => {
+      if (this.startGreen && red === 0) {
+        lamp.emissive.set("#3dff6e");
+        lamp.color.set("#0d2a14");
+        lamp.emissiveIntensity = 2.2;
+      } else {
+        lamp.emissive.set("#ff2a1a");
+        lamp.color.set("#2a0d0d");
+        lamp.emissiveIntensity = i < red ? 3 : 0;
+      }
+    });
   }
 
   private animateWorld(t: number) {
@@ -1446,6 +1477,43 @@ export class WorldStage implements Stage {
     line.receiveShadow = true;
     scene.add(line);
     this.disposables.push(chk, line.geometry, line.material as THREE.Material);
+
+    // start gantry: five lamps over the line, lit one pair at a time by the countdown
+    const gantry = new THREE.Group();
+    const metal = new THREE.MeshStandardMaterial({ color: "#2b2f36", metalness: 0.5, roughness: 0.45 });
+    const span = HALF_WIDTH + 0.55;
+    const poleGeo = new THREE.BoxGeometry(0.12, 3.9, 0.12);
+    for (const side of [-1, 1]) {
+      const pole = new THREE.Mesh(poleGeo, metal);
+      pole.position.set(side * span, 1.95, 0);
+      pole.castShadow = true;
+      gantry.add(pole);
+    }
+    const beam = new THREE.Mesh(new THREE.BoxGeometry(span * 2 + 0.12, 0.12, 0.12), metal);
+    beam.position.y = 3.85;
+    gantry.add(beam);
+    const panel = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.42, 0.1), new THREE.MeshStandardMaterial({ color: "#111317", roughness: 0.6 }));
+    panel.position.set(0, 3.55, -0.04);
+    gantry.add(panel);
+    const lampGeo = new THREE.CircleGeometry(0.14, 20);
+    for (let i = 0; i < 5; i++) {
+      const lamp = new THREE.MeshStandardMaterial({ color: "#2a0d0d", emissive: "#ff2a1a", emissiveIntensity: 0, side: THREE.DoubleSide });
+      // facing back, towards the grid and the camera behind it
+      const disc = new THREE.Mesh(lampGeo, lamp);
+      disc.position.set((i - 2) * 0.4, 3.55, -0.095);
+      disc.rotation.y = Math.PI;
+      gantry.add(disc);
+      this.startLamps.push(lamp);
+      this.disposables.push(lamp);
+    }
+    // a few metres past the line, so it stands over the road ahead of the grid
+    // rather than right in front of the camera
+    const at = this.road.at(this.road.startLen + 6);
+    gantry.position.copy(at.point);
+    gantry.rotation.y = Math.atan2(at.forward.x, at.forward.z);
+    scene.add(gantry);
+    this.disposables.push(metal, beam.geometry, panel.geometry, panel.material as THREE.Material, lampGeo, poleGeo);
+
     this.signs = new THREE.Group();
     scene.add(this.signs);
     this.buildSigns(1000);
@@ -1603,6 +1671,8 @@ export class WorldStage implements Stage {
     // the scripted shots start from their first frame, with a cut
     if (changed) {
       this.shotSince = performance.now();
+      // a new race opens: the lamps go dark again for the countdown
+      if (shot.kind === "intro") this.startGreen = false;
       this.shotSide = 0;
       // cut in on an attack, and cut back out of it rather than drifting through the scenery
       if (
@@ -1670,6 +1740,7 @@ export class WorldStage implements Stage {
   frame(dt: number, t: number, cars: StageCar[], target: number) {
     this.flyGulls(t);
     this.animateWorld(t);
+    this.lightStart();
     const wantPos = new THREE.Vector3();
     const wantLook = new THREE.Vector3();
     const byId = new Map(cars.map((c) => [c.id, c]));

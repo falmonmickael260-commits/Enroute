@@ -73,9 +73,10 @@ export function SceneTable({
   }
   useEffect(() => {
     if (!over) return;
-    const t = setTimeout(() => setVictoryReady(true), 3000);
+    // (time for the finish shot and the winner's doughnuts)
+    const t = setTimeout(() => setVictoryReady(true), scene ? 3000 : 4500);
     return () => clearTimeout(t);
-  }, [over]);
+  }, [over, scene]);
 
   const yourTurn = viewerId ? current.id === viewerId : true;
 
