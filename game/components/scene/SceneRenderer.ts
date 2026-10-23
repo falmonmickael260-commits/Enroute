@@ -12,6 +12,9 @@ import {
   createBullBar,
   createCar,
   createFlame,
+  createMoto,
+  createQuad,
+  createScooter,
   createGlowRing,
   createJerrycan,
   createLimitPlate,
@@ -91,6 +94,8 @@ const easeOutBack = (t: number) => {
   return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
 };
 const clamp01 = (t: number) => Math.max(0, Math.min(1, t));
+/** Vehicles modelled in code, by id (the others are loaded from their file). */
+const BUILT: Record<string, (color: string) => CarModel> = { kilomax: createCar, moto: createMoto, scooter: createScooter, quad: createQuad };
 const UNIT_SCALE = new THREE.Vector3(1, 1, 1);
 /** A wheel's own size, as its model made it (the Kenney cars shrink theirs). */
 const restScale = (wheel: THREE.Object3D): THREE.Vector3 => (wheel.userData.rest as THREE.Vector3 | undefined) ?? UNIT_SCALE;
@@ -337,11 +342,11 @@ export class SceneRenderer {
 
   /** Swaps in the pilot's chosen car once its file is loaded (the drawn car stands in meanwhile). */
   private ensureModel(car: CarEntity, p: ScenePlayer) {
-    const wanted = p.car && p.car !== "kilomax" ? p.car : "kilomax";
+    const wanted = p.car || "kilomax";
     if (car.carId === wanted) return;
     car.carId = wanted;
-    const ready =
-      wanted === "kilomax" ? Promise.resolve(createCar(p.color)) : loadCarModel(wanted, p.color, p.repaint ?? true, this.stage.castShadows);
+    const build = BUILT[wanted];
+    const ready = build ? Promise.resolve(build(p.color)) : loadCarModel(wanted, p.color, p.repaint ?? true, this.stage.castShadows);
     void ready.then((model) => {
       if (!model || car.carId !== wanted || !this.cars.has(car.id) || this.disposed) return;
       this.swapModel(car, model);

@@ -148,6 +148,213 @@ export function createCar(color: string): CarModel {
   return { root, body, wheels, brakeLights, paint, mounts, exhaust: new THREE.Vector3(0.12, 0.09, -0.54) };
 }
 
+// ---------------------------------------------------------------- two-wheelers and quad
+
+const rb = (w: number, h: number, d: number, r: number, m: THREE.Material, x = 0, y = 0, z = 0, rx = 0) => {
+  const mesh = new THREE.Mesh(new RoundedBoxGeometry(w, h, d, 2, Math.min(r, w / 2 - 0.001, h / 2 - 0.001, d / 2 - 0.001)), m);
+  mesh.position.set(x, y, z);
+  mesh.rotation.x = rx;
+  return mesh;
+};
+
+/** A wheel spinning around x, with a spoke bar so the spin reads. */
+function wheelMesh(radius: number, width: number) {
+  const tyreGeo = new THREE.CylinderGeometry(radius, radius, width, 18);
+  tyreGeo.rotateZ(Math.PI / 2);
+  const wheel = new THREE.Mesh(tyreGeo, shared.tyre);
+  const rimGeo = new THREE.CylinderGeometry(radius * 0.58, radius * 0.58, width + 0.006, 12);
+  rimGeo.rotateZ(Math.PI / 2);
+  wheel.add(new THREE.Mesh(rimGeo, shared.rim));
+  wheel.add(new THREE.Mesh(new THREE.BoxGeometry(width + 0.01, radius * 0.95, radius * 0.2), shared.dark));
+  return wheel;
+}
+
+/** A rod between two points (forks, handlebars, racks). */
+function rod(a: THREE.Vector3, b: THREE.Vector3, radius: number, m: THREE.Material) {
+  const len = a.distanceTo(b);
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(radius, radius, len, 8), m);
+  mesh.position.copy(a).add(b).multiplyScalar(0.5);
+  mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize());
+  return mesh;
+}
+
+/**
+ * The pilot: helmet in their colour, dark suit. `seat` is where the hips sit,
+ * `grip` where the hands hold the bars, `lean` how far the torso tips forward,
+ * `knee` and `foot` the [height, z] of the legs' joints.
+ */
+function rider(paint: THREE.Material, seat: THREE.Vector3, grip: THREE.Vector3, lean: number, knee: [number, number], foot: [number, number]) {
+  const g = new THREE.Group();
+  const suit = mat("#262a33", { roughness: 0.7 });
+  const torsoLen = 0.2;
+  const torso = rb(0.15, torsoLen, 0.1, 0.04, suit);
+  torso.geometry.translate(0, torsoLen / 2, 0);
+  torso.position.copy(seat);
+  torso.rotation.x = lean;
+  g.add(torso);
+  const shoulder = new THREE.Vector3(0, torsoLen, 0).applyAxisAngle(new THREE.Vector3(1, 0, 0), lean).add(seat);
+  // helmet in the pilot's colour, dark visor towards the road
+  const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.068, 16, 12), paint);
+  helmet.position.copy(shoulder).add(new THREE.Vector3(0, 0.07, 0.02));
+  helmet.scale.set(1, 1, 1.1);
+  g.add(helmet);
+  const visor = new THREE.Mesh(new THREE.SphereGeometry(0.069, 16, 8, -Math.PI / 2 - 0.9, 1.8, 1.15, 0.55), shared.glass);
+  visor.position.copy(helmet.position);
+  visor.scale.copy(helmet.scale);
+  g.add(visor);
+  // arms to the bars, legs to the footrests
+  for (const side of [-1, 1]) {
+    const s = shoulder.clone().add(new THREE.Vector3(side * 0.075, -0.02, 0));
+    const h = grip.clone().add(new THREE.Vector3(side * 0.11, 0, 0));
+    g.add(rod(s, h, 0.024, suit));
+    const hip = seat.clone().add(new THREE.Vector3(side * 0.06, 0.02, 0));
+    const k = new THREE.Vector3(side * 0.095, knee[0], knee[1]);
+    const f = new THREE.Vector3(side * 0.09, foot[0], foot[1]);
+    g.add(rod(hip, k, 0.032, suit), rod(k, f, 0.028, suit));
+    const boot = rb(0.05, 0.04, 0.08, 0.015, shared.dark, f.x, f.y, f.z + 0.02);
+    g.add(boot);
+  }
+  return g;
+}
+
+function vehicleBase(color: string) {
+  const root = new THREE.Group();
+  const body = new THREE.Group();
+  root.add(body);
+  const paint = mat(color, { roughness: 0.22, metalness: 0.35 });
+  const brakeLights = new THREE.MeshStandardMaterial({ color: "#b3141b", emissive: "#ff1f2a", emissiveIntensity: 0.3 });
+  const mounts = { roof: new THREE.Group(), rear: new THREE.Group(), front: new THREE.Group() };
+  body.add(mounts.roof, mounts.rear, mounts.front);
+  return { root, body, paint, brakeLights, mounts };
+}
+
+/** Sport motorbike, about as long as a small car is wide. */
+export function createMoto(color: string): CarModel {
+  const { root, body, paint, brakeLights, mounts } = vehicleBase(color);
+  const trim = mat("#1f2329", { roughness: 0.6 });
+  const R = 0.12;
+  const wheels = [
+    [0, -0.32],
+    [0, 0.33],
+  ].map(([x, z]) => {
+    const w = wheelMesh(R, 0.07);
+    w.position.set(x, R, z);
+    root.add(w);
+    return w;
+  });
+  // engine and frame
+  body.add(rb(0.13, 0.13, 0.22, 0.03, shared.grey, 0, 0.2, 0));
+  body.add(rod(new THREE.Vector3(0, R, -0.32), new THREE.Vector3(0, 0.27, -0.05), 0.02, trim));
+  // tank, fairing and screen in the pilot's colour
+  body.add(rb(0.17, 0.11, 0.26, 0.05, paint, 0, 0.33, 0.07, 0.12));
+  body.add(rb(0.19, 0.16, 0.14, 0.05, paint, 0, 0.3, 0.25, -0.35));
+  body.add(rb(0.13, 0.08, 0.02, 0.01, shared.glass, 0, 0.41, 0.29, -0.6));
+  body.add(rb(0.1, 0.05, 0.03, 0.015, shared.headlight, 0, 0.3, 0.33));
+  // seat and tail
+  body.add(rb(0.15, 0.04, 0.2, 0.02, trim, 0, 0.36, -0.12));
+  body.add(rb(0.13, 0.06, 0.16, 0.03, paint, 0, 0.38, -0.27, -0.25));
+  body.add(rb(0.07, 0.025, 0.02, 0.008, brakeLights, 0, 0.4, -0.355));
+  // fork, bars, mudguard, exhaust
+  for (const side of [-1, 1]) body.add(rod(new THREE.Vector3(side * 0.045, R, 0.33), new THREE.Vector3(side * 0.05, 0.42, 0.2), 0.012, shared.chrome));
+  body.add(rod(new THREE.Vector3(-0.16, 0.43, 0.19), new THREE.Vector3(0.16, 0.43, 0.19), 0.012, trim));
+  body.add(rb(0.08, 0.025, 0.16, 0.01, paint, 0, R + 0.13, 0.33, 0.1));
+  body.add(rod(new THREE.Vector3(0.08, 0.16, -0.02), new THREE.Vector3(0.09, 0.23, -0.36), 0.025, shared.chrome));
+  body.add(rider(paint, new THREE.Vector3(0, 0.38, -0.12), new THREE.Vector3(0, 0.43, 0.19), 0.85, [0.37, 0.06], [0.22, -0.07]));
+
+  mounts.roof.position.set(0, 0.42, -0.3);
+  mounts.roof.scale.setScalar(0.55);
+  mounts.rear.position.set(0, 0.26, -0.42);
+  mounts.rear.scale.setScalar(0.7);
+  mounts.front.position.set(0, 0.22, 0.47);
+  mounts.front.scale.setScalar(0.5);
+  return { root, body, wheels, brakeLights, paint, mounts, exhaust: new THREE.Vector3(0.09, 0.23, -0.38) };
+}
+
+/** Retro scooter: small wheels, rounded rear shell, leg shield. */
+export function createScooter(color: string): CarModel {
+  const { root, body, paint, brakeLights, mounts } = vehicleBase(color);
+  const trim = mat("#5a3b2a", { roughness: 0.7 });
+  const cream = mat("#f3ead8", { roughness: 0.5 });
+  const R = 0.085;
+  const wheels = [
+    [0, -0.25],
+    [0, 0.27],
+  ].map(([x, z]) => {
+    const w = wheelMesh(R, 0.06);
+    w.position.set(x, R, z);
+    root.add(w);
+    return w;
+  });
+  // rear shell over the engine, floorboard, leg shield
+  body.add(rb(0.25, 0.17, 0.32, 0.08, paint, 0, 0.21, -0.17));
+  body.add(rb(0.15, 0.03, 0.26, 0.012, shared.dark, 0, 0.12, 0.06));
+  body.add(rb(0.2, 0.28, 0.035, 0.015, paint, 0, 0.27, 0.21, -0.18));
+  // front mudguard, steering column, headset with the round lamp
+  body.add(rb(0.09, 0.05, 0.14, 0.025, paint, 0, R + 0.075, 0.27));
+  body.add(rod(new THREE.Vector3(0, R + 0.08, 0.27), new THREE.Vector3(0, 0.44, 0.23), 0.02, shared.grey));
+  body.add(rb(0.24, 0.05, 0.07, 0.02, paint, 0, 0.45, 0.23));
+  const lamp = new THREE.Mesh(new THREE.CylinderGeometry(0.035, 0.035, 0.02, 14), shared.headlight);
+  lamp.rotation.x = Math.PI / 2;
+  lamp.position.set(0, 0.45, 0.27);
+  body.add(lamp);
+  // seat, little top case and tail lamp
+  body.add(rb(0.15, 0.045, 0.24, 0.02, trim, 0, 0.31, -0.13));
+  body.add(rb(0.16, 0.11, 0.12, 0.03, cream, 0, 0.36, -0.33));
+  body.add(rb(0.07, 0.03, 0.02, 0.01, brakeLights, 0, 0.25, -0.335));
+  body.add(rider(paint, new THREE.Vector3(0, 0.33, -0.1), new THREE.Vector3(0, 0.45, 0.2), 0.12, [0.33, 0.07], [0.15, 0.07]));
+
+  mounts.roof.position.set(0, 0.42, -0.33);
+  mounts.roof.scale.setScalar(0.5);
+  mounts.rear.position.set(0, 0.24, -0.36);
+  mounts.rear.scale.setScalar(0.65);
+  mounts.front.position.set(0, 0.18, 0.37);
+  mounts.front.scale.setScalar(0.5);
+  return { root, body, wheels, brakeLights, paint, mounts, exhaust: new THREE.Vector3(0.07, 0.1, -0.3) };
+}
+
+/** Quad bike: four chunky wheels, mudguards in the pilot's colour, racks. */
+export function createQuad(color: string): CarModel {
+  const { root, body, paint, brakeLights, mounts } = vehicleBase(color);
+  const trim = mat("#1f2329", { roughness: 0.6 });
+  const R = 0.11;
+  const wheels = [
+    [-0.2, -0.25],
+    [0.2, -0.25],
+    [-0.2, 0.27],
+    [0.2, 0.27],
+  ].map(([x, z]) => {
+    const w = wheelMesh(R, 0.1);
+    w.position.set(x, R, z);
+    root.add(w);
+    return w;
+  });
+  // chassis and engine
+  body.add(rb(0.2, 0.1, 0.5, 0.03, trim, 0, 0.17, 0.01));
+  // mudguards over each axle, joined by the body
+  body.add(rb(0.52, 0.06, 0.2, 0.03, paint, 0, 0.27, 0.28));
+  body.add(rb(0.52, 0.06, 0.2, 0.03, paint, 0, 0.27, -0.25));
+  body.add(rb(0.22, 0.12, 0.3, 0.05, paint, 0, 0.29, 0.03));
+  // seat, bars, headlights, racks
+  body.add(rb(0.17, 0.05, 0.26, 0.02, trim, 0, 0.36, -0.1));
+  body.add(rod(new THREE.Vector3(0, 0.3, 0.17), new THREE.Vector3(0, 0.44, 0.15), 0.018, shared.grey));
+  body.add(rod(new THREE.Vector3(-0.18, 0.45, 0.15), new THREE.Vector3(0.18, 0.45, 0.15), 0.013, trim));
+  for (const x of [-0.08, 0.08]) body.add(rb(0.07, 0.035, 0.02, 0.01, shared.headlight, x, 0.29, 0.385));
+  for (const x of [-0.13, 0.13]) body.add(rb(0.06, 0.025, 0.02, 0.008, brakeLights, x, 0.27, -0.355));
+  for (const z of [0.3, -0.27]) {
+    for (const x of [-0.12, 0.12]) body.add(rod(new THREE.Vector3(x, 0.3, z - 0.08), new THREE.Vector3(x, 0.3, z + 0.08), 0.01, shared.chrome));
+    body.add(rod(new THREE.Vector3(-0.12, 0.3, z), new THREE.Vector3(0.12, 0.3, z), 0.01, shared.chrome));
+  }
+  body.add(rider(paint, new THREE.Vector3(0, 0.38, -0.1), new THREE.Vector3(0, 0.45, 0.15), 0.35, [0.4, 0.07], [0.28, 0.0]));
+
+  mounts.roof.position.set(0, 0.31, -0.27);
+  mounts.roof.scale.setScalar(0.7);
+  mounts.rear.position.set(0, 0.25, -0.37);
+  mounts.rear.scale.setScalar(0.8);
+  mounts.front.position.set(0, 0.2, 0.42);
+  mounts.front.scale.setScalar(0.75);
+  return { root, body, wheels, brakeLights, paint, mounts, exhaust: new THREE.Vector3(0.1, 0.17, -0.3) };
+}
+
 // ---------------------------------------------------------------- equipment (protections)
 
 /** Chrome bull bar: immune to collisions. */

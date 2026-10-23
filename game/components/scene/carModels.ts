@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import type { CarModel } from "./models";
+import { BUILT_CARS } from "@/game/lib/cars";
 
 /**
  * Kenney Car Kit vehicles (CC0) turned into the CarModel the scene animates:
@@ -25,7 +26,7 @@ function loadGltf(id: string): Promise<GLTF | null> {
 
 /** Starts downloading a car before it's needed (e.g. as soon as it's picked). */
 export function prefetchCar(id: string) {
-  if (id !== "kilomax") void loadGltf(id);
+  if (!BUILT_CARS.has(id)) void loadGltf(id);
 }
 
 // ---------------------------------------------------------------- repaint

@@ -1,9 +1,10 @@
 import type { PlayerColor } from "@/game/types/game";
 
 /**
- * The cars a pilot can drive. All but the first come from Kenney's Car Kit
- * (CC0, see public/models/cars/CREDITS.md); `repaint` cars take the pilot's
- * colour, the others (taxi, police) keep their livery.
+ * The vehicles a pilot can drive. Most come from Kenney's Car Kit (CC0, see
+ * public/models/cars/CREDITS.md); the moto, scooter, quad and the KILOMAX car
+ * are built in code (BUILT_CARS). `repaint` ones take the pilot's colour, the
+ * others (taxi, police, kart) keep their livery.
  */
 export const CARS = [
   { id: "sedan-sports", label: "Coupé sport", repaint: true },
@@ -15,6 +16,9 @@ export const CARS = [
   { id: "truck", label: "Pick-up", repaint: true },
   { id: "race", label: "Formule", repaint: true },
   { id: "race-future", label: "Proto", repaint: true },
+  { id: "moto", label: "Moto", repaint: true },
+  { id: "scooter", label: "Scooter", repaint: true },
+  { id: "quad", label: "Quad", repaint: true },
   { id: "kart-oodi", label: "Kart", repaint: false },
   { id: "tractor", label: "Tracteur", repaint: true },
   { id: "taxi", label: "Taxi", repaint: false },
@@ -23,6 +27,9 @@ export const CARS = [
 ] as const;
 
 export type CarId = (typeof CARS)[number]["id"];
+
+/** Vehicles modelled in code (game/components/scene/models.ts), no file to load. */
+export const BUILT_CARS: ReadonlySet<string> = new Set(["kilomax", "moto", "scooter", "quad"]);
 
 export const DEFAULT_CAR: CarId = "sedan-sports";
 
