@@ -1,10 +1,11 @@
 "use client";
 
-import { use, useMemo, useSyncExternalStore } from "react";
+import { use, useEffect, useMemo, useRef, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { normalizeCode, type Seat } from "@/game/lib/online/api";
 import { getOnlineSession, getOnlineSessionServer, subscribeOnlineSession } from "@/game/lib/online/session";
+import { getIncomingPlatformToken } from "@/game/lib/online/platformToken";
 import { useOnlineRoom } from "@/game/hooks/useOnlineRoom";
 import { JoinGate } from "@/game/components/online/JoinGate";
 import { OnlineLobby } from "@/game/components/online/OnlineLobby";
@@ -34,6 +35,35 @@ function OnlineRoom({ code, seat }: { code: string; seat: Seat }) {
   const router = useRouter();
   const room = useOnlineRoom(code, seat);
   const { meta, game } = room;
+
+  // Ce device ne connaît avec certitude que son propre résultat (son jeton
+  // prouve sa seule identité) : il déclare donc sa propre ligne, une seule
+  // fois par partie — voir app/api/report-result.
+  const reportedRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (game?.phase !== "gameover" || reportedRef.current.has(code)) return;
+    reportedRef.current.add(code);
+
+    const rgToken = getIncomingPlatformToken();
+    if (!rgToken) return; // joueur invité : rien à attribuer
+
+    const me = game.players.find((p) => p.id === seat.playerId);
+    if (!me) return;
+
+    fetch("/api/report-result", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        roomCode: code,
+        playerId: seat.playerId,
+        rgToken,
+        outcome: game.winnerId === seat.playerId ? "win" : "loss",
+        score: me.distance,
+      }),
+    }).catch(() => {
+      /* une panne de la plateforme centrale ne doit jamais perturber la partie */
+    });
+  }, [code, game, seat.playerId]);
 
   if (room.lost) {
     return (

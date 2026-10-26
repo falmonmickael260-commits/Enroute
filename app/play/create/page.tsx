@@ -9,6 +9,7 @@ import { PLAYER_COLOR } from "@/game/components/players/PlayerPiece";
 import { InnerPage, SectionLabel } from "@/game/components/ui/InnerPage";
 import { createOnlineRoom } from "@/game/lib/online/actions";
 import { OnlineError } from "@/game/lib/online/api";
+import { getIncomingPlatformToken, peekPlatformUsername } from "@/game/lib/online/platformToken";
 import { setBoardView, useBoardView } from "@/game/lib/store/boardViewStore";
 import { MAX_PLAYERS } from "@/game/lib/engine/deck";
 import {
@@ -54,6 +55,7 @@ export default function CreateGamePage() {
   const boardView = useBoardView();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const platformUsername = peekPlatformUsername(getIncomingPlatformToken());
 
   const handleStart = async () => {
     if (mode === "local") {
@@ -121,6 +123,12 @@ export default function CreateGamePage() {
 
       <section>
         <SectionLabel icon={<HelmetIcon />}>{mode === "online" ? "Votre nom de pilote" : "Pilotes"}</SectionLabel>
+        {mode === "online" && platformUsername ? (
+          <p className="-mt-1 mb-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-center text-xs text-white/70">
+            Connecté en tant que <strong className="text-white">{platformUsername}</strong> — vos résultats
+            compteront dans vos statistiques Revanche Game.
+          </p>
+        ) : null}
         <div className="flex flex-col gap-2">
           {pilots.map((name, i) => (
             <label key={i} className="menu-option flex cursor-text items-center gap-3 !rounded-[14px] py-2 pl-2.5 pr-2 focus-within:!border-[#ffc83d]">

@@ -5,6 +5,7 @@ import Link from "next/link";
 import { AMBIANCES } from "@/game/lib/ambiances";
 import { OnlineError, roomInfo, type RoomPreview } from "@/game/lib/online/api";
 import { joinOnlineRoom } from "@/game/lib/online/actions";
+import { getIncomingPlatformToken, peekPlatformUsername } from "@/game/lib/online/platformToken";
 import { PLAYER_COLOR } from "@/game/components/players/PlayerPiece";
 import { MAX_PLAYERS } from "@/game/lib/engine/deck";
 import { InnerPage, SectionLabel } from "@/game/components/ui/InnerPage";
@@ -15,6 +16,7 @@ export function JoinGate({ code, defaultName }: { code: string; defaultName: str
   const [name, setName] = useState(defaultName);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const platformUsername = peekPlatformUsername(getIncomingPlatformToken());
 
   useEffect(() => {
     let cancelled = false;
@@ -88,6 +90,12 @@ export function JoinGate({ code, defaultName }: { code: string; defaultName: str
 
       {open ? (
         <>
+          {platformUsername ? (
+            <p className="rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-center text-xs text-white/70">
+              Connecté en tant que <strong className="text-white">{platformUsername}</strong> — vos résultats
+              compteront dans vos statistiques Revanche Game.
+            </p>
+          ) : null}
           <label className="flex flex-col gap-2">
             <SectionLabel>Votre nom de pilote</SectionLabel>
             <input

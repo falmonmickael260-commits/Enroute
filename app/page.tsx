@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, type ComponentType, type SVGProps } from "react";
+import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "react";
 import Link from "next/link";
 import { AnimatePresence, motion } from "framer-motion";
 import clsx from "clsx";
@@ -9,6 +9,7 @@ import { useBootDone } from "@/game/components/animations/BootLoader";
 import { MenuBackdrop } from "@/game/components/menu/MenuBackdrop";
 import { HomeTopBar } from "@/game/components/menu/HomeTopBar";
 import { LEGAL, LEGAL_READY } from "@/game/lib/brand/legal";
+import { getIncomingPlatformToken } from "@/game/lib/online/platformToken";
 import { BookIcon, CardsIcon, CartIcon, ChartIcon, MedalIcon, PlayIcon, TrophyIcon, UsersIcon } from "@/game/components/menu/icons";
 
 type Icon = ComponentType<SVGProps<SVGSVGElement>>;
@@ -32,6 +33,13 @@ export default function Home() {
   const booted = useBootDone();
   const [soon, setSoon] = useState<string | null>(null);
   const soonTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Capture le jeton d'identité Revanche Game (?rg_token=) dès l'arrivée sur
+  // la page d'accueil, avant toute navigation, pour qu'il survive ensuite en
+  // sessionStorage (voir game/lib/online/platformToken.ts).
+  useEffect(() => {
+    getIncomingPlatformToken();
+  }, []);
 
   const showSoon = (label: string) => {
     setSoon(label);
