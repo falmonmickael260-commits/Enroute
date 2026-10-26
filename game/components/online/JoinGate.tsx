@@ -13,10 +13,13 @@ import { InnerPage, SectionLabel } from "@/game/components/ui/InnerPage";
 /** Shown to someone opening an invite link without a seat in the room yet. */
 export function JoinGate({ code, defaultName }: { code: string; defaultName: string }) {
   const [preview, setPreview] = useState<RoomPreview | null | undefined>(undefined);
-  const [name, setName] = useState(defaultName);
+  const platformUsername = peekPlatformUsername(getIncomingPlatformToken());
+  // Le pseudonyme du compte Revanche Games prime quand il n'y a pas déjà un
+  // nom de pilote connu sur cet appareil : arriver depuis une invitation ne
+  // doit pas forcer à ressaisir un nom déjà fourni par la plateforme.
+  const [name, setName] = useState(defaultName || platformUsername || "");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const platformUsername = peekPlatformUsername(getIncomingPlatformToken());
 
   useEffect(() => {
     let cancelled = false;

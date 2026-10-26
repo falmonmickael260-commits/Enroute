@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type ComponentType, type SVGProps } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
 import clsx from "clsx";
 import { Logo } from "@/game/components/ui/Logo";
@@ -10,6 +11,7 @@ import { MenuBackdrop } from "@/game/components/menu/MenuBackdrop";
 import { HomeTopBar } from "@/game/components/menu/HomeTopBar";
 import { LEGAL, LEGAL_READY } from "@/game/lib/brand/legal";
 import { getIncomingPlatformToken } from "@/game/lib/online/platformToken";
+import { clearIncomingRoomCode, getIncomingRoomCode } from "@/game/lib/online/platformRoom";
 import { BookIcon, CardsIcon, CartIcon, ChartIcon, MedalIcon, PlayIcon, TrophyIcon, UsersIcon } from "@/game/components/menu/icons";
 
 type Icon = ComponentType<SVGProps<SVGSVGElement>>;
@@ -30,6 +32,7 @@ const DOCK: { label: string; icon: Icon }[] = [
 ];
 
 export default function Home() {
+  const router = useRouter();
   const booted = useBootDone();
   const [soon, setSoon] = useState<string | null>(null);
   const soonTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -39,7 +42,18 @@ export default function Home() {
   // sessionStorage (voir game/lib/online/platformToken.ts).
   useEffect(() => {
     getIncomingPlatformToken();
-  }, []);
+
+    // Invitation Revanche Games acceptée : `?rg_room=` porte le code de la
+    // salle à rejoindre (voir game/lib/online/platformRoom.ts). On y va
+    // directement — c'est /play/online/<code> (JoinGate) qui sait déjà dire
+    // si elle existe encore et accepte un pilote de plus, sans qu'on ait à
+    // ressaisir le code ici.
+    const invitedRoom = getIncomingRoomCode();
+    if (invitedRoom) {
+      clearIncomingRoomCode();
+      router.replace(`/play/online/${encodeURIComponent(invitedRoom)}`);
+    }
+  }, [router]);
 
   const showSoon = (label: string) => {
     setSoon(label);
