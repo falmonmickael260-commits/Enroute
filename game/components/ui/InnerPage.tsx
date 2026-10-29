@@ -23,7 +23,7 @@ export function InnerPage({
   children: ReactNode;
 }) {
   return (
-    <main className="relative isolate min-h-dvh text-[var(--color-paper)]">
+    <main className="premium-inner relative isolate min-h-dvh text-[var(--color-paper)]">
       <MenuBackdrop variant="inner" />
       <div className={clsx("relative z-10 mx-auto flex min-h-dvh w-full flex-col px-3.5 pb-[max(2rem,env(safe-area-inset-bottom))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-5", wide ? "max-w-4xl" : "max-w-xl")}>
         {/* back · logo · (balance) — the logo never runs under the button */}

@@ -14,6 +14,7 @@ import { DiscardPile } from "@/game/components/cards/DiscardPile";
 import { PlayerPanel } from "@/game/components/players/PlayerPanel";
 import { TurnBanner } from "@/game/components/animations/TurnBanner";
 import { EventToast } from "@/game/components/animations/EventToast";
+import { RaceImpact } from "@/game/components/animations/RaceImpact";
 import { VictoryOverlay } from "@/game/components/animations/VictoryOverlay";
 import { TargetPicker } from "@/game/components/ui/TargetPicker";
 import { RulesButton } from "@/game/components/rules/RulesButton";
@@ -76,6 +77,7 @@ export function GameTable({
 
   return (
     <main className="relative isolate h-dvh overflow-hidden text-[var(--color-paper)]">
+      <RaceImpact event={currentEvent} />
       <TableBackdrop />
       <div className="relative z-10 flex h-full flex-col pb-[env(safe-area-inset-bottom)]">
         {/* The top band is left clear: it's where the KILOMAX logo sits on the table. */}

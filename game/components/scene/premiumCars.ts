@@ -1,0 +1,429 @@
+import * as THREE from "three";
+import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
+import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
+import type { CarModel } from "./models";
+
+/** Sculpted shells, real wheel hubs and independently animated body, in road units. */
+export function createTouringCar(id: string, color: string): CarModel {
+  const root = new THREE.Group(),
+    body = new THREE.Group();
+  root.add(body);
+  const suv = id.startsWith("suv"),
+    van = id === "van",
+    truck = id === "truck";
+  const race = id === "race" || id === "race-future" || id === "kart-oodi";
+  const retro = id === "retro",
+    tractor = id === "tractor";
+  const compact = id === "hatchback-sports" || id === "kart-oodi";
+  const length = van ? 1.16 : compact ? 0.91 : 1.06;
+  const width = suv ? 0.56 : race ? 0.57 : 0.49;
+  const base = suv || tractor ? 0.21 : 0.16;
+  const top = van
+    ? 0.62
+    : suv
+      ? 0.54
+      : race
+        ? 0.32
+        : id === "sedan-sports"
+          ? 0.405
+          : compact
+            ? 0.47
+            : retro
+              ? 0.43
+              : 0.44;
+  const paint = new THREE.MeshPhysicalMaterial({
+    color:
+      id === "taxi"
+        ? "#e8b22c"
+        : id === "police"
+          ? "#e5edf2"
+          : id === "kart-oodi"
+            ? "#e4c93c"
+            : color,
+    roughness: 0.24,
+    metalness: 0.55,
+    clearcoat: 0.85,
+    clearcoatRoughness: 0.2,
+  });
+  const glass = new THREE.MeshStandardMaterial({
+    color: "#173644",
+    roughness: 0.14,
+    metalness: 0.65,
+  });
+  const chrome = new THREE.MeshStandardMaterial({
+    color: "#b7c4ce",
+    roughness: 0.24,
+    metalness: 0.88,
+  });
+  const trim = new THREE.MeshStandardMaterial({
+    color: "#101820",
+    roughness: 0.66,
+    metalness: 0.15,
+  });
+  const tyre = new THREE.MeshStandardMaterial({
+    color: "#14171b",
+    roughness: 0.93,
+  });
+  const brakeLights = new THREE.MeshStandardMaterial({
+    color: "#b91725",
+    emissive: "#ff1829",
+    emissiveIntensity: 0.25,
+  });
+  const headlight = new THREE.MeshStandardMaterial({
+    color: "#e7f7ff",
+    emissive: "#c8edff",
+    emissiveIntensity: 1.3,
+  });
+  const caliper = new THREE.MeshStandardMaterial({
+    color: "#be342e",
+    metalness: 0.3,
+    roughness: 0.5,
+  });
+  const owned = [
+    paint,
+    glass,
+    chrome,
+    trim,
+    tyre,
+    brakeLights,
+    headlight,
+    caliper,
+  ];
+  const groups = new Map<THREE.Material, THREE.BufferGeometry[]>();
+  function part(
+    geometry: THREE.BufferGeometry,
+    material: THREE.Material,
+    x = 0,
+    y = 0,
+    z = 0,
+    rx = 0,
+    ry = 0,
+    rz = 0,
+  ) {
+    const matrix = new THREE.Matrix4().compose(
+      new THREE.Vector3(x, y, z),
+      new THREE.Quaternion().setFromEuler(new THREE.Euler(rx, ry, rz)),
+      new THREE.Vector3(1, 1, 1),
+    );
+    geometry.applyMatrix4(matrix);
+    geometry.deleteAttribute("uv");
+    const list = groups.get(material) ?? [];
+    list.push(geometry);
+    groups.set(material, list);
+  }
+  function box(
+    w: number,
+    h: number,
+    d: number,
+    material: THREE.Material,
+    x: number,
+    y: number,
+    z: number,
+  ) {
+    part(
+      new RoundedBoxGeometry(w, h, d, 2, Math.min(w, h, d) * 0.2),
+      material,
+      x,
+      y,
+      z,
+    );
+  }
+  // Continuous longitudinal sections give each body a curved shoulder and tapered nose.
+  function shell(sections: number[][], material: THREE.Material) {
+    const pos: number[] = [],
+      indices: number[] = [];
+    const rings = sections.length,
+      sides = 20;
+    for (const [z, w, b, t] of sections)
+      for (let j = 0; j <= sides; j++) {
+        const a = (j / sides) * Math.PI * 2;
+        pos.push(
+          Math.sign(Math.cos(a)) * Math.pow(Math.abs(Math.cos(a)), 0.55) * w,
+          (b + t) / 2 +
+            (Math.sign(Math.sin(a)) *
+              Math.pow(Math.abs(Math.sin(a)), 0.6) *
+              (t - b)) /
+              2,
+          z,
+        );
+      }
+    for (let i = 0; i < rings - 1; i++)
+      for (let j = 0; j < sides; j++) {
+        const a = i * (sides + 1) + j,
+          b = a + sides + 1;
+        indices.push(a, b, a + 1, b, b + 1, a + 1);
+      }
+    // Close the ends with inset sections rather than open hollow shells.
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+    part(geometry, material);
+  }
+  const half = length / 2,
+    w = width / 2;
+  shell(
+    [
+      [-half - 0.004, 0.001, base, base + 0.01],
+      [-half, w * 0.74, 0.09, base + 0.1],
+      [-half * 0.78, w, 0.09, base + 0.14],
+      [0, w * 0.99, 0.09, base + 0.13],
+      [half * 0.66, w * 0.98, 0.1, base + 0.1],
+      [half * 0.96, w * 0.78, 0.13, base + 0.07],
+      [half, 0.001, base, base + 0.01],
+    ],
+    paint,
+  );
+  if (!race && !tractor) {
+    const back = van ? -0.43 : truck ? -0.06 : -0.32;
+    const front = van ? 0.32 : 0.21;
+    shell(
+      [
+        [back - 0.09, 0.005, base + 0.13, base + 0.14],
+        [back, w * 0.77, base + 0.12, top - 0.08],
+        [back + 0.1, w * 0.7, base + 0.16, top],
+        [front - 0.13, w * 0.68, base + 0.16, top],
+        [front, w * 0.78, base + 0.12, top - 0.11],
+        [front + 0.1, 0.005, base + 0.13, base + 0.14],
+      ],
+      glass,
+    );
+    box(
+      width * 0.73,
+      0.025,
+      Math.max(0.12, front - back - 0.17),
+      paint,
+      0,
+      top - 0.005,
+      (front + back) / 2 - 0.015,
+    );
+    for (const side of [-1, 1]) {
+      box(
+        0.019,
+        top - base - 0.15,
+        0.025,
+        paint,
+        side * w * 0.76,
+        (top + base + 0.13) / 2,
+        (front + back) / 2,
+      );
+      box(
+        0.06,
+        0.035,
+        0.065,
+        paint,
+        side * (w + 0.02),
+        base + 0.24,
+        front - 0.03,
+      );
+      box(0.055, 0.009, 0.016, chrome, side * (w + 0.002), base + 0.08, -0.1);
+      box(0.018, 0.025, length * 0.8, trim, side * w, 0.105, 0);
+      box(
+        0.012,
+        0.015,
+        0.2,
+        chrome,
+        side * w * 0.82,
+        base + 0.145,
+        front - 0.13,
+      );
+    }
+  } else {
+    if (tractor) {
+      box(0.26, 0.27, 0.23, paint, 0, 0.42, -0.13);
+      box(0.22, 0.15, 0.025, glass, 0, 0.45, 0.0);
+      box(0.025, 0.3, 0.025, chrome, 0.13, 0.4, 0.17);
+      box(0.28, 0.16, 0.4, paint, 0, 0.3, 0.19);
+      box(0.3, 0.025, 0.28, paint, 0, 0.565, -0.13);
+    } else {
+      box(width * 0.42, 0.09, length * 0.5, paint, 0, base + 0.11, -0.05);
+      part(
+        new THREE.SphereGeometry(id === "race-future" ? 0.15 : 0.11, 16, 8),
+        glass,
+        0,
+        base + 0.18,
+        -0.04,
+      );
+      box(
+        width * 1.13,
+        0.025,
+        id === "race-future" ? 0.21 : 0.14,
+        trim,
+        0,
+        base + 0.08,
+        half - 0.05,
+      );
+      box(width * 1.1, 0.025, 0.12, paint, 0, base + 0.26, -half + 0.05);
+      for (const s of [-1, 1])
+        box(0.018, 0.17, 0.025, trim, s * 0.14, base + 0.17, -half + 0.05);
+    }
+  }
+  if (truck) box(width * 0.8, 0.025, 0.28, trim, 0, base + 0.14, -0.33);
+  if (id === "suv-luxury")
+    for (const side of [-1, 1]) {
+      box(0.025, 0.025, 0.56, chrome, side * 0.16, top + 0.025, -0.07);
+      box(0.024, 0.04, length * 0.7, chrome, side * w, 0.12, 0);
+    }
+  if (id === "kilomax" || id === "sedan-sports") {
+    box(width * 0.85, 0.022, 0.095, trim, 0, base + 0.23, -half + 0.07);
+    for (const s of [-1, 1])
+      box(0.018, 0.12, 0.02, trim, s * 0.15, base + 0.18, -half + 0.07);
+  }
+  if (retro) {
+    box(width * 0.9, 0.035, 0.04, chrome, 0, base - 0.025, half + 0.006);
+    box(width * 0.9, 0.035, 0.04, chrome, 0, base - 0.025, -half - 0.006);
+  }
+  // Lamps and radiator, inset vents, rear diffuser and exhaust tips.
+  box(width * 0.56, 0.045, 0.025, trim, 0, base + 0.015, half - 0.012);
+  for (const s of [-1, 1]) {
+    if (retro)
+      part(
+        new THREE.CylinderGeometry(0.034, 0.034, 0.012, 16),
+        headlight,
+        s * w * 0.65,
+        base + 0.07,
+        half - 0.015,
+        Math.PI / 2,
+      );
+    else
+      box(
+        width * 0.24,
+        0.018,
+        0.025,
+        headlight,
+        s * w * 0.64,
+        base + 0.075,
+        half - 0.035,
+      );
+    box(
+      width * 0.24,
+      0.022,
+      0.025,
+      brakeLights,
+      s * w * 0.64,
+      base + 0.075,
+      -half + 0.012,
+    );
+    box(0.06, 0.014, 0.13, trim, s * w * 0.58, base + 0.12, half * 0.46);
+    part(
+      new THREE.CylinderGeometry(0.017, 0.017, 0.055, 12),
+      chrome,
+      s * w * 0.65,
+      0.11,
+      -half,
+      Math.PI / 2,
+    );
+    for (let j = 0; j < 3; j++)
+      box(
+        0.008,
+        0.036,
+        0.025,
+        chrome,
+        s * 0.05 + j * 0.012,
+        base + 0.015,
+        half + 0.002,
+      );
+  }
+  if (id === "police" || id === "taxi") {
+    box(0.2, 0.035, 0.09, trim, 0, top + 0.025, -0.05);
+    if (id === "taxi") box(0.13, 0.045, 0.055, paint, 0, top + 0.055, -0.05);
+    else {
+      box(0.08, 0.035, 0.065, headlight, -0.055, top + 0.05, -0.05);
+      box(0.08, 0.035, 0.065, brakeLights, 0.055, top + 0.05, -0.05);
+    }
+  }
+  // Collapse static surfaces by material: detail without hundreds of draw calls.
+  for (const [material, geometries] of groups) {
+    const merged = mergeGeometries(
+      geometries.map((g) => (g.index ? g.toNonIndexed() : g)),
+    );
+    for (const g of geometries) g.dispose();
+    if (merged) {
+      const mesh = new THREE.Mesh(merged, material);
+      mesh.castShadow = true;
+      body.add(mesh);
+    }
+  }
+  const wheels: THREE.Mesh[] = [];
+  for (const side of [-1, 1])
+    for (const z of [-length * 0.32, length * 0.32]) {
+      const radius =
+        tractor && z < 0 ? 0.18 : suv ? 0.126 : race ? 0.105 : 0.113;
+      const wheel = new THREE.Mesh(
+        new THREE.TorusGeometry(radius * 0.78, radius * 0.22, 8, 20),
+        tyre,
+      );
+      wheel.rotation.y = Math.PI / 2;
+      wheel.position.set(side * (w - 0.005), radius, z);
+      root.add(wheel);
+      const rim = new THREE.Mesh(
+        new THREE.CylinderGeometry(radius * 0.66, radius * 0.66, 0.022, 20),
+        chrome,
+      );
+      rim.rotation.x = Math.PI / 2;
+      wheel.add(rim);
+      const disc = new THREE.Mesh(
+        new THREE.CylinderGeometry(radius * 0.47, radius * 0.47, 0.026, 16),
+        trim,
+      );
+      disc.rotation.x = Math.PI / 2;
+      disc.position.z = side * 0.008;
+      wheel.add(disc);
+      for (let j = 0; j < 5; j++) {
+        const spoke = new THREE.Mesh(
+          new THREE.BoxGeometry(0.014, radius * 1.12, 0.014),
+          chrome,
+        );
+        spoke.rotation.z = (j * Math.PI) / 5;
+        spoke.position.z = side * 0.021;
+        wheel.add(spoke);
+      }
+      const brake = new THREE.Mesh(
+        new THREE.BoxGeometry(0.025, 0.055, 0.02),
+        caliper,
+      );
+      brake.position.set(side * (w + 0.006), radius, z + radius * 0.35);
+      body.add(brake);
+      const alloy: THREE.BufferGeometry[] = [];
+      for (const child of [...wheel.children])
+        if (child instanceof THREE.Mesh && child.material === chrome) {
+          child.updateMatrix();
+          child.geometry.applyMatrix4(child.matrix);
+          alloy.push(child.geometry);
+          wheel.remove(child);
+        }
+      const mergedAlloy = mergeGeometries(alloy);
+      for (const g of alloy) g.dispose();
+      if (mergedAlloy) wheel.add(new THREE.Mesh(mergedAlloy, chrome));
+      wheel.userData.rest = wheel.scale.clone();
+      wheel.userData.axle = "z";
+      wheel.userData.up = "y";
+      wheels.push(wheel);
+    }
+  const mounts = {
+    roof: new THREE.Group(),
+    rear: new THREE.Group(),
+    front: new THREE.Group(),
+  };
+  mounts.roof.position.set(0, tractor ? 0.6 : top, -0.08);
+  mounts.front.position.set(0, base, half);
+  mounts.rear.position.set(0, base, -half);
+  body.add(...Object.values(mounts));
+  const geometrySet = new Set<THREE.BufferGeometry>();
+  root.traverse((o) => {
+    if (o instanceof THREE.Mesh) geometrySet.add(o.geometry);
+  });
+  root.userData.disposeModel = () => {
+    for (const g of geometrySet) g.dispose();
+    for (const m of owned) m.dispose();
+  };
+  return {
+    root,
+    body,
+    wheels,
+    paint,
+    brakeLights,
+    mounts,
+    exhaust: new THREE.Vector3(w * 0.65, 0.11, -half),
+  };
+}

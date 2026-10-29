@@ -1,7 +1,7 @@
 import * as THREE from "three";
 import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import type { CarModel } from "./models";
-import { BUILT_CARS } from "@/game/lib/cars";
+import { createTouringCar } from "./premiumCars";
 
 /**
  * Kenney Car Kit vehicles (CC0) turned into the CarModel the scene animates:
@@ -26,7 +26,7 @@ function loadGltf(id: string): Promise<GLTF | null> {
 
 /** Starts downloading a car before it's needed (e.g. as soon as it's picked). */
 export function prefetchCar(id: string) {
-  if (!BUILT_CARS.has(id)) void loadGltf(id);
+  if (id === "supercar" || id === "retro") void loadGltf(id);
 }
 
 // ---------------------------------------------------------------- repaint
@@ -184,6 +184,11 @@ function localAxis(node: THREE.Object3D, world: THREE.Vector3): "x" | "y" | "z" 
  * car it already shows.
  */
 export async function loadCarModel(id: string, color: string, repaint: boolean, castShadow: boolean): Promise<CarModel | null> {
+  if (!["supercar", "retro"].includes(id)) {
+    const model = createTouringCar(id, color);
+    model.root.traverse(o => { if (o instanceof THREE.Mesh) o.castShadow = castShadow; });
+    return model;
+  }
   const gltf = await loadGltf(id);
   if (!gltf) return null;
   const scene = gltf.scene.clone(true);

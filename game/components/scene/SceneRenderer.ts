@@ -10,7 +10,6 @@ import {
   createBeam,
   createBlobShadow,
   createBullBar,
-  createCar,
   createFlame,
   createMoto,
   createQuad,
@@ -29,6 +28,7 @@ import {
   type CarModel,
 } from "./models";
 import { loadCarModel } from "./carModels";
+import { createTouringCar } from "./premiumCars";
 
 /**
  * Draws and animates the 3D pieces of a race: cars, hazards, protections and
@@ -95,7 +95,7 @@ const easeOutBack = (t: number) => {
 };
 const clamp01 = (t: number) => Math.max(0, Math.min(1, t));
 /** Vehicles modelled in code, by id (the others are loaded from their file). */
-const BUILT: Record<string, (color: string) => CarModel> = { kilomax: createCar, moto: createMoto, scooter: createScooter, quad: createQuad };
+const BUILT: Record<string, (color: string) => CarModel> = { kilomax: (color) => createTouringCar("kilomax", color), moto: createMoto, scooter: createScooter, quad: createQuad };
 const UNIT_SCALE = new THREE.Vector3(1, 1, 1);
 /** A wheel's own size, as its model made it (the Kenney cars shrink theirs). */
 const restScale = (wheel: THREE.Object3D): THREE.Vector3 => (wheel.userData.rest as THREE.Vector3 | undefined) ?? UNIT_SCALE;
@@ -234,6 +234,7 @@ export class SceneRenderer {
   reset() {
     for (const car of this.cars.values()) {
       this.scene.remove(car.frame);
+      car.model.root.userData.disposeModel?.();
       for (const prop of car.props.values()) if (prop.world) this.scene.remove(prop.world);
     }
     this.cars.clear();
@@ -298,6 +299,7 @@ export class SceneRenderer {
     for (const [id, car] of this.cars) {
       if (!seen.has(id)) {
         this.scene.remove(car.frame);
+        car.model.root.userData.disposeModel?.();
         for (const prop of car.props.values()) if (prop.world) this.scene.remove(prop.world);
         this.cars.delete(id);
       }
@@ -306,7 +308,7 @@ export class SceneRenderer {
 
   private createCarEntity(p: ScenePlayer): CarEntity {
     const frame = new THREE.Group();
-    const model = createCar(p.color);
+    const model = createTouringCar("kilomax", p.color);
     const ring = createGlowRing(p.color);
     const flame = createFlame();
     flame.position.copy(model.exhaust);
@@ -359,7 +361,8 @@ export class SceneRenderer {
     const build = BUILT[wanted];
     const ready = build ? Promise.resolve(build(p.color)) : loadCarModel(wanted, p.color, p.repaint ?? true, this.stage.castShadows);
     void ready.then((model) => {
-      if (!model || car.carId !== wanted || !this.cars.has(car.id) || this.disposed) return;
+      if (!model) return;
+      if (car.carId !== wanted || !this.cars.has(car.id) || this.disposed) { model.root.userData.disposeModel?.(); return; }
       this.swapModel(car, model);
     });
   }
@@ -380,6 +383,7 @@ export class SceneRenderer {
         if ((o as THREE.Mesh).isMesh) o.castShadow = true;
       });
     model.brakeLights.emissiveIntensity = old.brakeLights.emissiveIntensity;
+    old.root.userData.disposeModel?.();
     car.model = model;
   }
 

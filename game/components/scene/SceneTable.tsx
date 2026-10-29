@@ -10,6 +10,7 @@ import { useShortLandscape } from "@/game/hooks/useShortLandscape";
 import { useSound } from "@/game/hooks/useSound";
 import { useRaceAudio } from "@/game/audio/useRaceAudio";
 import { EventToast } from "@/game/components/animations/EventToast";
+import { RaceImpact } from "@/game/components/animations/RaceImpact";
 import { VictoryOverlay } from "@/game/components/animations/VictoryOverlay";
 import { TargetPicker } from "@/game/components/ui/TargetPicker";
 import { SoundToggle } from "@/game/components/ui/SoundToggle";
@@ -128,6 +129,7 @@ export function SceneTable({
 
   return (
     <main className="relative isolate h-dvh overflow-hidden bg-[#0d1420] text-white">
+      <RaceImpact event={currentEvent} />
       {scene ? (
         // blurred copy of the picture behind the stage on wide screens
         // eslint-disable-next-line @next/next/no-img-element
