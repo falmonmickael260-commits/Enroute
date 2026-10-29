@@ -49,15 +49,13 @@ export function SceneBoard({
     if (!box.width || !box.height) return null;
     const startY = def.road[def.startIndex].y;
     const room = bottomInset + 70; // keep the start line and its cars clear of the hand
-    const scale = Math.max(box.width / def.width, box.height / def.height);
+    const scale = Math.max(box.width / def.width, box.height / def.height, room / Math.max(1, def.height - startY));
     const w = def.width * scale;
     const h = def.height * scale;
     const roadXs = def.road.slice(def.startIndex, def.finishIndex + 1).map((p) => p.x);
     const roadMid = ((Math.min(...roadXs) + Math.max(...roadXs)) / 2) * scale;
     const left = Math.min(0, Math.max(box.width - w, box.width / 2 - roadMid));
-    // Slide the artwork up behind the card hand instead of zooming into its
-    // bottom few pixels. A blurred, art-matched copy fills the space below.
-    const top = Math.min(0, box.height - room - startY * scale);
+    const top = Math.max(box.height - h, Math.min(0, box.height - room - startY * scale));
     return { scale, w, h, left, top };
   }, [box.width, box.height, def, bottomInset]);
 

@@ -11,9 +11,7 @@
     "test": "node --import tsx --test test/*.test.ts",
     "test:browser": "node scripts/smoke-premium.mjs",
     "test:online": "tsx scripts/check-online.ts",
-    "test:vehicles": "node scripts/check-vehicle-render.mjs",
-    "test:world": "node scripts/check-world-render.mjs",
-    "test:coastal": "node scripts/check-coastal-render.mjs"
+    "test:vehicles": "node scripts/check-vehicle-render.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.117.2",

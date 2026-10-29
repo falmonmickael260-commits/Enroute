@@ -5,7 +5,6 @@ import { SceneTable } from "@/game/components/scene/SceneTable";
 import { ViewToggle } from "@/game/components/ui/ViewToggle";
 import { GameTable, type GameTableProps } from "./GameTable";
 import { BoardBoundary } from "./BoardBoundary";
-import { DEFAULT_SCENE } from "@/game/components/scene/scenes/default";
 
 /** The game screen on the board this device prefers: 3D scene or classic. */
 export function GameScreen(props: GameTableProps) {
@@ -28,7 +27,7 @@ export function GameScreen(props: GameTableProps) {
           />
         }
       >
-        <SceneTable {...props} scene={DEFAULT_SCENE} />
+        <SceneTable {...props} />
       </BoardBoundary>
     );
   return (
