@@ -4,6 +4,8 @@ import * as THREE from "three";
 import { createTouringCar } from "../game/components/scene/premiumCars";
 import { CARS } from "../game/lib/cars";
 import { vehicleArtUrl } from "../game/components/scene/carModels";
+import { buildVehicleModel } from "../game/components/scene/vehicleModels";
+import { BUILT_CARS } from "../game/lib/cars";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -33,9 +35,27 @@ for (const id of [
   });
 }
 
-for (const car of CARS)
-  test(`${car.id}: the in-game race selects its own high-resolution vehicle artwork`, () => {
+for (const car of CARS) {
+  test(`${car.id}: the garage keeps its high-resolution vehicle artwork`, () => {
     const url = vehicleArtUrl(car.id);
     assert.equal(url, `/images/premium/vehicles/${car.id}.webp`);
     assert.ok(existsSync(resolve(process.cwd(), `public${url}`)));
   });
+
+  if (BUILT_CARS.has(car.id)) {
+    test(`${car.id}: the race model is real geometry with animated wheels`, () => {
+      const model = buildVehicleModel(car.id, "#cd2839");
+      let meshes = 0;
+      model.root.traverse((object) => {
+        if (object instanceof THREE.Mesh) meshes++;
+      });
+      assert.ok(meshes > 0);
+      assert.ok(model.wheels.length > 0);
+      model.root.userData.disposeModel?.();
+    });
+  } else {
+    test(`${car.id}: the race has a 3D GLB model instead of a flat cutout`, () => {
+      assert.ok(existsSync(resolve(process.cwd(), `public/models/cars/${car.id}.glb`)));
+    });
+  }
+}

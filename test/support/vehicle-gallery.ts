@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { createArtworkVehicleModel } from "../../game/components/scene/carModels";
+import { buildVehicleModel } from "../../game/components/scene/vehicleModels";
 
 const ids = [
   "supercar",
@@ -24,7 +24,6 @@ const ids = [
 ];
 declare global {
   interface Window {
-    vehicleArtSources: Record<string, string>;
     vehicleGalleryResults: { id: string; triangles: number }[];
   }
 }
@@ -39,17 +38,24 @@ document.body.appendChild(renderer.domElement);
 renderer.setScissorTest(true);
 const results = [];
 void (async () => {
+renderer.setClearColor("#15212b", 1);
 for (let i = 0; i < ids.length; i++) {
   const scene = new THREE.Scene();
   scene.background = new THREE.Color("#15212b");
-  const image = new Image();
-  image.src = window.vehicleArtSources[ids[i]];
-  await image.decode();
-  const model = createArtworkVehicleModel(ids[i], "#e8352b", true, image);
+  const model = buildVehicleModel(ids[i], "#e8352b");
   scene.add(model.root);
-  const camera = new THREE.PerspectiveCamera(36, 300 / 250, 0.01, 20);
-  camera.position.set(0, 1.1, 5.4);
-  camera.lookAt(0, 0.8, 0);
+  model.root.updateMatrixWorld(true);
+  const bounds = new THREE.Box3().setFromObject(model.root);
+  const center = bounds.getCenter(new THREE.Vector3());
+  const size = bounds.getSize(new THREE.Vector3());
+  const camera = new THREE.PerspectiveCamera(32, 300 / 250, 0.01, 30);
+  camera.position.copy(center).add(new THREE.Vector3(2.8, Math.max(1.8, size.y * 2.2), 3.8));
+  camera.lookAt(center.x, center.y + 0.08, center.z);
+  const ambient = new THREE.HemisphereLight("#dcecff", "#3b4655", 2.2);
+  const sun = new THREE.DirectionalLight("#fff0d8", 3.1);
+  sun.position.copy(center).add(new THREE.Vector3(3.5, 7, 4));
+  sun.target.position.copy(center);
+  scene.add(ambient, sun, sun.target);
   const col = i % 4,
     row = Math.floor(i / 4);
   renderer.setViewport(col * 300, (4 - row) * 250, 300, 250);

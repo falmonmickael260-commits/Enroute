@@ -15,6 +15,11 @@ const browser = await chromium.launch({
 });
 try {
   const page = await browser.newPage();
+  const raceCarModels = new Map();
+  page.on("response", (response) => {
+    const match = response.url().match(/\/models\/cars\/([^/?]+)\.glb(?:\?|$)/);
+    if (match) raceCarModels.set(match[1], response.status());
+  });
   await page.addInitScript(() => {
     const Native = window.AudioContext;
     if (Native) window.AudioContext = class extends Native {
@@ -87,6 +92,8 @@ try {
   await page.getByRole("button", { name: "LANCER LA PARTIE" }).click();
   await page.waitForURL("**/play/game/**");
   await page.waitForTimeout(14000);
+  for (const id of ["supercar", "retro", "sedan-sports", "suv", "race", "van"])
+    assert.equal(raceCarModels.get(id), 200, `3D race model ${id}.glb loaded`);
   assert.equal(await page.locator("canvas").count(), 1);
   assert.equal(
     await page.evaluate(
@@ -104,9 +111,34 @@ try {
   await page.getByRole("button", { name: "Couper le son", exact: true }).click();
   assert.equal(await page.evaluate(() => localStorage.getItem("enroute:sound-enabled")), "0");
   await page.getByRole("button", { name: "Activer le son", exact: true }).click();
+  let movedPlayerId = null;
+  for (let attempt = 0; attempt < 6 && !movedPlayerId; attempt++) {
+    const distanceCard = page.locator('button[data-card-id^="dist"]').first();
+    if (await page.locator('button[data-card-id^="dist"]').count()) {
+      movedPlayerId = await page
+        .locator('[data-player-active="true"]')
+        .first()
+        .getAttribute("data-player-id");
+      await distanceCard.click();
+      await page.getByRole("button", { name: /JOUER CETTE CARTE/ }).click();
+      await page.waitForFunction((id) => {
+        const row = [...document.querySelectorAll("[data-player-id]")].find(
+          (element) => element.getAttribute("data-player-id") === id,
+        );
+        return Number(row?.getAttribute("data-distance-km")) > 0;
+      }, movedPlayerId);
+      break;
+    }
+    await page.locator("button[data-card-id]").last().click();
+    await page.getByRole("button", { name: "Défausser", exact: true }).click();
+    await page.getByRole("button", { name: "Piocher une carte", exact: true }).click();
+  }
+  assert.ok(movedPlayerId, "a distance card moves a real 3D race car");
+  await page.waitForTimeout(1800);
+  await page.getByRole("button", { name: "Piocher une carte", exact: true }).click();
   await page.locator("button[data-card-id]").last().click();
   await page.getByRole("button", { name: "Défausser", exact: true }).click();
-  await page.waitForTimeout(2000);
+  await page.waitForTimeout(1000);
   await page.waitForFunction(()=>Array.from(document.querySelectorAll("button[data-card-id]")).every(card=>Number(getComputedStyle(card.parentElement).opacity)>.98));
   await page.screenshot({ path: `${output}/race.png` });
   await page
@@ -132,7 +164,7 @@ try {
   console.log("RACE UI", (await page.locator("body").innerText()).slice(-2400));
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: four home viewports, 20 illustrations, six-player garage, 3D race, draw, discard, next turn and classic switch; no page errors",
+    "PASS: four home viewports, 20 illustrations, six-player garage, six real 3D GLB race models, distance-driven car movement, draw, discard, next turn and classic switch; no page errors",
   );
 } finally {
   await browser.close();

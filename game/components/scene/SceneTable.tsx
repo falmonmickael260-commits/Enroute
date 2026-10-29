@@ -157,6 +157,9 @@ export function SceneTable({
                 return (
                   <div
                     key={p.id}
+                    data-player-id={p.id}
+                    data-distance-km={p.distance}
+                    data-player-active={active ? "true" : "false"}
                     className={clsx(
                       "flex flex-col gap-1 rounded-xl border px-2 backdrop-blur-md transition-all",
                       crowded ? "py-0.5" : "py-1",

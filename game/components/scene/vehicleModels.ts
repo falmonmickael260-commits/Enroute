@@ -112,5 +112,6 @@ export function buildVehicleModel(id: string, color: string): CarModel {
   };
   model.root.userData.vehicleId = id;
   model.root.userData.renderRevision = 2;
+  model.root.userData.renderSource = "mesh-3d";
   return model;
 }
