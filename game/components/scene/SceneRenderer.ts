@@ -26,6 +26,7 @@ import {
 } from "./models";
 import { loadCarModel } from "./carModels";
 import { createTouringCar } from "./premiumCars";
+import { slotsFor } from "./carLayout";
 
 /**
  * Draws and animates the 3D pieces of a race: cars, hazards, protections and
@@ -62,27 +63,6 @@ export type SceneCue =
   | { kind: "repair" }
   | { kind: "shield" }
   | { kind: "gps" };
-
-const LANES: Record<number, number[]> = { 1: [0], 2: [-0.42, 0.42], 3: [-0.56, 0, 0.56], 4: [-0.62, -0.2, 0.22, 0.64] };
-/** Au-delà de 4 voitures groupées, on les range en rangées de 3 (la route est trop étroite). */
-const ROW_SIZE = 3;
-/** Recul de la rangée arrière, en longueurs de voiture dans l'axe de la route. */
-const ROW_GAP = 1.3;
-
-/**
- * Place de chaque voiture d'un groupe (trié du plus en retard au plus en
- * avance) : décalage latéral et recul longitudinal, en longueurs de voiture.
- * Jusqu'à 4 voitures : une seule ligne de front. À 5 ou 6 : les 3 premières
- * forment la rangée avant, les autres la rangée arrière, reculée de ROW_GAP.
- */
-function slotsFor(count: number): { lateral: number; along: number }[] {
-  if (count <= 4) return (LANES[count] ?? [0]).map((lateral) => ({ lateral, along: 0 }));
-  const back = count - ROW_SIZE;
-  return [
-    ...LANES[back].map((lateral) => ({ lateral, along: -ROW_GAP })),
-    ...LANES[ROW_SIZE].map((lateral) => ({ lateral, along: 0 })),
-  ];
-}
 
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const easeOutBack = (t: number) => {

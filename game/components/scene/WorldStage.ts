@@ -38,7 +38,7 @@ const START_INDEX = 1;
 const FINISH_INDEX = 13;
 const HALF_WIDTH = 2;
 /** Lane offsets come in car lengths for a 2.7-wide road; the road is wider now. */
-const LANE_SCALE = 1.7;
+const LANE_SCALE = 1.95;
 const SEA_LEVEL = -1.4;
 
 /** Where the cliffs meet the sea, as x for a given z (the sea is on the right). */
@@ -497,6 +497,7 @@ export class WorldStage implements Stage {
   private width = 1;
   private height = 1;
   private virtualHeight = 1;
+  private carScale = 0.88;
   private shot: Shot = { kind: "pack" };
   private camPos = new THREE.Vector3(0, 6, 36);
   private camLook = new THREE.Vector3(0, 0, 0);
@@ -1623,6 +1624,7 @@ export class WorldStage implements Stage {
   resize(width: number, height: number, bottomInset: number) {
     this.width = width;
     this.height = height;
+    this.carScale = width < 420 ? 0.64 : width < 700 ? 0.7 : width < 1100 ? 0.8 : 0.9;
     // keep the action centred in the part of the screen above the hand
     const virtualH = height + bottomInset;
     this.virtualHeight = virtualH;
@@ -1639,7 +1641,7 @@ export class WorldStage implements Stage {
     const { point, forward, right } = this.road.at(this.road.kmToLen(km, target) + along);
     const position = point.clone().addScaledVector(right, lateral * LANE_SCALE);
     position.y += 0.04;
-    return { position, yaw: Math.atan2(forward.x, forward.z), scale: 1 };
+    return { position, yaw: Math.atan2(forward.x, forward.z), scale: this.carScale };
   }
 
   finish(target: number): Placement {
@@ -1657,7 +1659,7 @@ export class WorldStage implements Stage {
     const v = position.clone().project(this.camera);
     const dist = this.camera.position.distanceTo(position);
     const perUnit = this.virtualHeight / (2 * Math.max(1, dist) * Math.tan(THREE.MathUtils.degToRad(this.camera.fov / 2)));
-    return { x: ((v.x + 1) / 2) * this.width, y: ((1 - v.y) / 2) * this.height, size: v.z < 1 ? perUnit : 0 };
+    return { x: ((v.x + 1) / 2) * this.width, y: ((1 - v.y) / 2) * this.height, size: v.z < 1 ? perUnit * this.carScale : 0 };
   }
 
   /**
@@ -1697,8 +1699,9 @@ export class WorldStage implements Stage {
     // cars in the lower third, centred, the road running on towards the horizon
     const mid = this.road.at((rearLen + frontLen) / 2);
     const center=cars.length ? cars.reduce((sum,car)=>sum.add(car.position),new THREE.Vector3()).multiplyScalar(1/cars.length) : mid.point.clone();
-    const back = 8.6 + spread * 0.55;
-    const height = 4.2 + spread * 0.22;
+    const mobile = this.width < 600;
+    const back = (mobile ? 11 : 8.6) + spread * (mobile ? 0.72 : 0.55);
+    const height = (mobile ? 5.2 : 4.2) + spread * 0.22;
     const pos = center.clone().addScaledVector(mid.forward, -back).addScaledVector(mid.right, .9).add(new THREE.Vector3(0, height, 0));
     const look = center.clone().addScaledVector(mid.forward, 4).add(new THREE.Vector3(0,.4,0));
     // idle drift keeps the world alive
