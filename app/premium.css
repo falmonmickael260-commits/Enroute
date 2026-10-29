@@ -1,0 +1,491 @@
+/* Grand tourisme: presentation overrides, independent of game state. */
+.race-impact {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 12;
+  overflow: hidden;
+  animation: race-impact-fade 850ms both;
+}
+.race-impact-move i {
+  position: absolute;
+  width: 1px;
+  height: 18vh;
+  background: linear-gradient(transparent, #e1f5ff77, transparent);
+  left: calc(var(--i) * 8.5%);
+  top: 35%;
+  transform: rotate(calc((var(--i) - 6) * -5deg));
+  animation: race-speed 700ms ease-in both;
+  animation-delay: calc(var(--i) * 12ms);
+}
+.race-impact-collision {
+  box-shadow: inset 0 0 80px #eb612c80;
+}
+.race-impact-collision i {
+  position: absolute;
+  left: 50%;
+  top: 45%;
+  width: 3px;
+  height: 5px;
+  background: #ffd09a;
+  animation: race-spark 650ms ease-out both;
+  transform: rotate(calc(var(--i) * 45deg));
+}
+.race-impact-shield {
+  background: radial-gradient(
+    ellipse at 50% 58%,
+    transparent 35%,
+    #47c4a01c 75%,
+    transparent
+  );
+}
+.race-impact-radar {
+  box-shadow: inset 0 0 80px #5684c45e;
+}
+.race-impact-panne,
+.race-impact-barrage {
+  box-shadow: inset 0 -50px 100px #10192388;
+}
+.race-impact-crevaison {
+  box-shadow: inset 0 -30px 90px #c29a5b40;
+}
+@keyframes race-impact-fade {
+  0% {
+    opacity: 0;
+  }
+  20% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+  }
+}
+@keyframes race-speed {
+  from {
+    translate: 0 -50%;
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.65;
+  }
+  to {
+    translate: 0 180%;
+    opacity: 0;
+  }
+}
+@keyframes race-spark {
+  from {
+    translate: 0 0;
+    opacity: 1;
+  }
+  to {
+    translate: calc((var(--i) - 4) * 25px) 90px;
+    opacity: 0;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .race-impact {
+    display: none;
+  }
+}
+.premium-home .home-logo-mark img {
+  height: auto;
+  width: 100%;
+  max-width: 100%;
+}
+.premium-home .menu-btn::before,
+.premium-home .menu-btn::after {
+  display: none;
+}
+.premium-inner .menu-panel {
+  background: linear-gradient(150deg, #132330ed, #07121df2);
+  border: 1px solid #adc6d433;
+  border-radius: 22px;
+  box-shadow:
+    0 24px 80px #0007,
+    inset 0 1px #ffffff0d;
+  backdrop-filter: blur(20px);
+}
+.premium-inner .menu-panel:before,
+.premium-inner .menu-panel:after {
+  display: none;
+}
+.premium-inner .menu-title {
+  color: #f3e4cb;
+  text-shadow: none;
+  letter-spacing: 0.025em;
+}
+.premium-inner .menu-label {
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  color: #c5d1dd;
+}
+.premium-inner .menu-input {
+  background: #06101bc9;
+  border: 1px solid #b4c8d533;
+  border-radius: 10px;
+  box-shadow: inset 0 2px 6px #0003;
+}
+.premium-inner .menu-back {
+  background: #091826b3;
+  border: 1px solid #c9dae126;
+  box-shadow: none;
+  font-size: 12px;
+}
+.premium-inner .menu-btn {
+  box-shadow:
+    inset 0 1px #fff2,
+    0 4px 14px #0003;
+  border-width: 1px;
+  border-radius: 12px;
+}
+.premium-inner .menu-btn-gold {
+  background: linear-gradient(125deg, #f5d291, #c49753);
+  text-shadow: none;
+}
+.premium-inner .menu-btn-blue,
+.premium-inner .menu-btn-dark {
+  background: linear-gradient(140deg, #254153, #142534);
+}
+.menu-backdrop > img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 65% center;
+}
+.menu-backdrop-shade {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(4, 13, 22, 0.94),
+      rgba(4, 13, 22, 0.45) 55%,
+      rgba(4, 13, 22, 0.12)
+    ),
+    linear-gradient(0deg, #07121c, transparent 75%);
+}
+.premium-home .home-layout {
+  max-width: 1480px;
+  padding-left: clamp(20px, 5vw, 80px);
+  padding-right: clamp(20px, 5vw, 80px);
+  display: grid;
+  grid-template-rows: 70px 1fr auto;
+  grid-template-columns: 1fr 1fr;
+  gap: 18px;
+}
+.premium-home .home-top {
+  grid-column: 1/-1;
+}
+.premium-home .home-logo {
+  grid-column: 1;
+  align-self: center;
+  display: block;
+  max-height: none;
+  min-height: 0;
+}
+.premium-home .home-logo-mark {
+  width: 190px;
+  max-height: 95px;
+  object-fit: contain;
+  margin: 0 0 20px;
+}
+.home-editorial > span {
+  color: #f0c881;
+  font:
+    600 11px var(--font-geist-sans),
+    sans-serif;
+  letter-spacing: 0.24em;
+}
+.home-editorial h1 {
+  font:
+    600 clamp(40px, 5.8vw, 82px) / 0.98 var(--font-barlow-condensed),
+    sans-serif;
+  letter-spacing: -0.045em;
+  color: #fff;
+  margin: 20px 0;
+}
+.home-editorial p {
+  font-size: 14px;
+  color: #c1ccd6;
+  max-width: 330px;
+  line-height: 1.5;
+}
+.premium-home .home-nav {
+  grid-column: 1;
+  max-width: 480px;
+  gap: 12px;
+  padding-bottom: 8px;
+}
+.premium-home .home-play {
+  min-height: 72px;
+  background: linear-gradient(125deg, #f5d291, #c49753);
+  border: 1px solid #ffe6bc;
+  box-shadow: 0 8px 35px #0006;
+  border-radius: 12px !important;
+}
+.premium-home .home-play .menu-btn-title {
+  font-size: 30px;
+  letter-spacing: 0.03em;
+}
+.premium-home .home-play .menu-btn-sub {
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+.premium-home .home-tile {
+  min-height: 62px;
+  background: #0a1b2ad9;
+  border: 1px solid #9ab3c333;
+  box-shadow: inset 0 1px #fff1;
+  border-radius: 10px;
+  color: #e7edf3;
+  backdrop-filter: blur(12px);
+  text-shadow: none;
+}
+.premium-home .home-tile .menu-btn-title {
+  font-size: 18px;
+}
+.premium-home .home-tile .menu-btn-sub {
+  font-size: 10px;
+  color: #9fafbd;
+}
+.premium-home .home-tile svg {
+  width: 24px;
+  height: 24px;
+  color: #e8c68c;
+}
+.premium-home .menu-dock {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  padding: 2px;
+}
+.premium-home .home-dock-ring {
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  width: 28px;
+  height: 28px;
+  color: #aebdcb;
+}
+.premium-home .home-dock-ring svg {
+  width: 20px;
+  height: 20px;
+}
+.premium-home .menu-dock-item > span:last-child {
+  font-size: 9px;
+  color: #aebdcb;
+}
+.premium-home .home-legal {
+  font-size: 9px;
+  color: #8193a3;
+}
+.premium-garage {
+  position: relative;
+  min-width: 0;
+  width: 100%;
+  border: 1px solid #b9c9d226;
+  border-radius: 16px;
+  background:
+    radial-gradient(ellipse at 50% 65%, #54748444, transparent 65%),
+    linear-gradient(150deg, #142534c9, #060e17e8);
+  padding: 8px;
+  box-shadow: inset 0 1px #fff1;
+}
+.garage-preview {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  cursor: pointer;
+  overflow: hidden;
+}
+.vehicle-art {
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  filter: drop-shadow(0 14px 12px #0006);
+  pointer-events: none;
+}
+.garage-preview .vehicle-art {
+  max-width: 320px;
+  max-height: 160px;
+  object-fit: contain;
+  transition: transform 0.35s;
+}
+.garage-preview:hover .vehicle-art {
+  transform: translateY(-4px) scale(1.04);
+}
+.garage-car-name {
+  font:
+    600 17px var(--font-barlow-condensed),
+    sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: #f5eee2;
+}
+.garage-index {
+  font-size: 9px;
+  color: #96aabd;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  margin-top: 3px;
+}
+.premium-garage-compact .garage-preview .vehicle-art {
+  max-width: 140px;
+  max-height: 90px;
+}
+.premium-garage-compact .garage-car-name {
+  font-size: 12px;
+}
+.garage-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 5px;
+  max-height: 260px;
+  overflow: auto;
+  margin-top: 12px;
+  overscroll-behavior: contain;
+}
+.garage-grid button {
+  padding: 5px;
+  border: 1px solid #ffffff18;
+  border-radius: 8px;
+  background: #ffffff05;
+  min-width: 0;
+  min-height: 64px;
+  color: #b9c9d6;
+  font-size: 10px;
+}
+.garage-grid button[aria-pressed="true"] {
+  border-color: #edc88c;
+  background: #d6b47819;
+  color: #ffe7be;
+}
+.garage-grid .vehicle-art {
+  height: 58px;
+}
+.premium-card-art {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.premium-card-art + * {
+  position: relative;
+}
+@media (max-width: 700px) {
+  .premium-home .home-layout {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: 58px minmax(130px, 1fr) auto;
+    gap: 6px;
+    padding: max(8px, env(safe-area-inset-top)) 20px
+      max(8px, env(safe-area-inset-bottom));
+  }
+  .premium-home .home-logo {
+    align-self: start;
+    padding-top: 14px;
+  }
+  .premium-home .home-logo-mark {
+    width: 130px;
+    max-height: 65px;
+    margin: 0 0 8px;
+  }
+  .home-editorial h1 {
+    font-size: clamp(32px, 8vw, 46px);
+    margin: 10px 0;
+  }
+  .home-editorial > span {
+    font-size: 8px;
+  }
+  .home-editorial p {
+    font-size: 11px;
+    max-width: 240px;
+  }
+  .premium-home .home-nav {
+    width: 100%;
+    max-width: none;
+    padding: 0;
+  }
+  .premium-home .home-play {
+    min-height: 62px;
+  }
+  .premium-home .home-tile {
+    min-height: 55px;
+  }
+  .menu-backdrop > img {
+    object-position: 67% center;
+  }
+  .menu-backdrop-shade {
+    background:
+      linear-gradient(90deg, #07121cdd, transparent),
+      linear-gradient(0deg, #07121c 5%, #07121c55 60%, #07121c55);
+  }
+  .premium-garage {
+    padding: 5px;
+  }
+  .garage-preview .vehicle-art {
+    max-height: 120px;
+  }
+}
+@media (max-height: 690px) {
+  .premium-home .home-logo-mark {
+    width: 95px;
+    max-height: 44px;
+    margin-bottom: 4px;
+  }
+  .home-editorial h1 {
+    font-size: 30px;
+    margin: 8px 0;
+  }
+  .home-editorial p {
+    display: none;
+  }
+  .premium-home .home-nav {
+    gap: 6px;
+  }
+  .premium-home .home-tile {
+    min-height: 46px;
+  }
+  .premium-home .home-play {
+    min-height: 54px;
+  }
+  .premium-home .menu-dock-item {
+    gap: 0;
+  }
+  .premium-home .home-legal {
+    margin-top: 0;
+  }
+  .premium-home .home-layout {
+    grid-template-rows: 48px minmax(110px, 1fr) auto;
+  }
+}
+@media (orientation: landscape) and (max-height: 550px) {
+  .premium-home .home-layout {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 48px 1fr;
+  }
+  .premium-home .home-logo {
+    grid-column: 1;
+    grid-row: 2;
+  }
+  .premium-home .home-nav {
+    grid-column: 2;
+    grid-row: 2;
+    align-self: center;
+  }
+  .premium-home .menu-dock {
+    display: none;
+  }
+  .premium-home .home-play {
+    min-height: 48px;
+  }
+  .premium-home .home-tile {
+    min-height: 42px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .vehicle-art {
+    transition: none !important;
+    transform: none !important;
+  }
+}

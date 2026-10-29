@@ -1,0 +1,177 @@
+[
+  {
+    "id": "supercar",
+    "kind": "vehicle",
+    "prompt": "Premium commercial automotive game vehicle illustration, ONE low mid-engine exotic supercar, dramatic sculpted aero body, low nose, glass engine cover, forged five split spoke wheels. Deep crimson metallic paint with realistic restrained reflections. Photorealistic stylized automotive visualization, realistic engineering and proportions, finely detailed tires, rims, glass, LED or appropriate headlights, body panel gaps and mirrors. Front three-quarter view, nose points toward right, entire vehicle visible, generous margins, landscape 3:2 composition. Isolated truly transparent alpha background, faint contact shadow only. No people, no driver, no text, no brands, no logos, no watermarks. Premium refined European grand touring visual identity. Not toy, not cartoon, not low poly."
+  },
+  {
+    "id": "retro",
+    "kind": "vehicle",
+    "prompt": "Premium commercial automotive game vehicle illustration, ONE 1960s European grand touring coupe, long curved hood, round headlights, chrome bumpers, wire spoke wheels, elegant fastback. Deep crimson metallic paint with realistic restrained reflections. Photorealistic stylized automotive visualization, realistic engineering and proportions, finely detailed tires, rims, glass, LED or appropriate headlights, body panel gaps and mirrors. Front three-quarter view, nose points toward right, entire vehicle visible, generous margins, landscape 3:2 composition. Isolated truly transparent alpha background, faint contact shadow only. No people, no driver, no text, no brands, no logos, no watermarks. Premium refined European grand touring visual identity. Not toy, not cartoon, not low poly."
+  },
+  {
+    "id": "sedan-sports",
+    "kind": "vehicle",
+    "prompt": "Premium commercial automotive game vehicle illustration, ONE modern performance two-door coupe, muscular rear haunches, wide grille, precision LED headlights and forged wheels. Deep crimson metallic paint with realistic restrained reflections. Photorealistic stylized automotive visualization, realistic engineering and proportions, finely detailed tires, rims, glass, LED or appropriate headlights, body panel gaps and mirrors. Front three-quarter view, nose points toward right, entire vehicle visible, generous margins, landscape 3:2 composition. Isolated truly transparent alpha background, faint contact shadow only. No people, no driver, no text, no brands, no logos, no watermarks. Premium refined European grand touring visual identity. Not toy, not cartoon, not low poly."
+  },
+  {
+    "id": "hatchback-sports",
+    "kind": "vehicle",
+    "prompt": "Premium commercial automotive game vehicle illustration, ONE compact hot hatchback, short athletic silhouette, five doors, sculpted bumpers, red brake calipers. Deep crimson metallic paint with realistic restrained reflections. Photorealistic stylized automotive visualization, realistic engineering and proportions, finely detailed tires, rims, glass, LED or appropriate headlights, body panel gaps and mirrors. Front three-quarter view, nose points toward right, entire vehicle visible, generous margins, landscape 3:2 composition. Isolated truly transparent alpha background, faint contact shadow only. No people, no driver, no text, no brands, no logos, no watermarks. Premium refined European grand touring visual identity. Not toy, not cartoon, not low poly."
+  },
+  {
+    "id": "sedan",
+    "kind": "vehicle",
+    "prompt": "Premium commercial automotive game vehicle illustration, ONE premium executive sedan, long wheelbase, balanced realistic proportions, refined chrome trim and multi-spoke rims. Deep crimson metallic paint with realistic restrained reflections. Photorealistic stylized automotive visualization, realistic engineering and proportions, finely detailed tires, rims, glass, LED or appropriate headlights, body panel gaps and mirrors. Front three-quarter view, nose points toward right, entire vehicle visible, generous margins, landscape 3:2 composition. Isolated truly transparent alpha background, faint contact shadow only. No people, no driver, no text, no brands, no logos, no watermarks. Premium refined European grand touring visual identity. Not toy, not cartoon, not low poly."
+  },
+  {
+    "id": "suv",
+    "kind": "vehicle",
+    "prompt": "Premium commercial automotive game vehicle illustration, ONE rugged contemporary SUV, substantial realistic body, large all terrain tires, black wheel arches, roof rails. Deep crimson metallic paint with realistic restrained reflections. Photorealistic stylized automotive visualization, realistic engineering and proportions, finely detailed tires, rims, glass, LED or appropriate headlights, body panel gaps and mirrors. Front three-quarter view, nose points toward right, entire vehicle visible, generous margins, landscape 3:2 composition. Isolated truly transparent alpha background, faint contact shadow only. No people, no driver, no text, no brands, no logos, no watermarks. Premium refined European grand touring visual identity. Not toy, not cartoon, not low poly."
+  },
+  {
+    "id": "suv-luxury",
+    "kind": "vehicle",
+    "prompt": "Premium commercial automotive game vehicle illustration, ONE luxury performance SUV, sleek coupe roof, satin metal accents, large turbine rims, elegant flush handles. Deep crimson metallic paint with realistic restrained reflections. Photorealistic stylized automotive visualization, realistic engineering and proportions, finely detailed tires, rims, glass, LED or appropriate headlights, body panel gaps and mirrors. Front three-quarter view, nose points toward right, entire vehicle visible, generous margins, landscape 3:2 composition. Isolated truly transparent alpha background, faint contact shadow only. No people, no driver, no text, no brands, no logos, no watermarks. Premium refined European grand touring visual identity. Not toy, not cartoon, not low poly."
+  },
+  {
+    "id": "van",
+    "kind": "vehicle",
+    "prompt": "Premium commercial automotive game vehicle illustration, ONE sporty premium passenger van, long practical body, sliding door, roof rails and sophisticated angular lights. Deep crimson metallic paint with realistic restrained reflections. Photorealistic stylized automotive visualization, realistic engineering and proportions, finely detailed tires, rims, glass, LED or appropriate headlights, body panel gaps and mirrors. Front three-quarter view, nose points toward right, entire vehicle visible, generous margins, landscape 3:2 composition. Isolated truly transparent alpha background, faint contact shadow only. No people, no driver, no text, no brands, no logos, no watermarks. Premium refined European grand touring visual identity. Not toy, not cartoon, not low poly."
+  },
+  {
+    "id": "truck",
+    "kind": "vehicle",
+    "prompt": "Premium commercial automotive game vehicle illustration, ONE off-road double cab pickup truck, open cargo bed, high suspension, chunky tires, realistic utility details. Deep crimson metallic paint with realistic restrained reflections. Photorealistic stylized automotive visualization, realistic engineering and proportions, finely detailed tires, rims, glass, LED or appropriate headlights, body panel gaps and mirrors. Front three-quarter view, nose points toward right, entire vehicle visible, generous margins, landscape 3:2 composition. Isolated truly transparent alpha background, faint contact shadow only. No people, no driver, no text, no brands, no logos, no watermarks. Premium refined European grand touring visual identity. Not toy, not cartoon, not low poly."
+  },
+  {
+    "id": "race",
+    "kind": "vehicle",
+    "prompt": "Premium commercial automotive game vehicle illustration, ONE open wheel formula racing car, exposed slick tires, detailed suspension arms, front wing, rear wing, neutral blank racing livery. Deep crimson metallic paint with realistic restrained reflections. Photorealistic stylized automotive visualization, realistic engineering and proportions, finely detailed tires, rims, glass, LED or appropriate headlights, body panel gaps and mirrors. Front three-quarter view, nose points toward right, entire vehicle visible, generous margins, landscape 3:2 composition. Isolated truly transparent alpha background, faint contact shadow only. No people, no driver, no text, no brands, no logos, no watermarks. Premium refined European grand touring visual identity. Not toy, not cartoon, not low poly."
+  },
+  {
+    "id": "race-future",
+    "kind": "vehicle",
+    "prompt": "Premium commercial automotive game vehicle illustration, ONE endurance racing prototype, enclosed canopy, aerodynamic wheel covers, huge rear diffuser, blank racing livery. Deep crimson metallic paint with realistic restrained reflections. Photorealistic stylized automotive visualization, realistic engineering and proportions, finely detailed tires, rims, glass, LED or appropriate headlights, body panel gaps and mirrors. Front three-quarter view, nose points toward right, entire vehicle visible, generous margins, landscape 3:2 composition. Isolated truly transparent alpha background, faint contact shadow only. No people, no driver, no text, no brands, no logos, no watermarks. Premium refined European grand touring visual identity. Not toy, not cartoon, not low poly."
+  },
+  {
+    "id": "moto",
+    "kind": "vehicle",
+    "prompt": "Premium commercial automotive game vehicle illustration, ONE sport touring motorcycle, sculpted fuel tank, realistic engine and exhaust, two detailed wheels, no rider. Deep crimson metallic paint with realistic restrained reflections. Photorealistic stylized automotive visualization, realistic engineering and proportions, finely detailed tires, rims, glass, LED or appropriate headlights, body panel gaps and mirrors. Front three-quarter view, nose points toward right, entire vehicle visible, generous margins, landscape 3:2 composition. Isolated truly transparent alpha background, faint contact shadow only. No people, no driver, no text, no brands, no logos, no watermarks. Premium refined European grand touring visual identity. Not toy, not cartoon, not low poly."
+  },
+  {
+    "id": "scooter",
+    "kind": "vehicle",
+    "prompt": "Premium commercial automotive game vehicle illustration, ONE retro European scooter, curved front shield, saddle, chrome mirrors and trim, two small detailed wheels, no rider. Deep crimson metallic paint with realistic restrained reflections. Photorealistic stylized automotive visualization, realistic engineering and proportions, finely detailed tires, rims, glass, LED or appropriate headlights, body panel gaps and mirrors. Front three-quarter view, nose points toward right, entire vehicle visible, generous margins, landscape 3:2 composition. Isolated truly transparent alpha background, faint contact shadow only. No people, no driver, no text, no brands, no logos, no watermarks. Premium refined European grand touring visual identity. Not toy, not cartoon, not low poly."
+  },
+  {
+    "id": "quad",
+    "kind": "vehicle",
+    "prompt": "Premium commercial automotive game vehicle illustration, ONE sport utility quad ATV, four wide knobby tires, visible suspension, saddle, handlebars, no rider. Deep crimson metallic paint with realistic restrained reflections. Photorealistic stylized automotive visualization, realistic engineering and proportions, finely detailed tires, rims, glass, LED or appropriate headlights, body panel gaps and mirrors. Front three-quarter view, nose points toward right, entire vehicle visible, generous margins, landscape 3:2 composition. Isolated truly transparent alpha background, faint contact shadow only. No people, no driver, no text, no brands, no logos, no watermarks. Premium refined European grand touring visual identity. Not toy, not cartoon, not low poly."
+  },
+  {
+    "id": "kart-oodi",
+    "kind": "vehicle",
+    "prompt": "Premium commercial automotive game vehicle illustration, ONE professional racing go kart, yellow and graphite blank livery, exposed frame, detailed engine and four tires, no rider. Use the described livery. Photorealistic stylized automotive visualization, realistic engineering and proportions, finely detailed tires, rims, glass, LED or appropriate headlights, body panel gaps and mirrors. Front three-quarter view, nose points toward right, entire vehicle visible, generous margins, landscape 3:2 composition. Isolated truly transparent alpha background, faint contact shadow only. No people, no driver, no text, no brands, no logos, no watermarks. Premium refined European grand touring visual identity. Not toy, not cartoon, not low poly."
+  },
+  {
+    "id": "tractor",
+    "kind": "vehicle",
+    "prompt": "Premium commercial automotive game vehicle illustration, ONE modern agricultural tractor, large rear tires, smaller front wheels, glazed cab, detailed hydraulics and steps. Deep crimson metallic paint with realistic restrained reflections. Photorealistic stylized automotive visualization, realistic engineering and proportions, finely detailed tires, rims, glass, LED or appropriate headlights, body panel gaps and mirrors. Front three-quarter view, nose points toward right, entire vehicle visible, generous margins, landscape 3:2 composition. Isolated truly transparent alpha background, faint contact shadow only. No people, no driver, no text, no brands, no logos, no watermarks. Premium refined European grand touring visual identity. Not toy, not cartoon, not low poly."
+  },
+  {
+    "id": "taxi",
+    "kind": "vehicle",
+    "prompt": "Premium commercial automotive game vehicle illustration, ONE classic executive city taxi, glossy yellow paint, black grille and small blank roof taxi light, no text. Use the described livery. Photorealistic stylized automotive visualization, realistic engineering and proportions, finely detailed tires, rims, glass, LED or appropriate headlights, body panel gaps and mirrors. Front three-quarter view, nose points toward right, entire vehicle visible, generous margins, landscape 3:2 composition. Isolated truly transparent alpha background, faint contact shadow only. No people, no driver, no text, no brands, no logos, no watermarks. Premium refined European grand touring visual identity. Not toy, not cartoon, not low poly."
+  },
+  {
+    "id": "police",
+    "kind": "vehicle",
+    "prompt": "Premium commercial automotive game vehicle illustration, ONE modern highway patrol sedan, navy and white blank body livery, roof light bar, no badges or text. Use the described livery. Photorealistic stylized automotive visualization, realistic engineering and proportions, finely detailed tires, rims, glass, LED or appropriate headlights, body panel gaps and mirrors. Front three-quarter view, nose points toward right, entire vehicle visible, generous margins, landscape 3:2 composition. Isolated truly transparent alpha background, faint contact shadow only. No people, no driver, no text, no brands, no logos, no watermarks. Premium refined European grand touring visual identity. Not toy, not cartoon, not low poly."
+  },
+  {
+    "id": "kilomax",
+    "kind": "vehicle",
+    "prompt": "Premium commercial automotive game vehicle illustration, ONE bespoke flagship rally grand tourer, muscular widebody coupe, elegant striped hood, aero splitter, expressive LED lights. Deep crimson metallic paint with realistic restrained reflections. Photorealistic stylized automotive visualization, realistic engineering and proportions, finely detailed tires, rims, glass, LED or appropriate headlights, body panel gaps and mirrors. Front three-quarter view, nose points toward right, entire vehicle visible, generous margins, landscape 3:2 composition. Isolated truly transparent alpha background, faint contact shadow only. No people, no driver, no text, no brands, no logos, no watermarks. Premium refined European grand touring visual identity. Not toy, not cartoon, not low poly."
+  },
+  {
+    "id": "collision",
+    "kind": "card",
+    "prompt": "Premium automotive strategy card game illustration: an unbranded red sports coupe stopped beside a bent guardrail, cracked headlight, subtle glass fragments and wheel smoke, no people or injuries. Cinematic semi-realistic high-end automotive concept art, physical materials, strong focal subject and readable small-scale composition, restrained amber and teal lighting, Mediterranean grand touring atmosphere. Landscape 3:2 framing, full bleed artwork, no card frame, NO TEXT, NO LETTERS, NO NUMBERS, no logos, no people except mechanic hands if specified. Mature premium racing game, not cartoon, not clipart."
+  },
+  {
+    "id": "crevaison",
+    "kind": "card",
+    "prompt": "Premium automotive strategy card game illustration: close-up of a deflated tire on a red sports coupe pulled safely on a coastal road shoulder, detailed rubber and alloy wheel. Cinematic semi-realistic high-end automotive concept art, physical materials, strong focal subject and readable small-scale composition, restrained amber and teal lighting, Mediterranean grand touring atmosphere. Landscape 3:2 framing, full bleed artwork, no card frame, NO TEXT, NO LETTERS, NO NUMBERS, no logos, no people except mechanic hands if specified. Mature premium racing game, not cartoon, not clipart."
+  },
+  {
+    "id": "panne",
+    "kind": "card",
+    "prompt": "Premium automotive strategy card game illustration: a red touring car stopped at a quiet road shoulder with open fuel cap, empty fuel can beside it, sunset, no smoke or engine fire. Cinematic semi-realistic high-end automotive concept art, physical materials, strong focal subject and readable small-scale composition, restrained amber and teal lighting, Mediterranean grand touring atmosphere. Landscape 3:2 framing, full bleed artwork, no card frame, NO TEXT, NO LETTERS, NO NUMBERS, no logos, no people except mechanic hands if specified. Mature premium racing game, not cartoon, not clipart."
+  },
+  {
+    "id": "radar",
+    "kind": "card",
+    "prompt": "Premium automotive strategy card game illustration: an anonymous roadside speed camera beside a coastal highway, amber sunlight, subtle flash reflection, no readable numbers or text. Cinematic semi-realistic high-end automotive concept art, physical materials, strong focal subject and readable small-scale composition, restrained amber and teal lighting, Mediterranean grand touring atmosphere. Landscape 3:2 framing, full bleed artwork, no card frame, NO TEXT, NO LETTERS, NO NUMBERS, no logos, no people except mechanic hands if specified. Mature premium racing game, not cartoon, not clipart."
+  },
+  {
+    "id": "barrage",
+    "kind": "card",
+    "prompt": "Premium automotive strategy card game illustration: a road blocked by professional red and white traffic barriers and cones, warm warning lamps, dramatic dusk sky. Cinematic semi-realistic high-end automotive concept art, physical materials, strong focal subject and readable small-scale composition, restrained amber and teal lighting, Mediterranean grand touring atmosphere. Landscape 3:2 framing, full bleed artwork, no card frame, NO TEXT, NO LETTERS, NO NUMBERS, no logos, no people except mechanic hands if specified. Mature premium racing game, not cartoon, not clipart."
+  },
+  {
+    "id": "reparation",
+    "kind": "card",
+    "prompt": "Premium automotive strategy card game illustration: detailed gloved mechanic hands repairing a car headlight and front bumper in a premium workshop, steel tools and clean warm light. Cinematic semi-realistic high-end automotive concept art, physical materials, strong focal subject and readable small-scale composition, restrained amber and teal lighting, Mediterranean grand touring atmosphere. Landscape 3:2 framing, full bleed artwork, no card frame, NO TEXT, NO LETTERS, NO NUMBERS, no logos, no people except mechanic hands if specified. Mature premium racing game, not cartoon, not clipart."
+  },
+  {
+    "id": "roueSecours",
+    "kind": "card",
+    "prompt": "Premium automotive strategy card game illustration: a new alloy spare wheel and compact jack beside a sports car, clean garage lighting, precise mechanical detail. Cinematic semi-realistic high-end automotive concept art, physical materials, strong focal subject and readable small-scale composition, restrained amber and teal lighting, Mediterranean grand touring atmosphere. Landscape 3:2 framing, full bleed artwork, no card frame, NO TEXT, NO LETTERS, NO NUMBERS, no logos, no people except mechanic hands if specified. Mature premium racing game, not cartoon, not clipart."
+  },
+  {
+    "id": "pleinEssence",
+    "kind": "card",
+    "prompt": "Premium automotive strategy card game illustration: close-up of a fuel nozzle filling a red grand touring car at a modern roadside station, amber reflections. Cinematic semi-realistic high-end automotive concept art, physical materials, strong focal subject and readable small-scale composition, restrained amber and teal lighting, Mediterranean grand touring atmosphere. Landscape 3:2 framing, full bleed artwork, no card frame, NO TEXT, NO LETTERS, NO NUMBERS, no logos, no people except mechanic hands if specified. Mature premium racing game, not cartoon, not clipart."
+  },
+  {
+    "id": "gps",
+    "kind": "card",
+    "prompt": "Premium automotive strategy card game illustration: a premium dashboard navigation display with abstract curved route line and map shapes, absolutely no text or numbers, steering wheel detail. Cinematic semi-realistic high-end automotive concept art, physical materials, strong focal subject and readable small-scale composition, restrained amber and teal lighting, Mediterranean grand touring atmosphere. Landscape 3:2 framing, full bleed artwork, no card frame, NO TEXT, NO LETTERS, NO NUMBERS, no logos, no people except mechanic hands if specified. Mature premium racing game, not cartoon, not clipart."
+  },
+  {
+    "id": "passageLibre",
+    "kind": "card",
+    "prompt": "Premium automotive strategy card game illustration: open road barrier lifting to reveal an inviting winding coastal road, green light, morning sunshine. Cinematic semi-realistic high-end automotive concept art, physical materials, strong focal subject and readable small-scale composition, restrained amber and teal lighting, Mediterranean grand touring atmosphere. Landscape 3:2 framing, full bleed artwork, no card frame, NO TEXT, NO LETTERS, NO NUMBERS, no logos, no people except mechanic hands if specified. Mature premium racing game, not cartoon, not clipart."
+  },
+  {
+    "id": "turbo",
+    "kind": "card",
+    "prompt": "Premium automotive strategy card game illustration: rear three-quarter unbranded red supercar accelerating on a coastal road, controlled motion blur, blue atmospheric speed trails. Cinematic semi-realistic high-end automotive concept art, physical materials, strong focal subject and readable small-scale composition, restrained amber and teal lighting, Mediterranean grand touring atmosphere. Landscape 3:2 framing, full bleed artwork, no card frame, NO TEXT, NO LETTERS, NO NUMBERS, no logos, no people except mechanic hands if specified. Mature premium racing game, not cartoon, not clipart."
+  },
+  {
+    "id": "raccourci",
+    "kind": "card",
+    "prompt": "Premium automotive strategy card game illustration: a beautiful small narrow road branching from a larger road through Mediterranean pines, golden sunlight, no signage text. Cinematic semi-realistic high-end automotive concept art, physical materials, strong focal subject and readable small-scale composition, restrained amber and teal lighting, Mediterranean grand touring atmosphere. Landscape 3:2 framing, full bleed artwork, no card frame, NO TEXT, NO LETTERS, NO NUMBERS, no logos, no people except mechanic hands if specified. Mature premium racing game, not cartoon, not clipart."
+  },
+  {
+    "id": "depassement",
+    "kind": "card",
+    "prompt": "Premium automotive strategy card game illustration: an unbranded red sports coupe overtaking a dark touring sedan on a clear wide road, dynamic cinematic composition. Cinematic semi-realistic high-end automotive concept art, physical materials, strong focal subject and readable small-scale composition, restrained amber and teal lighting, Mediterranean grand touring atmosphere. Landscape 3:2 framing, full bleed artwork, no card frame, NO TEXT, NO LETTERS, NO NUMBERS, no logos, no people except mechanic hands if specified. Mature premium racing game, not cartoon, not clipart."
+  },
+  {
+    "id": "gpsStrategique",
+    "kind": "card",
+    "prompt": "Premium automotive strategy card game illustration: an elegant overhead view of a blank road map and compass on a vehicle dashboard, branching abstract illuminated routes, no words or numbers. Cinematic semi-realistic high-end automotive concept art, physical materials, strong focal subject and readable small-scale composition, restrained amber and teal lighting, Mediterranean grand touring atmosphere. Landscape 3:2 framing, full bleed artwork, no card frame, NO TEXT, NO LETTERS, NO NUMBERS, no logos, no people except mechanic hands if specified. Mature premium racing game, not cartoon, not clipart."
+  },
+  {
+    "id": "derniereLigneDroite",
+    "kind": "card",
+    "prompt": "Premium automotive strategy card game illustration: a red touring car approaching a black and white checkered finish gantry on a straight coastal race road, golden light, no text or numbers. Cinematic semi-realistic high-end automotive concept art, physical materials, strong focal subject and readable small-scale composition, restrained amber and teal lighting, Mediterranean grand touring atmosphere. Landscape 3:2 framing, full bleed artwork, no card frame, NO TEXT, NO LETTERS, NO NUMBERS, no logos, no people except mechanic hands if specified. Mature premium racing game, not cartoon, not clipart."
+  },
+  {
+    "id": "coast",
+    "kind": "hero",
+    "prompt": "Premium automotive game key art. A magnificent Mediterranean coastal highway sweeping along limestone cliffs above a deep teal sea at late golden hour. One unbranded deep crimson grand touring coupe in front three quarter view on the right lower side, detailed realistic vehicle, paint reflections and beautiful road texture. Cinematic automotive photography meets premium realistic game illustration, subtle atmosphere, refined midnight blue and warm amber palette, no neon cyberpunk. Wide landscape 16:9 composition, left third mostly calm sky and shaded coastal landscape suitable for interface text. No text, no letters, no numbers, no logos, no people. Commercial game launch screen quality."
+  }
+]

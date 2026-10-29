@@ -5,7 +5,7 @@ import clsx from "clsx";
 import { forwardRef } from "react";
 import type { CardCategory, CardDef } from "@/game/types/game";
 import { getCardDef } from "@/game/lib/engine/cardCatalog";
-import { CardArt } from "./CardArt";
+import { CardIllustration } from "./CardIllustration";
 import { BRAND, BRAND_NAME, LOGO_ASPECT, LOGO_READY } from "@/game/lib/brand";
 
 export const CATEGORY_STYLE: Record<CardCategory, { from: string; to: string; label: string; accent: string }> = {
@@ -138,22 +138,22 @@ function CardFace({ def, size }: { def: CardDef; size: CardSize }) {
     <div
       className="absolute inset-0"
       style={{
-        background: "linear-gradient(170deg, #fffaf0 0%, #f1e7d2 100%)",
+        background: "linear-gradient(170deg, #202b34 0%, #0b1119 100%)",
         border: def.category === "special" ? "2px solid #d9aa45" : "1px solid rgba(0,0,0,0.3)",
         borderRadius: "inherit",
       }}
     >
       {/* illustration panel */}
       <div
-        className="absolute left-[6%] right-[6%] top-[5%] h-[60%] overflow-hidden"
+        className="absolute inset-x-0 top-0 h-[66%] overflow-hidden"
         style={{
           borderRadius: compact ? "6px" : "10px",
           background: `repeating-conic-gradient(from 0deg at 50% 62%, rgba(255,255,255,0.11) 0deg 7deg, transparent 7deg 18deg), radial-gradient(90% 70% at 50% 35%, rgba(255,255,255,0.28), transparent 60%), linear-gradient(165deg, ${cat.from}, ${cat.to})`,
           boxShadow: "inset 0 0 0 1px rgba(0,0,0,0.25), inset 0 -10px 18px rgba(0,0,0,0.18)",
         }}
       >
-        <div className="absolute inset-x-[16%] bottom-[7%] top-[14%] text-white drop-shadow-[0_3px_3px_rgba(0,0,0,0.35)]">
-          <CardArt def={def} />
+        <div className="absolute inset-0 text-white">
+          <CardIllustration key={def.id} def={def} />
         </div>
         {def.value ? (
           <div
@@ -172,12 +172,12 @@ function CardFace({ def, size }: { def: CardDef; size: CardSize }) {
       </div>
 
       {/* title block */}
-      <div className="absolute inset-x-[6%] bottom-[5%] top-[67%] flex flex-col items-center justify-center text-center text-[#16130f]">
+      <div className="absolute inset-x-[6%] bottom-[5%] top-[67%] flex flex-col items-center justify-center text-center text-white">
         <p className="font-display leading-[0.95] tracking-wide" style={{ fontSize: s.title }}>
           {def.title}
         </p>
         {s.sub ? (
-          <p className="mt-[0.2em] line-clamp-2 font-sans leading-tight text-black/55" style={{ fontSize: s.sub }}>
+          <p className="mt-[0.2em] line-clamp-2 font-sans leading-tight text-white/70" style={{ fontSize: s.sub }}>
             {def.subtitle}
           </p>
         ) : null}
@@ -187,7 +187,7 @@ function CardFace({ def, size }: { def: CardDef; size: CardSize }) {
       {/* laminated gloss */}
       <div
         className="pointer-events-none absolute inset-0"
-        style={{ borderRadius: "inherit", background: "linear-gradient(125deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 32%, rgba(255,255,255,0) 70%, rgba(255,255,255,0.12) 100%)" }}
+        style={{ borderRadius: "inherit", background: "linear-gradient(125deg, rgba(255,255,255,0.15) 0%, transparent 32%, transparent 70%, rgba(255,255,255,0.06) 100%)" }}
       />
     </div>
   );

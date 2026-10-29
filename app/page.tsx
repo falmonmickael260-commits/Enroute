@@ -70,7 +70,7 @@ export default function Home() {
 
   return (
     // the home screen always fits the screen exactly: nothing scrolls or slides
-    <main className="fixed inset-0 isolate overflow-hidden text-white">
+    <main className="premium-home fixed inset-0 isolate overflow-hidden text-white">
       <MenuBackdrop />
 
       <div className="home-layout relative z-10 mx-auto h-full w-full px-3.5 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-[max(0.6rem,env(safe-area-inset-top))]">
@@ -81,6 +81,7 @@ export default function Home() {
         {/* the logo takes what room is left, never more than a third of the screen */}
         <motion.div {...enter(0.12)} className="home-logo">
           <Logo size="xl" priority className="home-logo-mark drop-shadow-[0_10px_18px_rgba(0,0,0,0.45)]" />
+          <div className="home-editorial"><span>GRAND TOURISME · MULTIJOUEUR</span><h1>La route vous<br />appartient.</h1><p>Le bon coup. La bonne carte. La ligne d’arrivée.</p></div>
         </motion.div>
 
         <nav className="home-nav flex flex-col gap-3">

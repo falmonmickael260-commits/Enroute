@@ -14,7 +14,8 @@ const DEFAULT_DURATIONS: Record<AnimationEvent["kind"], number> = {
 };
 
 export function useAnimationQueue(queue: AnimationEvent[], onConsume: () => void) {
-  const [current, setCurrent] = useState<AnimationEvent | null>(null);
+  // Reconnection / renderer fallback can mount with pending events already present.
+  const [current, setCurrent] = useState<AnimationEvent | null>(() => queue[0] ?? null);
   const [seenQueue, setSeenQueue] = useState(queue);
 
   // Adjust state during render when the queue prop changes, instead of an effect,

@@ -1,0 +1,18 @@
+{
+  "game/lib/engine/gameReducer.ts": "1b7b27e0e651e32419cc3c22c4178c70d43c3a99ba78e21abd1060a031bce9fa",
+  "game/lib/engine/rules.ts": "46e18bc98a475ce95d09dd7e61ee69fe62f994f0f6130470ce6f7e4ed880d034",
+  "game/lib/engine/cardCatalog.ts": "25ab2bd9ce072f045996d75021fe486acdb8b5447970ab30aecb0e1338f47ade",
+  "game/lib/engine/deck.ts": "f38d70b84a524b0174d243940fac957871218322cfa54ebe8b3cceeb384f2f37",
+  "game/lib/online/platformToken.ts": "c2432f4bd19bc8fef3d97ba96e14d4e4b07a226e5de34c3012d188ef6db128ec",
+  "game/lib/online/platformRoom.ts": "3fdc22418fa51a49c65bf2530e4264ba502f34e8f22ef5ed0f7fc697f0d9590c",
+  "game/lib/online/api.ts": "4517c116635c8d183908fb6cac2360066d5582caa37f9140d28de266c2437336",
+  "game/lib/online/session.ts": "4771be0f0b4c43ac2623dfcbdee5bb228fffe8bb09ae121638ff5b645b1167e9",
+  "game/lib/online/actions.ts": "65ba77d386ba7cb8a563395d0230ce78c20bd60bc83e4110f60d14660d56afe3",
+  "game/lib/online/client.ts": "d3932c0dccbd92f5ee9698444e68721d36277361c7518cfab1e6f2fec6f0e1f8",
+  "supabase/migrations/20260928090000_online_rooms.sql": "93c9652d43af62a1dfd49be4d2c71704d98070983d2cc64abe59bd60a8019761",
+  "supabase/migrations/20261014090000_absent_host_skip.sql": "a94431ab3d9f9a42a7256888fe0d171c38c715c14ad8ad5fccaa17acc390fae7",
+  "supabase/migrations/20261005090000_room_car.sql": "3ff9c28ce1207c63c771911989ff7240acaf00d66356d0607f8dbdb0cd86735b",
+  "supabase/migrations/20261001090000_six_players_1500km.sql": "4aac66056cf86c38f272248d9f1300f71408c6571db601211906b268e3b90d0a",
+  "game/types/game.ts": "52e482b0ec9a3c9a8af3093f0b85f838f6894e955dc312dc530664013ca6a83e",
+  "app/api/report-result/route.ts": "147c754586e295bf5374b753f4b8f4cb773c0a981eb3351ef5d9ea00d17eaadf"
+}

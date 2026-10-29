@@ -12,14 +12,15 @@ import {
   canPlaySpecial,
   hazardActive,
   hazardLabel,
-  isCardPlayable,
   isRoadClear,
   MAX_SHIELDS,
 } from "@/game/lib/engine/rules";
+import { canOfferCard as isCardPlayable } from "@/game/lib/cardAffordance";
 import { useElementSize } from "@/game/hooks/useElementSize";
 import { useShortLandscape } from "@/game/hooks/useShortLandscape";
 import { Card, CATEGORY_STYLE } from "@/game/components/cards/Card";
 import { CardArt } from "@/game/components/cards/CardArt";
+import { CardIllustration } from "@/game/components/cards/CardIllustration";
 
 /** Why a card can't be played right now, in the player's words. */
 function whyNot(player: PlayerState, def: CardDef, state: GameState): string {
@@ -61,6 +62,7 @@ function HandCard({ def, playable, dim, selected, onClick }: { def: CardDef; pla
   return (
     <button
       type="button"
+      data-card-id={def.id}
       onClick={onClick}
       aria-label={`${def.title} — ${def.subtitle}`}
       aria-pressed={selected}
@@ -71,12 +73,12 @@ function HandCard({ def, playable, dim, selected, onClick }: { def: CardDef; pla
       )}
       style={{ background: `linear-gradient(165deg, ${cat.from}, ${cat.to})` }}
     >
-      {/* big faint art in the body */}
-      <div className="absolute inset-x-[18%] bottom-[24%] top-[26%] text-white/35">
-        <CardArt def={def} />
+      <div className="absolute inset-0">
+        <CardIllustration def={def} />
+        <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-transparent to-black/75" />
       </div>
       {/* index corner: what matters, readable when cards overlap */}
-      <div className="absolute left-[4px] top-[4px] flex w-[32px] flex-col items-center text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.45)]">
+      <div className="absolute left-[4px] top-[4px] flex w-[32px] flex-col items-center rounded-md bg-black/65 py-1 text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.45)]">
         {def.value ? (
           <>
             <span className={clsx("font-display leading-[0.9]", def.value >= 100 ? "text-[1.4rem]" : "text-[1.7rem]")}>{def.value}</span>
@@ -89,8 +91,8 @@ function HandCard({ def, playable, dim, selected, onClick }: { def: CardDef; pla
         )}
       </div>
       {/* name band along the bottom */}
-      <div className="absolute inset-x-0 bottom-0 bg-white/95 px-1 py-[3px] text-center">
-        <p className="truncate font-display text-[0.8rem] leading-none tracking-wide text-[#16130f]">{def.title}</p>
+      <div className="absolute inset-x-0 bottom-0 border-t border-white/15 bg-[#0b1422]/95 px-1 py-[5px] text-center">
+        <p className="truncate font-display text-[0.8rem] leading-none tracking-wide text-white">{def.title}</p>
       </div>
       {playable ? <span className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-[#4cff8f] shadow-[0_0_8px_#4cff8f]" /> : null}
     </button>

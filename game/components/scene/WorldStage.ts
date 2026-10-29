@@ -407,14 +407,14 @@ interface Look {
 
 const LOOKS: Record<AmbianceId, Look> = {
   jour: {
-    sky: ["#2f86dc", "#8cc6ee", "#dceff8"],
-    fog: ["#cfe6f2", 70, 320],
-    hemi: ["#dcecff", "#6f7a45", 0.85],
-    sun: ["#ffe7c4", 2.3, [-26, 40, 18]],
+    sky: ["#487e9a", "#a6c8d6", "#e8ded0"],
+    fog: ["#d4dcd8", 70, 320],
+    hemi: ["#dce7ef", "#737259", 0.85],
+    sun: ["#ffe1b1", 2.3, [-26, 40, 18]],
     exposure: 0.95,
-    env: 0.35,
-    sea: "#16a2c9",
-    shallows: "#5fd4d8",
+    env: 0.5,
+    sea: "#247b8d",
+    shallows: "#75b6ad",
     glints: ["#ffffff", 0.55],
     clouds: ["#ffffff", 0.35],
     lights: 0,
@@ -654,7 +654,7 @@ export class WorldStage implements Stage {
   private buildRoad(scene: THREE.Scene) {
     const asphalt = asphaltTexture();
     const kerb = kerbTexture();
-    const roadMat = new THREE.MeshStandardMaterial({ map: asphalt, roughness: 0.85 });
+    const roadMat = new THREE.MeshStandardMaterial({ map: asphalt, bumpMap: asphalt, bumpScale: 0.012, roughness: 0.9, metalness: 0.025 });
     const kerbMat = new THREE.MeshStandardMaterial({ map: kerb, roughness: 0.6 });
     const shoulderMat = new THREE.MeshStandardMaterial({ color: "#d9c79c", roughness: 1 });
     const parts: [THREE.BufferGeometry, THREE.Material][] = [

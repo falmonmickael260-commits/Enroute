@@ -6,6 +6,8 @@ import type { PlayerState } from "@/game/types/game";
 import { pointAtLength } from "@/game/components/board/roadPath";
 import type { PieceSlot } from "@/game/components/board/pieceLayout";
 import { displayHazard } from "@/game/lib/engine/rules";
+import { carFor } from "@/game/lib/cars";
+import { VehicleArt } from "@/game/components/ui/VehicleArt";
 
 export const PLAYER_COLOR: Record<PlayerState["color"], string> = {
   crimson: "var(--color-player-crimson)",
@@ -240,7 +242,11 @@ export function PlayerPiece({
           ))}
         </g>
         <g transform="scale(1.22)">
-          <CarBody color={player.color} number={number} headlights={headlights} />
+          <g opacity={0.2}><CarBody color={player.color} number={number} headlights={headlights} /></g>
+          <foreignObject x={-42} y={-32} width={84} height={56} overflow="visible">
+            <VehicleArt car={carFor(player.car, number - 1)} color={player.color} />
+          </foreignObject>
+          <text x={-30} y={-15} fill="white" stroke="#111c28" paintOrder="stroke" strokeWidth={2} fontSize={12} fontWeight={800}>{number}</text>
         </g>
       </g>
       {player.hazard ? <Smoke /> : null}
