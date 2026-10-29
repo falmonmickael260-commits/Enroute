@@ -6,7 +6,6 @@ import { createGame, gameReducer, type NewGameOptions } from "@/game/lib/engine/
 import { useGameControls } from "@/game/hooks/useGameEngine";
 import { uid } from "@/game/utils/array";
 import type { SceneDef } from "./scenePath";
-import { DEFAULT_SCENE } from "./scenes/default";
 import { SceneTable } from "./SceneTable";
 
 /** Hands dealt in demo mode, so every effect can be tried without luck. */
@@ -45,7 +44,7 @@ export function SceneGame({
       state={state}
       controls={controls}
       consumeAnimation={consumeAnimation}
-      scene={scene ?? DEFAULT_SCENE}
+      scene={scene}
       showViewToggle={false}
       onExit={onExit}
       onReplay={() => dispatch({ type: "NEW_GAME", options })}

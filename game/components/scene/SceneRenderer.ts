@@ -26,6 +26,7 @@ import {
 } from "./models";
 import { loadCarModel } from "./carModels";
 import { createTouringCar } from "./premiumCars";
+import { slotsFor } from "./carLayout";
 
 /**
  * Draws and animates the 3D pieces of a race: cars, hazards, protections and
@@ -62,27 +63,6 @@ export type SceneCue =
   | { kind: "repair" }
   | { kind: "shield" }
   | { kind: "gps" };
-
-const LANES: Record<number, number[]> = { 1: [0], 2: [-0.42, 0.42], 3: [-0.56, 0, 0.56], 4: [-0.62, -0.2, 0.22, 0.64] };
-/** Au-delà de 4 voitures groupées, on les range en rangées de 3 (la route est trop étroite). */
-const ROW_SIZE = 3;
-/** Recul de la rangée arrière, en longueurs de voiture dans l'axe de la route. */
-const ROW_GAP = 1.3;
-
-/**
- * Place de chaque voiture d'un groupe (trié du plus en retard au plus en
- * avance) : décalage latéral et recul longitudinal, en longueurs de voiture.
- * Jusqu'à 4 voitures : une seule ligne de front. À 5 ou 6 : les 3 premières
- * forment la rangée avant, les autres la rangée arrière, reculée de ROW_GAP.
- */
-function slotsFor(count: number): { lateral: number; along: number }[] {
-  if (count <= 4) return (LANES[count] ?? [0]).map((lateral) => ({ lateral, along: 0 }));
-  const back = count - ROW_SIZE;
-  return [
-    ...LANES[back].map((lateral) => ({ lateral, along: -ROW_GAP })),
-    ...LANES[ROW_SIZE].map((lateral) => ({ lateral, along: 0 })),
-  ];
-}
 
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const easeOutBack = (t: number) => {
@@ -259,11 +239,7 @@ export class SceneRenderer {
     const lane = new Map<string, { lateral: number; along: number }>();
     for (const c of clusters) {
       const slots = slotsFor(c.length);
-      const lateralScale = this.stage.groundPresentation === "picture" ? 1.5 : 1;
-      c.forEach((p, i) => {
-        const slot = slots[i] ?? { lateral: 0, along: 0 };
-        lane.set(p.id, { ...slot, lateral: slot.lateral * lateralScale });
-      });
+      c.forEach((p, i) => lane.set(p.id, slots[i] ?? { lateral: 0, along: 0 }));
     }
 
     for (const p of players) {
@@ -357,7 +333,7 @@ export class SceneRenderer {
     const wanted = p.car || "kilomax";
     if (car.carId === wanted) return;
     car.carId = wanted;
-      const ready = loadCarModel(wanted, p.color, p.repaint ?? true, this.stage.castShadows);
+    const ready = loadCarModel(wanted, p.color, p.repaint ?? true, this.stage.castShadows);
     void ready.then((model) => {
       if (!model) return;
       if (car.carId !== wanted || !this.cars.has(car.id) || this.disposed) { model.root.userData.disposeModel?.(); return; }
@@ -792,22 +768,16 @@ export class SceneRenderer {
 
       // the driver's ring breathes; the others stay dim
       const ringMat = car.ring.material as THREE.MeshBasicMaterial;
-      const paintedGround = this.stage.groundPresentation === "picture";
-      car.ring.visible = !paintedGround;
-      ringMat.opacity = paintedGround
-        ? (car.active ? 0.28 + 0.1 * Math.sin(t / 420) : 0.12)
-        : (car.active ? 0.7 + 0.25 * Math.sin(t / 260) : 0.28);
-      const ringBase = paintedGround ? 0.25 : 1;
-      const rs = car.active ? 1 + (paintedGround ? 0.018 : 0.05) * Math.sin(t / 260) : 1;
-      car.ring.scale.set(rs * ringBase, rs * ringBase * 1.35, 1);
+      ringMat.opacity = car.active ? 0.7 + 0.25 * Math.sin(t / 260) : 0.28;
+      const rs = car.active ? 1 + 0.05 * Math.sin(t / 260) : 1;
+      car.ring.scale.set(rs, rs * 1.35, 1);
 
       // protection just installed: green bubble and sparkles
       const bubble = clamp01((t - car.bubbleAt) / 1100);
       if (bubble < 1) {
-        car.ring.visible = true;
         const k = pulse(bubble);
         ringMat.color.set("#5dffa0");
-        car.ring.scale.set((1 + k * 0.9) * ringBase, (1 + k * 0.9) * ringBase * 1.35, 1);
+        car.ring.scale.set(1 + k * 0.9, (1 + k * 0.9) * 1.35, 1);
         ringMat.opacity = 0.95 * (1 - bubble) + 0.3;
         if (bubble < 0.08) this.burst(m.root, "#8dffbe", 3, 0.6);
       } else ringMat.color.set((m.paint.color as THREE.Color).getStyle());
