@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 import type { CarModel } from "./models";
+import { coachwork, type BodySection } from "./coachwork";
 
 /** Sculpted shells, real wheel hubs and independently animated body, in road units. */
 export function createTouringCar(id: string, color: string): CarModel {
@@ -14,23 +15,37 @@ export function createTouringCar(id: string, color: string): CarModel {
   const race = id === "race" || id === "race-future" || id === "kart-oodi";
   const retro = id === "retro",
     tractor = id === "tractor";
+  const sport = id === "supercar" || id === "kilomax";
   const compact = id === "hatchback-sports" || id === "kart-oodi";
-  const length = van ? 1.16 : compact ? 0.91 : 1.06;
-  const width = suv ? 0.56 : race ? 0.57 : 0.49;
-  const base = suv || tractor ? 0.21 : 0.16;
+  const length = van
+    ? 1.2
+    : truck
+      ? 1.18
+      : compact
+        ? 0.91
+        : sport
+          ? 1.14
+          : id === "sedan" || id === "taxi" || id === "police"
+            ? 1.12
+            : 1.06;
+  const width = suv ? 0.56 : race ? 0.57 : sport ? 0.54 : 0.49;
+  const base =
+    suv || tractor ? 0.21 : id === "kart-oodi" ? 0.1 : sport ? 0.145 : 0.16;
   const top = van
     ? 0.62
     : suv
       ? 0.54
-      : race
-        ? 0.32
-        : id === "sedan-sports"
-          ? 0.405
-          : compact
-            ? 0.47
-            : retro
-              ? 0.43
-              : 0.44;
+      : sport
+        ? 0.365
+        : race
+          ? 0.32
+          : id === "sedan-sports"
+            ? 0.405
+            : compact
+              ? 0.47
+              : retro
+                ? 0.43
+                : 0.44;
   const paint = new THREE.MeshPhysicalMaterial({
     color:
       id === "taxi"
@@ -46,9 +61,9 @@ export function createTouringCar(id: string, color: string): CarModel {
     clearcoatRoughness: 0.2,
   });
   const glass = new THREE.MeshStandardMaterial({
-    color: "#173644",
-    roughness: 0.14,
-    metalness: 0.65,
+    color: "#486376",
+    roughness: 0.2,
+    metalness: 0.3,
   });
   const chrome = new THREE.MeshStandardMaterial({
     color: "#b7c4ce",
@@ -72,12 +87,22 @@ export function createTouringCar(id: string, color: string): CarModel {
   const headlight = new THREE.MeshStandardMaterial({
     color: "#e7f7ff",
     emissive: "#c8edff",
-    emissiveIntensity: 1.3,
+    emissiveIntensity: 0.65,
   });
   const caliper = new THREE.MeshStandardMaterial({
     color: "#be342e",
     metalness: 0.3,
     roughness: 0.5,
+  });
+  const ivory = new THREE.MeshStandardMaterial({
+    color: "#e9e8de",
+    roughness: 0.32,
+    metalness: 0.3,
+  });
+  const policeBlue = new THREE.MeshStandardMaterial({
+    color: "#125de0",
+    emissive: "#216bff",
+    emissiveIntensity: 0.9,
   });
   const owned = [
     paint,
@@ -88,6 +113,8 @@ export function createTouringCar(id: string, color: string): CarModel {
     brakeLights,
     headlight,
     caliper,
+    ivory,
+    policeBlue,
   ];
   const groups = new Map<THREE.Material, THREE.BufferGeometry[]>();
   function part(
@@ -128,105 +155,238 @@ export function createTouringCar(id: string, color: string): CarModel {
       z,
     );
   }
+  function tube(points: number[][], radius: number, material: THREE.Material) {
+    const curve = new THREE.CatmullRomCurve3(
+      points.map((p) => new THREE.Vector3(...(p as [number, number, number]))),
+    );
+    part(
+      new THREE.TubeGeometry(
+        curve,
+        Math.max(3, points.length * 3),
+        radius,
+        5,
+        false,
+      ),
+      material,
+    );
+  }
+  function panel(
+    points: number[][],
+    material: THREE.Material,
+    outward: THREE.Vector3,
+  ) {
+    const vectors = points.map(
+      (p) => new THREE.Vector3(...(p as [number, number, number])),
+    );
+    const normal = vectors[1]
+      .clone()
+      .sub(vectors[0])
+      .cross(vectors[2].clone().sub(vectors[0]));
+    if (normal.dot(outward) < 0) vectors.reverse();
+    const g = new THREE.BufferGeometry();
+    g.setAttribute(
+      "position",
+      new THREE.Float32BufferAttribute(
+        vectors.flatMap((v) => v.toArray()),
+        3,
+      ),
+    );
+    g.setIndex([0, 1, 2, 0, 2, 3]);
+    g.computeVertexNormals();
+    part(g, material);
+  }
   // Continuous longitudinal sections give each body a curved shoulder and tapered nose.
-  function shell(sections: number[][], material: THREE.Material) {
-    const pos: number[] = [],
-      indices: number[] = [];
-    const rings = sections.length,
-      sides = 20;
-    for (const [z, w, b, t] of sections)
-      for (let j = 0; j <= sides; j++) {
-        const a = (j / sides) * Math.PI * 2;
-        pos.push(
-          Math.sign(Math.cos(a)) * Math.pow(Math.abs(Math.cos(a)), 0.55) * w,
-          (b + t) / 2 +
-            (Math.sign(Math.sin(a)) *
-              Math.pow(Math.abs(Math.sin(a)), 0.6) *
-              (t - b)) /
-              2,
-          z,
-        );
-      }
-    for (let i = 0; i < rings - 1; i++)
-      for (let j = 0; j < sides; j++) {
-        const a = i * (sides + 1) + j,
-          b = a + sides + 1;
-        indices.push(a, b, a + 1, b, b + 1, a + 1);
-      }
-    // Close the ends with inset sections rather than open hollow shells.
-    const geometry = new THREE.BufferGeometry();
-    geometry.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-    geometry.setIndex(indices);
-    geometry.computeVertexNormals();
-    part(geometry, material);
+  function shell(
+    sections: BodySection[],
+    material: THREE.Material,
+    wells = false,
+  ) {
+    const radius = suv ? 0.126 : 0.113;
+    part(
+      coachwork(
+        sections,
+        wells
+          ? {
+              axles: [-length * 0.32, length * 0.32],
+              radius: radius + 0.018,
+              centerY: radius,
+            }
+          : undefined,
+      ),
+      material,
+    );
   }
   const half = length / 2,
     w = width / 2;
+  const skinWidth =
+    id === "race" || id === "kart-oodi" ? w * 0.43 : tractor ? w * 0.6 : w;
   shell(
     [
-      [-half - 0.004, 0.001, base, base + 0.01],
-      [-half, w * 0.74, 0.09, base + 0.1],
-      [-half * 0.78, w, 0.09, base + 0.14],
-      [0, w * 0.99, 0.09, base + 0.13],
-      [half * 0.66, w * 0.98, 0.1, base + 0.1],
-      [half * 0.96, w * 0.78, 0.13, base + 0.07],
-      [half, 0.001, base, base + 0.01],
+      [-half - 0.004, 0.001, 0.1, base + 0.1],
+      [-half, skinWidth * 0.8, 0.1, base + 0.1],
+      [-half * 0.78, skinWidth, 0.09, base + 0.14],
+      [0, skinWidth * 0.99, 0.09, base + 0.13],
+      [half * 0.66, skinWidth * 0.98, 0.1, base + 0.1],
+      [half * 0.94, skinWidth * 0.85, 0.1, base + 0.1],
+      [half, skinWidth * 0.78, 0.11, base + 0.095],
+      [half + 0.004, 0.001, 0.11, base + 0.095],
     ],
     paint,
+    !race && !tractor,
   );
   if (!race && !tractor) {
-    const back = van ? -0.43 : truck ? -0.06 : -0.32;
-    const front = van ? 0.32 : 0.21;
-    shell(
+    const back = van
+      ? -0.49
+      : truck
+        ? -0.02
+        : compact
+          ? -0.33
+          : suv
+            ? -0.36
+            : sport
+              ? -0.3
+              : -0.31;
+    const front = van
+      ? 0.39
+      : truck
+        ? 0.31
+        : suv
+          ? 0.27
+          : retro
+            ? 0.12
+            : sport
+              ? 0.17
+              : 0.21;
+    const roofRear = back + (van ? 0.045 : 0.1),
+      roofFront = front - (van ? 0.045 : sport ? 0.16 : 0.13);
+    const belt = base + 0.13,
+      roofW = w * (sport ? 0.63 : 0.7),
+      beltW = w * 0.83;
+    panel(
       [
-        [back - 0.09, 0.005, base + 0.13, base + 0.14],
-        [back, w * 0.77, base + 0.12, top - 0.08],
-        [back + 0.1, w * 0.7, base + 0.16, top],
-        [front - 0.13, w * 0.68, base + 0.16, top],
-        [front, w * 0.78, base + 0.12, top - 0.11],
-        [front + 0.1, 0.005, base + 0.13, base + 0.14],
+        [-beltW, belt, front],
+        [beltW, belt, front],
+        [roofW, top, roofFront],
+        [-roofW, top, roofFront],
       ],
       glass,
+      new THREE.Vector3(0, 1, 1),
     );
+    panel(
+      [
+        [beltW, belt, back],
+        [-beltW, belt, back],
+        [-roofW, top, roofRear],
+        [roofW, top, roofRear],
+      ],
+      glass,
+      new THREE.Vector3(0, 1, -1),
+    );
+    for (const side of [-1, 1])
+      panel(
+        [
+          [side * beltW, belt, back],
+          [side * beltW, belt, front],
+          [side * roofW, top, roofFront],
+          [side * roofW, top, roofRear],
+        ],
+        glass,
+        new THREE.Vector3(side, 0, 0),
+      );
     box(
-      width * 0.73,
-      0.025,
-      Math.max(0.12, front - back - 0.17),
+      roofW * 2 + 0.02,
+      0.018,
+      Math.max(0.12, roofFront - roofRear + 0.025),
       paint,
       0,
-      top - 0.005,
-      (front + back) / 2 - 0.015,
+      top + 0.003,
+      (roofFront + roofRear) / 2,
     );
     for (const side of [-1, 1]) {
+      // Painted A/C pillars frame the glass instead of a single black blob.
+      tube(
+        [
+          [side * beltW, belt, front],
+          [side * roofW, top, roofFront],
+        ],
+        0.009,
+        paint,
+      );
+      tube(
+        [
+          [side * beltW, belt, back],
+          [side * roofW, top, roofRear],
+        ],
+        0.011,
+        paint,
+      );
+      tube(
+        [
+          [side * w * 0.84, base + 0.125, back + 0.025],
+          [side * w * 0.82, base + 0.145, (front + back) / 2],
+          [side * w * 0.84, base + 0.125, front - 0.025],
+        ],
+        0.0045,
+        chrome,
+      );
       box(
         0.019,
         top - base - 0.15,
         0.025,
         paint,
-        side * w * 0.76,
+        (side * (roofW + beltW)) / 2,
         (top + base + 0.13) / 2,
         (front + back) / 2,
       );
+      if (van)
+        for (const z of [-0.24, 0.02, 0.23])
+          box(
+            0.018,
+            top - belt,
+            0.024,
+            paint,
+            (side * (roofW + beltW)) / 2,
+            (top + belt) / 2,
+            z,
+          );
       box(
         0.06,
         0.035,
         0.065,
         paint,
         side * (w + 0.02),
-        base + 0.24,
+        belt + 0.025,
         front - 0.03,
       );
-      box(0.055, 0.009, 0.016, chrome, side * (w + 0.002), base + 0.08, -0.1);
-      box(0.018, 0.025, length * 0.8, trim, side * w, 0.105, 0);
-      box(
-        0.012,
-        0.015,
-        0.2,
-        chrome,
-        side * w * 0.82,
-        base + 0.145,
-        front - 0.13,
+      tube(
+        [
+          [side * beltW, belt + 0.018, front - 0.03],
+          [side * (w + 0.02), belt + 0.025, front - 0.03],
+        ],
+        0.006,
+        trim,
       );
+      box(0.055, 0.009, 0.016, chrome, side * (w + 0.002), base + 0.08, -0.1);
+      // Door shutline, mirror glass and lower sill are still visible at road scale.
+      tube(
+        [
+          [side * w * 0.995, 0.14, -0.12],
+          [side * w, base + 0.075, -0.12],
+          [side * w * 0.85, base + 0.125, -0.12],
+        ],
+        0.0025,
+        trim,
+      );
+      box(
+        0.052,
+        0.024,
+        0.008,
+        glass,
+        side * (w + 0.02),
+        belt + 0.025,
+        front - 0.063,
+      );
+      box(0.018, 0.025, length * 0.8, trim, side * w, 0.105, 0);
     }
   } else {
     if (tractor) {
@@ -237,28 +397,139 @@ export function createTouringCar(id: string, color: string): CarModel {
       box(0.3, 0.025, 0.28, paint, 0, 0.565, -0.13);
     } else {
       box(width * 0.42, 0.09, length * 0.5, paint, 0, base + 0.11, -0.05);
-      part(
-        new THREE.SphereGeometry(id === "race-future" ? 0.15 : 0.11, 16, 8),
-        glass,
-        0,
-        base + 0.18,
-        -0.04,
-      );
-      box(
-        width * 1.13,
-        0.025,
-        id === "race-future" ? 0.21 : 0.14,
-        trim,
-        0,
-        base + 0.08,
-        half - 0.05,
-      );
-      box(width * 1.1, 0.025, 0.12, paint, 0, base + 0.26, -half + 0.05);
-      for (const s of [-1, 1])
-        box(0.018, 0.17, 0.025, trim, s * 0.14, base + 0.17, -half + 0.05);
+      if (id === "race-future")
+        part(
+          new THREE.SphereGeometry(0.15, 20, 12).scale(1, 0.55, 1.65),
+          glass,
+          0,
+          base + 0.17,
+          -0.04,
+        );
+      else {
+        box(0.13, 0.08, 0.18, trim, 0, base + 0.12, -0.05);
+        part(
+          new THREE.SphereGeometry(0.052, 16, 10),
+          ivory,
+          0,
+          base + 0.2,
+          -0.05,
+        );
+        tube(
+          [
+            [-0.07, base + 0.12, -0.16],
+            [-0.065, base + 0.26, -0.16],
+            [0.065, base + 0.26, -0.16],
+            [0.07, base + 0.12, -0.16],
+          ],
+          0.011,
+          trim,
+        );
+      }
+      if (id !== "kart-oodi")
+        box(
+          width * 1.13,
+          0.025,
+          id === "race-future" ? 0.21 : 0.14,
+          trim,
+          0,
+          base + 0.08,
+          half - 0.05,
+        );
+      if (id !== "kart-oodi")
+        box(width * 1.1, 0.025, 0.12, paint, 0, base + 0.26, -half + 0.05);
+      if (id !== "kart-oodi")
+        for (const s of [-1, 1])
+          box(0.018, 0.17, 0.025, trim, s * 0.14, base + 0.17, -half + 0.05);
+      if (id === "kart-oodi")
+        tube(
+          [
+            [-w, 0.13, half - 0.03],
+            [-w, 0.13, half + 0.04],
+            [w, 0.13, half + 0.04],
+            [w, 0.13, half - 0.03],
+          ],
+          0.017,
+          chrome,
+        );
+      if (id === "race")
+        for (const side of [-1, 1]) {
+          const pod = coachwork([
+            [-0.31, 0.001, 0.12, 0.13],
+            [-0.22, 0.075, 0.11, 0.24],
+            [0.05, 0.08, 0.12, 0.23],
+            [0.18, 0.001, 0.16, 0.18],
+          ]);
+          pod.translate(side * 0.18, 0, 0);
+          part(pod, paint);
+          for (const axle of [-length * 0.32, length * 0.32]) {
+            tube(
+              [
+                [side * 0.06, 0.18, axle - 0.09],
+                [side * w, 0.115, axle],
+              ],
+              0.008,
+              trim,
+            );
+            tube(
+              [
+                [side * 0.06, 0.18, axle + 0.09],
+                [side * w, 0.115, axle],
+              ],
+              0.008,
+              trim,
+            );
+          }
+          box(0.028, 0.035, 0.15, trim, side * 0.05, base + 0.12, half - 0.08);
+        }
     }
   }
-  if (truck) box(width * 0.8, 0.025, 0.28, trim, 0, base + 0.14, -0.33);
+  if (truck) {
+    box(width * 0.75, 0.018, 0.43, trim, 0, base + 0.125, -0.33);
+    for (const side of [-1, 1])
+      box(0.028, 0.065, 0.43, paint, side * w * 0.84, base + 0.15, -0.33);
+    box(width * 0.85, 0.065, 0.025, paint, 0, base + 0.15, -half + 0.05);
+  }
+  if (!race && !tractor)
+    for (const side of [-1, 1])
+      for (const axle of [-length * 0.32, length * 0.32]) {
+        const radius = suv ? 0.126 : 0.113;
+        part(
+          new THREE.TorusGeometry(radius + 0.016, 0.008, 5, 24, Math.PI),
+          paint,
+          side * w,
+          radius,
+          axle,
+          0,
+          Math.PI / 2,
+        );
+      }
+  if (id === "kilomax") {
+    box(0.038, 0.004, 0.31, ivory, -0.037, base + 0.105, 0.31);
+    box(0.038, 0.004, 0.31, ivory, 0.037, base + 0.105, 0.31);
+    box(0.038, 0.006, 0.24, ivory, -0.037, top + 0.013, -0.05);
+    box(0.038, 0.006, 0.24, ivory, 0.037, top + 0.013, -0.05);
+  }
+  if (id === "police")
+    for (const side of [-1, 1]) {
+      box(
+        0.008,
+        0.065,
+        length * 0.67,
+        policeBlue,
+        side * (w + 0.003),
+        base + 0.04,
+        -0.015,
+      );
+      box(
+        0.008,
+        0.014,
+        length * 0.75,
+        ivory,
+        side * (w + 0.008),
+        base + 0.083,
+        -0.015,
+      );
+    }
   if (id === "suv-luxury")
     for (const side of [-1, 1]) {
       box(0.025, 0.025, 0.56, chrome, side * 0.16, top + 0.025, -0.07);
@@ -274,7 +545,7 @@ export function createTouringCar(id: string, color: string): CarModel {
     box(width * 0.9, 0.035, 0.04, chrome, 0, base - 0.025, -half - 0.006);
   }
   // Lamps and radiator, inset vents, rear diffuser and exhaust tips.
-  box(width * 0.56, 0.045, 0.025, trim, 0, base + 0.015, half - 0.012);
+  box(width * 0.56, 0.045, 0.025, trim, 0, base + 0.015, half + 0.01);
   for (const s of [-1, 1]) {
     if (retro)
       part(
@@ -282,19 +553,29 @@ export function createTouringCar(id: string, color: string): CarModel {
         headlight,
         s * w * 0.65,
         base + 0.07,
-        half - 0.015,
+        half + 0.012,
         Math.PI / 2,
       );
-    else
+    else {
+      box(
+        width * 0.27,
+        0.036,
+        0.024,
+        trim,
+        s * w * 0.52,
+        base + 0.075,
+        half + 0.008,
+      );
       box(
         width * 0.24,
         0.018,
         0.025,
         headlight,
-        s * w * 0.64,
+        s * w * 0.52,
         base + 0.075,
-        half - 0.035,
+        half + 0.019,
       );
+    }
     box(
       width * 0.24,
       0.022,
@@ -302,7 +583,7 @@ export function createTouringCar(id: string, color: string): CarModel {
       brakeLights,
       s * w * 0.64,
       base + 0.075,
-      -half + 0.012,
+      -half - 0.012,
     );
     box(0.06, 0.014, 0.13, trim, s * w * 0.58, base + 0.12, half * 0.46);
     part(
@@ -321,14 +602,14 @@ export function createTouringCar(id: string, color: string): CarModel {
         chrome,
         s * 0.05 + j * 0.012,
         base + 0.015,
-        half + 0.002,
+        half + 0.025,
       );
   }
   if (id === "police" || id === "taxi") {
     box(0.2, 0.035, 0.09, trim, 0, top + 0.025, -0.05);
     if (id === "taxi") box(0.13, 0.045, 0.055, paint, 0, top + 0.055, -0.05);
     else {
-      box(0.08, 0.035, 0.065, headlight, -0.055, top + 0.05, -0.05);
+      box(0.08, 0.035, 0.065, policeBlue, -0.055, top + 0.05, -0.05);
       box(0.08, 0.035, 0.065, brakeLights, 0.055, top + 0.05, -0.05);
     }
   }
@@ -353,6 +634,7 @@ export function createTouringCar(id: string, color: string): CarModel {
         new THREE.TorusGeometry(radius * 0.78, radius * 0.22, 8, 20),
         tyre,
       );
+      wheel.name = `wheel-${z > 0 ? "front" : "rear"}-${side > 0 ? "right" : "left"}`;
       wheel.rotation.y = Math.PI / 2;
       wheel.position.set(side * (w - 0.005), radius, z);
       root.add(wheel);
@@ -362,6 +644,12 @@ export function createTouringCar(id: string, color: string): CarModel {
       );
       rim.rotation.x = Math.PI / 2;
       wheel.add(rim);
+      const lip = new THREE.Mesh(
+        new THREE.TorusGeometry(radius * 0.65, 0.007, 5, 24),
+        chrome,
+      );
+      lip.position.z = side * 0.025;
+      wheel.add(lip);
       const disc = new THREE.Mesh(
         new THREE.CylinderGeometry(radius * 0.47, radius * 0.47, 0.026, 16),
         trim,
@@ -417,6 +705,8 @@ export function createTouringCar(id: string, color: string): CarModel {
     for (const g of geometrySet) g.dispose();
     for (const m of owned) m.dispose();
   };
+  root.userData.vehicleId = id;
+  root.userData.renderRevision = 2;
   return {
     root,
     body,

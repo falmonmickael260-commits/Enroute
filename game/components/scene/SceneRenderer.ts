@@ -11,9 +11,6 @@ import {
   createBlobShadow,
   createBullBar,
   createFlame,
-  createMoto,
-  createQuad,
-  createScooter,
   createGlowRing,
   createJerrycan,
   createLimitPlate,
@@ -29,6 +26,7 @@ import {
 } from "./models";
 import { loadCarModel } from "./carModels";
 import { createTouringCar } from "./premiumCars";
+import { buildVehicleModel } from "./vehicleModels";
 
 /**
  * Draws and animates the 3D pieces of a race: cars, hazards, protections and
@@ -95,7 +93,7 @@ const easeOutBack = (t: number) => {
 };
 const clamp01 = (t: number) => Math.max(0, Math.min(1, t));
 /** Vehicles modelled in code, by id (the others are loaded from their file). */
-const BUILT: Record<string, (color: string) => CarModel> = { kilomax: (color) => createTouringCar("kilomax", color), moto: createMoto, scooter: createScooter, quad: createQuad };
+const BUILT: Record<string, (color: string) => CarModel> = Object.fromEntries(["kilomax","moto","scooter","quad"].map(id=>[id,(color:string)=>buildVehicleModel(id,color)]));
 const UNIT_SCALE = new THREE.Vector3(1, 1, 1);
 /** A wheel's own size, as its model made it (the Kenney cars shrink theirs). */
 const restScale = (wheel: THREE.Object3D): THREE.Vector3 => (wheel.userData.rest as THREE.Vector3 | undefined) ?? UNIT_SCALE;

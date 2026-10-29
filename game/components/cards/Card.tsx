@@ -6,6 +6,8 @@ import { forwardRef } from "react";
 import type { CardCategory, CardDef } from "@/game/types/game";
 import { getCardDef } from "@/game/lib/engine/cardCatalog";
 import { CardIllustration } from "./CardIllustration";
+import { CardArt } from "./CardArt";
+import { CARD_IDENTITY, CardCategoryMark } from "./CardCategoryMark";
 import { BRAND, BRAND_NAME, LOGO_ASPECT, LOGO_READY } from "@/game/lib/brand";
 
 export const CATEGORY_STYLE: Record<CardCategory, { from: string; to: string; label: string; accent: string }> = {
@@ -46,7 +48,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(function Card(
   const def = defId ? getCardDef(defId) : null;
   const accent = def ? CATEGORY_STYLE[def.category].accent : "#e6bf5c";
   const interactive = Boolean(onClick) && !disabled;
-  const label = title ?? (def ? `${def.title} — ${def.subtitle}` : faceDown ? "Carte face cachée" : "Carte");
+  const label = title ?? (def ? `${CARD_IDENTITY[def.category].label} : ${def.title} — ${def.subtitle}` : faceDown ? "Carte face cachée" : "Carte");
 
   return (
     <motion.div
@@ -55,6 +57,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(function Card(
       style={style}
       title={title}
       data-card-id={def?.id}
+      data-card-category={def?.category}
       role={onClick ? "button" : undefined}
       aria-label={onClick ? label : undefined}
       aria-disabled={onClick ? disabled : undefined}
@@ -132,20 +135,24 @@ function CardBack() {
 
 function CardFace({ def, size }: { def: CardDef; size: CardSize }) {
   const cat = CATEGORY_STYLE[def.category];
+  const identity = CARD_IDENTITY[def.category];
   const s = SIZES[size];
   const compact = size === "xs" || size === "sm";
   return (
     <div
       className="absolute inset-0"
       style={{
-        background: "linear-gradient(170deg, #202b34 0%, #0b1119 100%)",
-        border: def.category === "special" ? "2px solid #d9aa45" : "1px solid rgba(0,0,0,0.3)",
+        background: `linear-gradient(170deg, ${identity.dark} 0%, #0b1119 100%)`,
+        border: `2px solid ${identity.color}`,
         borderRadius: "inherit",
       }}
     >
       {/* illustration panel */}
+      <div className="card-family-band" style={{background:identity.color,color:identity.dark,fontSize:compact?"6px":size==="md"?"8px":size==="lg"?"10px":"12px"}}>
+        <CardCategoryMark category={def.category}/><span>{identity.label}</span>
+      </div>
       <div
-        className="absolute inset-x-0 top-0 h-[66%] overflow-hidden"
+        className="absolute inset-x-0 top-[15%] h-[49%] overflow-hidden"
         style={{
           borderRadius: compact ? "6px" : "10px",
           background: `repeating-conic-gradient(from 0deg at 50% 62%, rgba(255,255,255,0.11) 0deg 7deg, transparent 7deg 18deg), radial-gradient(90% 70% at 50% 35%, rgba(255,255,255,0.28), transparent 60%), linear-gradient(165deg, ${cat.from}, ${cat.to})`,
@@ -164,12 +171,9 @@ function CardFace({ def, size }: { def: CardDef; size: CardSize }) {
             {!compact ? <span className="font-hud text-[0.45em] font-bold leading-none">KM</span> : null}
           </div>
         ) : null}
-        {!compact && !def.value ? (
-          <span className="absolute right-[6%] top-[7%] font-hud text-[0.5rem] font-bold uppercase tracking-[0.14em] text-white/85">
-            {cat.label}
-          </span>
-        ) : null}
+        {!def.value && <div className="absolute bottom-1 right-1 h-[28%] aspect-square rounded-md bg-black/75 p-[3%] text-white"><CardArt def={def}/></div>}
       </div>
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-[36%]" style={{background:identity.pattern}} />
 
       {/* title block */}
       <div className="absolute inset-x-[6%] bottom-[5%] top-[67%] flex flex-col items-center justify-center text-center text-white">

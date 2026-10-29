@@ -18,9 +18,10 @@ import {
 import { canOfferCard as isCardPlayable } from "@/game/lib/cardAffordance";
 import { useElementSize } from "@/game/hooks/useElementSize";
 import { useShortLandscape } from "@/game/hooks/useShortLandscape";
-import { Card, CATEGORY_STYLE } from "@/game/components/cards/Card";
+import { Card } from "@/game/components/cards/Card";
 import { CardArt } from "@/game/components/cards/CardArt";
 import { CardIllustration } from "@/game/components/cards/CardIllustration";
+import { CARD_IDENTITY, CardCategoryLegend, CardCategoryMark } from "@/game/components/cards/CardCategoryMark";
 
 /** Why a card can't be played right now, in the player's words. */
 function whyNot(player: PlayerState, def: CardDef, state: GameState): string {
@@ -58,43 +59,46 @@ function whyNot(player: PlayerState, def: CardDef, state: GameState): string {
  * full size with its description and what you can do with it.
  */
 function HandCard({ def, playable, dim, selected, onClick }: { def: CardDef; playable: boolean; dim: boolean; selected: boolean; onClick: () => void }) {
-  const cat = CATEGORY_STYLE[def.category];
+  const identity = CARD_IDENTITY[def.category];
   return (
     <button
       type="button"
       data-card-id={def.id}
+      data-card-category={def.category}
       onClick={onClick}
-      aria-label={`${def.title} — ${def.subtitle}`}
+      aria-label={`${identity.label} : ${def.title} — ${def.subtitle}`}
       aria-pressed={selected}
       className={clsx(
         "relative h-full w-full overflow-hidden rounded-xl border-2 text-left shadow-[0_8px_18px_rgba(0,0,0,0.5)] transition-[filter,border-color]",
         selected ? "border-[#ffd23f]" : playable ? "border-white" : "border-white/60",
         dim && "brightness-[0.55] saturate-[0.6]",
       )}
-      style={{ background: `linear-gradient(165deg, ${cat.from}, ${cat.to})` }}
+      style={{ background: identity.dark, borderColor: selected ? "#fff" : identity.color }}
     >
       <div className="absolute inset-0">
         <CardIllustration def={def} />
         <div className="absolute inset-0 bg-gradient-to-b from-black/45 via-transparent to-black/75" />
       </div>
       {/* index corner: what matters, readable when cards overlap */}
-      <div className="absolute left-[4px] top-[4px] flex w-[32px] flex-col items-center rounded-md bg-black/65 py-1 text-white drop-shadow-[0_2px_2px_rgba(0,0,0,0.45)]">
+      <div className="hand-card-spine" style={{background:identity.color,color:identity.dark}}>
+        <CardCategoryMark category={def.category} className="h-[18px] w-[18px]"/>
         {def.value ? (
           <>
-            <span className={clsx("font-display leading-[0.9]", def.value >= 100 ? "text-[1.4rem]" : "text-[1.7rem]")}>{def.value}</span>
+            <span className="font-display text-[1.3rem] leading-[0.9]">{def.value}</span>
             <span className="font-hud text-[0.6rem] font-bold leading-none">KM</span>
           </>
         ) : (
-          <span className="block h-[30px] w-[30px]">
+          <span className="mt-1 block h-[28px] w-[28px]">
             <CardArt def={def} />
           </span>
         )}
+        <span className="hand-card-family">{identity.label}</span>
       </div>
       {/* name band along the bottom */}
-      <div className="absolute inset-x-0 bottom-0 border-t border-white/15 bg-[#0b1422]/95 px-1 py-[5px] text-center">
+      <div className="absolute bottom-0 left-[34px] right-0 border-t border-white/15 px-1 py-[5px] text-center" style={{background:identity.dark}}>
         <p className="truncate font-display text-[0.8rem] leading-none tracking-wide text-white">{def.title}</p>
       </div>
-      {playable ? <span className="absolute right-1 top-1 h-2.5 w-2.5 rounded-full bg-[#4cff8f] shadow-[0_0_8px_#4cff8f]" /> : null}
+      {playable ? <span aria-hidden className="absolute right-1 top-1 flex h-4 w-4 items-center justify-center rounded-full bg-black/75 text-xs text-white">✓</span> : null}
     </button>
   );
 }
@@ -194,6 +198,7 @@ export function SceneHand({
 
   const prompt = (
     <>
+      <CardCategoryLegend />
       <p className="text-center font-hud text-[0.7rem] font-semibold leading-tight text-white/70">
         {mustDraw ? (short ? "← Touchez la pioche" : "↖ Touchez la pioche") : canAct ? "Touchez une carte" : ""}
       </p>

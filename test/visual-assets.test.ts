@@ -22,7 +22,7 @@ test("every vehicle and every card has its delivered optimized illustration", ()
 });
 
 for (const car of CARS.filter(
-  (c) => !["supercar", "retro", "moto", "scooter", "quad"].includes(c.id),
+  (c) => !["moto", "scooter", "quad"].includes(c.id),
 ))
   test(`${car.id}: finite geometry, animated wheels and bounded draw calls`, () => {
     const model = createTouringCar(car.id, "#c63032");

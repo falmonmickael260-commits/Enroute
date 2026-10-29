@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import type { Placement, ScreenPoint, Shot, Stage, StageCar } from "./stage";
 import type { AmbianceId } from "@/game/types/game";
+import { crownGeometry, landscapeTexture, ridgeGeometry } from "./landscapeDetails";
 
 /**
  * A small Mediterranean coast built in 3D: a winding road with red and white
@@ -589,10 +590,10 @@ export class WorldStage implements Stage {
     const pos = geo.attributes.position as THREE.BufferAttribute;
     const colors = new Float32Array(pos.count * 3);
     const c = new THREE.Color();
-    const grass = new THREE.Color("#7eab47");
-    const olive = new THREE.Color("#a3a257");
-    const rock = new THREE.Color("#d2c3a1");
-    const sand = new THREE.Color("#ecdcae");
+    const grass = new THREE.Color("#718459");
+    const olive = new THREE.Color("#96936d");
+    const rock = new THREE.Color("#bdb09a");
+    const sand = new THREE.Color("#d9c8a7");
     for (let i = 0; i < pos.count; i++) {
       const x = pos.getX(i);
       const z = pos.getZ(i);
@@ -610,10 +611,11 @@ export class WorldStage implements Stage {
     geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
     geo.computeVertexNormals();
     // drawn a hair behind what lies on it, so the road never flickers through the grass
-    const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, ...BEHIND }));
+    const ground=landscapeTexture("ground");
+    const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, map:ground,bumpMap:ground,bumpScale:.055,roughness: 0.96, ...BEHIND }));
     mesh.receiveShadow = true;
     scene.add(mesh);
-    this.disposables.push(geo, mesh.material as THREE.Material);
+    this.disposables.push(geo, ground, mesh.material as THREE.Material);
   }
 
   private buildSea(scene: THREE.Scene) {
@@ -807,9 +809,9 @@ export class WorldStage implements Stage {
         const d = 1.4 + r() * 1.2;
         const h = 1.3 + (r() < 0.4 ? 1.1 : 0) + r() * 0.4;
         const yaw = r() * Math.PI;
-        walls.push({ m: mat4(x, y + h / 2, z, w, h, d, yaw), c: new THREE.Color().setHSL(0.09 + r() * 0.03, 0.45 + r() * 0.2, 0.8 + r() * 0.08) });
+        walls.push({ m: mat4(x, y + h / 2, z, w, h, d, yaw), c: new THREE.Color().setHSL(0.09 + r() * 0.03, 0.13 + r() * 0.14, 0.76 + r() * 0.12) });
         houses.push({ x, y, z, w, h, d, yaw });
-        roofs.push({ m: mat4(x, y + h + 0.42, z, w * 0.78, 0.85, d * 0.78, yaw + Math.PI / 4), c: new THREE.Color().setHSL(0.04 + r() * 0.02, 0.6, 0.45 + r() * 0.1) });
+        roofs.push({ m: mat4(x, y + h + 0.42, z, w * 0.78, 0.85, d * 0.78, yaw + Math.PI / 4), c: new THREE.Color().setHSL(0.04 + r() * 0.02, 0.38, 0.47 + r() * 0.12) });
         if (r() < 0.5) bushes.push({ m: mat4(x + w * 0.7, y + 0.35, z + 0.4, 0.7, 0.6, 0.7), c: new THREE.Color("#d9468f") });
       }
     }
@@ -833,7 +835,7 @@ export class WorldStage implements Stage {
       } else if (kind < 0.55) {
         const h = 2 + r() * 1.2;
         trunks.push({ m: mat4(x, y + h / 2, z, 0.14, h, 0.14) });
-        pines.push({ m: mat4(x, y + h + 0.1, z, 1.9 + r() * 0.8, 0.8, 1.9 + r() * 0.8, r() * 3) });
+        pines.push({ m: mat4(x, y + h + 0.1, z, 1.9 + r() * 0.8, 1.3, 1.9 + r() * 0.8, r() * 3) });
       } else if (kind < 0.9) {
         const s = behindStart ? 0.4 + r() * 0.3 : 0.5 + r() * 0.7;
         bushes.push({ m: mat4(x, y + s * 0.4, z, s * 1.2, s * 0.9, s * 1.2), c: new THREE.Color().setHSL(0.24 + r() * 0.06, 0.45, 0.24 + r() * 0.1) });
@@ -854,17 +856,20 @@ export class WorldStage implements Stage {
       scene.add(mesh);
       this.disposables.push(geo, material);
     };
-    add(new THREE.ConeGeometry(0.5, 1, 7), new THREE.MeshStandardMaterial({ roughness: 0.9 }), cypress);
+    add(crownGeometry("cypress"), new THREE.MeshStandardMaterial({ roughness: 0.95 }), cypress);
     add(new THREE.CylinderGeometry(1, 1, 1, 6), new THREE.MeshStandardMaterial({ color: "#6b4a2e", roughness: 1 }), trunks);
-    add(new THREE.SphereGeometry(0.6, 9, 6), new THREE.MeshStandardMaterial({ color: "#2f6a2c", roughness: 0.9, flatShading: true }), pines);
-    add(new THREE.IcosahedronGeometry(0.6, 1), new THREE.MeshStandardMaterial({ roughness: 0.9, flatShading: true }), bushes);
-    add(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ roughness: 0.85 }), walls);
-    add(new THREE.ConeGeometry(0.72, 1, 4), new THREE.MeshStandardMaterial({ roughness: 0.8, flatShading: true }), roofs);
+    add(crownGeometry("pine"), new THREE.MeshStandardMaterial({ color: "#38573d", roughness: 0.95 }), pines);
+    add(crownGeometry("bush"), new THREE.MeshStandardMaterial({ roughness: 0.95 }), bushes);
+    const plaster=landscapeTexture("plaster"),tiles=landscapeTexture("tiles"),windowMap=landscapeTexture("window");
+    this.disposables.push(plaster,tiles,windowMap);
+    add(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ map:plaster,bumpMap:plaster,bumpScale:.025,roughness: 0.92 }), walls);
+    add(new THREE.ConeGeometry(0.72, 1, 4), new THREE.MeshStandardMaterial({ map:tiles,bumpMap:tiles,bumpScale:.04,roughness: 0.85, flatShading: true }), roofs);
 
-    // lit windows after dark
-    if (this.look.lights > 0) {
+    // Shuttered windows in daylight; only selected houses glow after dark.
+    {
       const lit = rng(808);
       const windows: { m: THREE.Matrix4 }[] = [];
+      const litWindows: {m:THREE.Matrix4}[]=[];
       for (const hs of houses) {
         const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, hs.yaw, 0));
         for (const [lx, lz, face] of [
@@ -874,18 +879,21 @@ export class WorldStage implements Stage {
           [0.5, 0.15, Math.PI / 2],
           [-0.5, -0.15, -Math.PI / 2],
         ] as const) {
-          if (lit() > 0.55 * this.look.lights + 0.1) continue;
+          const illuminated=lit() < 0.55 * this.look.lights;
           const local = new THREE.Vector3(Math.abs(lx) === 0.5 ? lx * hs.w + Math.sign(lx) * 0.01 : lx * hs.w, hs.h * 0.6, Math.abs(lz) === 0.5 ? lz * hs.d + Math.sign(lz) * 0.01 : lz * hs.d).applyQuaternion(q);
-          windows.push({
+          const windowInstance = {
             m: new THREE.Matrix4().compose(
               local.add(new THREE.Vector3(hs.x, hs.y, hs.z)),
               new THREE.Quaternion().setFromEuler(new THREE.Euler(0, hs.yaw + face, 0)),
               new THREE.Vector3(0.28, 0.36, 1),
             ),
-          });
+          };
+          windows.push(windowInstance);
+          if(illuminated) litWindows.push(windowInstance);
         }
       }
-      add(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: "#ffcf73", side: THREE.DoubleSide }), windows, false);
+      add(new THREE.PlaneGeometry(1, 1), new THREE.MeshStandardMaterial({ map:windowMap,roughness:.55,side:THREE.DoubleSide }), windows.filter(w=>!litWindows.includes(w)), false);
+      if(litWindows.length) add(new THREE.PlaneGeometry(1,1),new THREE.MeshStandardMaterial({map:windowMap,color:"#ffda92",emissive:"#ffc870",emissiveMap:windowMap,emissiveIntensity:1.2,side:THREE.DoubleSide}),litWindows,false);
     }
 
     // boat = hull + sail
@@ -1433,8 +1441,8 @@ export class WorldStage implements Stage {
       const h = 12 + r() * 14;
       mountains.push({ m: mat4(-58 - r() * 10, h / 2 - 2, z, 26, h, 26, r() * 3), c: new THREE.Color().setHSL(0.26, 0.3, 0.38 + r() * 0.06) });
     }
-    const mGeo = new THREE.ConeGeometry(1, 1, 7);
-    const mMat = new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true });
+    const mGeo = ridgeGeometry();
+    const mMat = new THREE.MeshStandardMaterial({ roughness: 1 });
     const mMesh = instanced(mGeo, mMat, mountains, false);
     scene.add(mMesh);
 
@@ -1635,10 +1643,10 @@ export class WorldStage implements Stage {
     cam.lookAt(shot.look);
     cam.updateMatrixWorld();
     const v = new THREE.Vector3();
-    return cars.every((c) => {
-      v.copy(c.position).project(cam);
-      return v.z < 1 && Math.abs(v.x) < 0.9 && v.y > -0.85 && v.y < 0.6;
-    });
+    return cars.every((c) => [-.4,.4].every(x=>[-.65,.65].every(z=>{
+      v.set(x,.25,z).applyAxisAngle(new THREE.Vector3(0,1,0),c.yaw).add(c.position).project(cam);
+      return v.z < 1 && Math.abs(v.x) < 0.93 && v.y > -0.8 && v.y < 0.6;
+    })));
   }
 
   /** Behind the last car, looking down the road past the leader. */
@@ -1651,14 +1659,13 @@ export class WorldStage implements Stage {
     const spread = frontLen - rearLen;
     // cars in the lower third, centred, the road running on towards the horizon
     const mid = this.road.at((rearLen + frontLen) / 2);
-    const back = 11 + spread * 0.55;
-    const height = 5.5 + spread * 0.22;
-    const pos = mid.point.clone().addScaledVector(mid.forward, -back).add(new THREE.Vector3(0, height, 0));
-    const run = back + 24;
-    const look = mid.point.clone().addScaledVector(mid.forward, 24);
-    look.y = pos.y - run * Math.tan(THREE.MathUtils.degToRad(16));
+    const center=cars.length ? cars.reduce((sum,car)=>sum.add(car.position),new THREE.Vector3()).multiplyScalar(1/cars.length) : mid.point.clone();
+    const back = 8.6 + spread * 0.55;
+    const height = 4.2 + spread * 0.22;
+    const pos = center.clone().addScaledVector(mid.forward, -back).addScaledVector(mid.right, .9).add(new THREE.Vector3(0, height, 0));
+    const look = center.clone().addScaledVector(mid.forward, 4).add(new THREE.Vector3(0,.4,0));
     // idle drift keeps the world alive
-    pos.x += Math.sin(performance.now() / 5200) * 0.8;
+    pos.x += Math.sin(performance.now() / 5200) * 0.18;
     return { pos, look };
   }
 

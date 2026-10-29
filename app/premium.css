@@ -1,4 +1,71 @@
 /* Grand tourisme: presentation overrides, independent of game state. */
+.card-family-band {
+  position: absolute;
+  inset: 0 0 auto;
+  height: 15%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.45em;
+  font-family: var(--font-geist-sans), sans-serif;
+  font-weight: 850;
+  letter-spacing: 0.08em;
+  z-index: 1;
+}
+.card-family-band svg {
+  width: 1.3em;
+  height: 1.3em;
+  flex: none;
+}
+.hand-card-spine {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 34px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 4px 1px;
+  gap: 2px;
+  box-shadow: 2px 0 6px #0008;
+}
+.hand-card-family {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  margin-top: auto;
+  font:
+    850 8px var(--font-geist-sans),
+    sans-serif;
+  letter-spacing: 0.08em;
+}
+.card-category-legend {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin: 3px 0;
+  font:
+    750 8px var(--font-geist-sans),
+    sans-serif;
+  letter-spacing: 0.06em;
+}
+.card-category-legend > span {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+.card-category-legend svg {
+  width: 12px;
+  height: 12px;
+}
+@media (orientation: landscape) and (max-height: 520px) {
+  .hand-card-family {
+    display: none;
+  }
+  .card-category-legend {
+    margin: 0;
+    font-size: 7px;
+  }
+}
 .race-impact {
   position: absolute;
   inset: 0;
