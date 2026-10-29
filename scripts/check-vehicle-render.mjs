@@ -1,6 +1,6 @@
 import { build } from "esbuild";
 import { chromium } from "playwright";
-import { mkdirSync, readFileSync } from "node:fs";
+import { mkdirSync } from "node:fs";
 const output = process.env.TEST_ARTIFACTS ?? "/tmp/kilomax-vehicles";
 mkdirSync(output, { recursive: true });
 const bundle = await build({
@@ -26,17 +26,6 @@ try {
   await page.setContent(
     "<html><body style='margin:0;background:#15212b'></body></html>",
   );
-  const ids = [
-    "supercar", "retro", "sedan-sports", "hatchback-sports", "sedan",
-    "suv", "suv-luxury", "van", "truck", "race", "race-future",
-    "kart-oodi", "tractor", "taxi", "police", "kilomax", "moto",
-    "scooter", "quad",
-  ];
-  const sources = Object.fromEntries(ids.map((id) => [
-    id,
-    `data:image/webp;base64,${readFileSync(`public/images/premium/vehicles/${id}.webp`).toString("base64")}`,
-  ]));
-  await page.evaluate((art) => { window.vehicleArtSources = art; }, sources);
   await page.addScriptTag({ content: bundle.outputFiles[0].text });
   await page.waitForFunction(() => Array.isArray(window.vehicleGalleryResults), null, { timeout: 20000 });
   await page.screenshot({ path: `${output}/native-vehicles.png` });

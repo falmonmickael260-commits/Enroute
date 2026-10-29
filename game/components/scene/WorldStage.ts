@@ -1624,7 +1624,7 @@ export class WorldStage implements Stage {
   resize(width: number, height: number, bottomInset: number) {
     this.width = width;
     this.height = height;
-    this.carScale = width < 420 ? 0.64 : width < 700 ? 0.7 : width < 1100 ? 0.8 : 0.9;
+    this.carScale = width < 420 ? 1.02 : width < 700 ? 1 : width < 1100 ? 0.96 : 0.92;
     // keep the action centred in the part of the screen above the hand
     const virtualH = height + bottomInset;
     this.virtualHeight = virtualH;

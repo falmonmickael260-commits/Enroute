@@ -1,7 +1,8 @@
 import * as THREE from "three";
 import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import type { CarModel } from "./models";
-import { isCarId } from "../../lib/cars";
+import { BUILT_CARS, isCarId } from "../../lib/cars";
+import { buildVehicleModel } from "./vehicleModels";
 
 /**
  * Kenney Car Kit vehicles (CC0) turned into the CarModel the scene animates:
@@ -14,7 +15,6 @@ const SCALE = 0.43;
 
 const gltfCache = new Map<string, Promise<GLTF | null>>();
 const paintCache = new Map<string, Promise<THREE.Texture | null>>();
-const vehicleImageCache = new Map<string, Promise<HTMLImageElement | null>>();
 
 const ART_HUE: Record<string, number> = {
   "#e8352b": 0,
@@ -25,26 +25,12 @@ const ART_HUE: Record<string, number> = {
   "#f04aa6": 320,
 };
 
-/** The generated, transparent cutout art used for each chosen car in a race. */
+/** The generated transparent cutout art used in the garage and previews. */
 export function vehicleArtUrl(id: string) {
   return isCarId(id) ? `/images/premium/vehicles/${id}.webp` : null;
 }
 
-function loadVehicleImage(id: string) {
-  let pending = vehicleImageCache.get(id);
-  if (!pending && typeof Image !== "undefined") {
-    pending = new Promise((resolve) => {
-      const image = new Image();
-      image.onload = () => resolve(image);
-      image.onerror = () => resolve(null);
-      image.src = vehicleArtUrl(id) ?? "";
-    });
-    vehicleImageCache.set(id, pending);
-  }
-  return pending ?? Promise.resolve(null);
-}
-
-/** Builds the exact same CarModel contract around the premium in-game artwork. */
+/** Builds a billboard preview for visual galleries; races use mesh/GLB models. */
 export function createArtworkVehicleModel(
   id: string,
   color: string,
@@ -120,8 +106,7 @@ function loadGltf(id: string): Promise<GLTF | null> {
 
 /** Starts downloading a car before it's needed (e.g. as soon as it's picked). */
 export function prefetchCar(id: string) {
-  if (isCarId(id)) void loadVehicleImage(id);
-  else void loadGltf(id);
+  if (!BUILT_CARS.has(id)) void loadGltf(id);
 }
 
 // ---------------------------------------------------------------- repaint
@@ -279,13 +264,12 @@ function localAxis(node: THREE.Object3D, world: THREE.Vector3): "x" | "y" | "z" 
  * car it already shows.
  */
 export async function loadCarModel(id: string, color: string, repaint: boolean, castShadow: boolean): Promise<CarModel | null> {
-  if (isCarId(id)) {
-    const image = await loadVehicleImage(id);
-    if (!image) return null;
-    return createArtworkVehicleModel(id, color, repaint, image);
-  }
+  // The premium WebP cutouts are for the garage only. During a race use real
+  // geometry so the body has depth and its wheels can rotate with distance.
+  if (BUILT_CARS.has(id)) return buildVehicleModel(id, color);
   const gltf = await loadGltf(id);
-  if (!gltf) return null;
+  // Keep a fully 3D procedural car visible if a model file cannot be loaded.
+  if (!gltf) return isCarId(id) ? buildVehicleModel(id, color) : null;
   const scene = gltf.scene.clone(true);
   const spec = SPECS[id] ?? KENNEY;
 
@@ -301,6 +285,9 @@ export async function loadCarModel(id: string, color: string, repaint: boolean, 
       });
     if ((o as THREE.Mesh).isMesh) all.push(o as THREE.Mesh);
   });
+  // The retro GLB has its tyres baked into one mesh, so there are no wheel
+  // nodes to animate. Use the fully 3D procedural model with real wheel hubs.
+  if (wheels.length === 0 && isCarId(id)) return buildVehicleModel(id, color);
   // remember each wheel's size and axes: animations spin it around its axle
   // and squash it vertically, whatever the file's own orientation
   scene.updateMatrixWorld(true);
@@ -375,6 +362,7 @@ export async function loadCarModel(id: string, color: string, repaint: boolean, 
   const size = box.getSize(new THREE.Vector3());
 
   const root = new THREE.Group();
+  root.userData.renderSource = "gltf-3d";
   const body = new THREE.Group();
   root.add(body);
   body.add(inner);
