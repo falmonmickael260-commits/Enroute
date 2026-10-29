@@ -6,7 +6,7 @@
 - 15 illustrations pour les attaques, défenses et cartes spéciales existantes.
 - 1 panorama côtier, également cadré différemment pour les cinq cartes de distance.
 
-Les textes, noms, valeurs et effets sont rendus depuis le catalogue original du jeu ; ils ne sont pas inscrits dans les images. Les variations de peinture du garage sont des traitements CSS cosmétiques. Les illustrations restent distinctes des modèles du plateau : la course utilise désormais 16 modèles 3D routiers reconstruits et trois véhicules (moto, scooter, quad) retravaillés à partir des géométries procédurales existantes. Les anciens modèles GLTF demeurent disponibles comme solution de repli pour les identifiants inconnus.
+Les textes, noms, valeurs et effets sont rendus depuis le catalogue original du jeu ; ils ne sont pas inscrits dans les images. Les variations de peinture du garage et du plateau sont cosmétiques. Les 19 illustrations détourées de véhicules servent désormais aussi de pièces pendant la course 3D : chaque pilote retrouve son modèle choisi, avec une teinte liée à sa couleur lorsque le modèle l’autorise. Les modèles 3D détaillés historiques restent utilisés comme secours si l’illustration ne peut pas être chargée.
 
 Direction : grand tourisme méditerranéen, carrosseries métalliques, éclairage cinématographique, cadrage cohérent. Les prompts complets se trouvent dans `docs/premium-art-prompts.json`. Les fichiers livrés sont des WebP optimisés ; les originaux de génération restent hors du dépôt. Aucune photographie de constructeur ni marque automobile n’a été importée pour cette collection. Une revue artistique humaine reste recommandée avant publication commerciale.
 

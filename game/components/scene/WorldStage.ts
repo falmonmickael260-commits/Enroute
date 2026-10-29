@@ -526,6 +526,7 @@ export class WorldStage implements Stage {
     const look = this.look;
     const sky = skyTexture(look.sky);
     scene.background = sky;
+    this.loadPanoramicBackdrop(scene);
     scene.fog = new THREE.Fog(look.fog[0], look.fog[1], look.fog[2]);
     this.disposables.push(sky);
 
@@ -562,6 +563,42 @@ export class WorldStage implements Stage {
     this.buildCelebration(scene);
     this.buildLighthouse(scene);
     this.buildSky(scene);
+  }
+
+  /** A detailed coastal horizon sits behind the playable 3D world. */
+  private loadPanoramicBackdrop(scene: THREE.Scene) {
+    const image = new Image();
+    image.onload = () => {
+      if (this.scene !== scene) return;
+      const canvas = document.createElement("canvas");
+      canvas.width = image.naturalWidth;
+      canvas.height = image.naturalHeight;
+      const context = canvas.getContext("2d");
+      if (!context) return;
+      const night = this.look === LOOKS.nuit;
+      const dusk = this.look === LOOKS.crepuscule;
+      context.filter = night
+        ? "brightness(0.48) saturate(0.72) hue-rotate(18deg)"
+        : dusk
+          ? "brightness(0.86) sepia(0.18) saturate(0.9)"
+          : "none";
+      context.drawImage(image, 0, 0);
+      if (night || dusk) {
+        context.filter = "none";
+        context.globalCompositeOperation = "source-atop";
+        context.fillStyle = night ? "rgba(17, 31, 78, 0.28)" : "rgba(222, 121, 73, 0.12)";
+        context.fillRect(0, 0, canvas.width, canvas.height);
+      }
+      const panorama = new THREE.CanvasTexture(canvas);
+      panorama.colorSpace = THREE.SRGBColorSpace;
+      panorama.mapping = THREE.EquirectangularReflectionMapping;
+      panorama.anisotropy = 4;
+      scene.background = panorama;
+      scene.backgroundRotation.y = Math.PI;
+      scene.backgroundIntensity = night ? 0.82 : dusk ? 0.95 : 1.08;
+      this.disposables.push(panorama);
+    };
+    image.src = "/images/premium/landscape-world.webp";
   }
 
   // ------------------------------------------------------------ world building
@@ -812,7 +849,7 @@ export class WorldStage implements Stage {
         walls.push({ m: mat4(x, y + h / 2, z, w, h, d, yaw), c: new THREE.Color().setHSL(0.09 + r() * 0.03, 0.13 + r() * 0.14, 0.76 + r() * 0.12) });
         houses.push({ x, y, z, w, h, d, yaw });
         roofs.push({ m: mat4(x, y + h + 0.42, z, w * 0.78, 0.85, d * 0.78, yaw + Math.PI / 4), c: new THREE.Color().setHSL(0.04 + r() * 0.02, 0.38, 0.47 + r() * 0.12) });
-        if (r() < 0.5) bushes.push({ m: mat4(x + w * 0.7, y + 0.35, z + 0.4, 0.7, 0.6, 0.7), c: new THREE.Color("#d9468f") });
+        if (r() < 0.5) bushes.push({ m: mat4(x + w * 0.7, y + 0.35, z + 0.4, 0.7, 0.6, 0.7), c: new THREE.Color().setHSL(0.27 + r() * 0.07, 0.34, 0.28 + r() * 0.12) });
       }
     }
 
@@ -984,7 +1021,7 @@ export class WorldStage implements Stage {
     }
 
     // grass and wild flowers along the verge on the hill side
-    const flowerColors = ["#f7d23e", "#ffffff", "#d9468f", "#9b6ee8"];
+    const flowerColors = ["#e8c879", "#f3e8d0", "#c98773", "#d4bf8b"];
     for (let l = start; l < this.road.total; l += 0.9) {
       if (this.onBridge(l) || r() < 0.35) continue;
       const { point, right } = this.road.at(l);
@@ -1082,7 +1119,7 @@ export class WorldStage implements Stage {
     const people: { m: THREE.Matrix4; c: THREE.Color }[] = [];
     const heads: { m: THREE.Matrix4; c: THREE.Color }[] = [];
     const flags: { m: THREE.Matrix4; c: THREE.Color }[] = [];
-    const shirts = ["#e8352b", "#1f86ea", "#ffc21a", "#2fae55", "#f04aa6", "#ffffff", "#8e4cf0", "#ff7a1a"];
+    const shirts = ["#75443a", "#425b66", "#a18148", "#52694f", "#8a5d70", "#d3c4a6", "#574d68", "#9b6145"];
     const skins = ["#f1c7a5", "#d9a37c", "#a8714b", "#6e4429"];
     const poles: { m: THREE.Matrix4 }[] = [];
     const pennants: { m: THREE.Matrix4; c: THREE.Color }[] = [];
@@ -1884,6 +1921,7 @@ export class WorldStage implements Stage {
   }
 
   dispose() {
+    this.scene = null;
     this.disposables.forEach((d) => d.dispose());
     if (this.signs) {
       this.signs.traverse((o) => {

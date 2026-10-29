@@ -1,10 +1,10 @@
 # Refonte des véhicules en course
 
-Cette livraison cible le plateau pendant une partie, et non le menu du garage. Les 19 identifiants de véhicules existants sont conservés. La course construit maintenant 16 carrosseries 3D routières dédiées et retravaille les géométries des trois véhicules à deux/quatre roues existants (moto, scooter, quad). Les identifiants inconnus gardent le chargeur GLTF de secours.
+Cette livraison cible le plateau pendant une partie, et non le menu du garage. Les 19 identifiants de véhicules existants sont conservés. La course 3D affiche maintenant directement les 19 illustrations détourées haute résolution : supercar, rétro, citadine, berline, SUV, utilitaire, pick-up, formule, prototype, kart, tracteur, taxi, police, moto, scooter, quad et KILOMAX. Chaque pilote garde son modèle et sa couleur cosmétique. Les anciens modèles GLTF/procéduraux restent disponibles comme secours en cas d’illustration indisponible.
 
-Les carrosseries ont des profils et accessoires propres selon leur famille : capot et ailes profilés, arches découpées, vitres séparées par des montants, rétroviseurs fixés, éclairage avant/arrière, roues et freins détaillés. Les variantes comprennent notamment SUV, utilitaire, pick-up, rétro, formule, prototype, kart, taxi et police. La peinture continue de suivre la couleur du joueur et les roues/suspensions continuent d'utiliser l'animation existante. Aucun état ou identifiant de joueur n'est remplacé.
+Ces images donnent enfin une silhouette propre à chaque modèle dans la course (la construction procédurale précédente réutilisait des carrosseries trop similaires). Le rendu est une pièce détourée toujours face à la caméra, intégrée au positionnement 3D, aux déplacements, aux cibles, aux étiquettes, aux anneaux d’état et aux effets existants. La teinte suit la couleur du joueur quand la livrée du modèle l’autorise. Aucun état ou identifiant de joueur n'est remplacé.
 
-Le décor 3D du parcours conserve la route et ses règles : textures procédurales discrètes de terre, pierre et enduit, relief de montagne plus organique, arbres arrondis, fenêtres/volets, lumière de jour et de nuit, cadrage de caméra qui tient compte des voies et des lignes de véhicules. Les textures sont générées en code et n'introduisent pas de nouvelles images de fond.
+Le décor 3D du parcours conserve la route et ses règles : une nouvelle vue panoramique côtière détaillée remplace le simple dégradé du ciel. La route jouable reste devant elle en 3D. Le panorama est teinté selon jour, crépuscule et nuit ; les textures de terre, pierre et enduit, le relief, les arbres, fenêtres/volets et le cadrage restent intégrés autour du circuit. Les silhouettes des spectateurs et des fleurs utilisent des tons plus sobres.
 
 ## Cartes plus faciles à distinguer
 
@@ -21,12 +21,12 @@ La même légende est affichée dans la main du plateau 3D et dans l'interface c
 
 ## Vérifications
 
-- `npm test` : 87 tests réussis, dont simulations complètes à 2–6 joueurs et 700/1000/1500 km, intégrité des fichiers de gameplay protégés, inspection géométrique des 19 véhicules, motifs des quatre catégories et budgets de géométrie du décor.
-- `npm run test:vehicles` : capture automatisée des 19 modèles 3D natifs dans une galerie headless, sans erreur navigateur.
-- `scripts/check-race-events.mjs` : partie de démonstration à deux joueurs dans la scène de course ; collision ciblée, réparation, déplacement de 200 km et vérification de la console. Capture des étapes sous `/tmp/kilomax-vehicles/`.
+- `npm test` : 87 tests réussis, dont simulations complètes à 2–6 joueurs et 700/1000/1500 km, intégrité des fichiers de gameplay protégés, présence des 19 illustrations de course, motifs des quatre catégories et budgets de géométrie du décor.
+- `npm run test:vehicles` : capture headless des 19 vraies illustrations détourées à travers le constructeur d’objets utilisé en course, sans erreur navigateur.
+- `scripts/check-race-events.mjs` : parcours sans données réelles à deux joueurs ; collision ciblée, réparation, déplacement de 200 km et vérification de la console. À rejouer contre le déploiement courant.
 - `npm run test:browser` : parcours local à six joueurs et contrôles responsive déjà exécutés pendant la refonte.
-- TypeScript, lint et build de production à relancer avant livraison finale.
+- TypeScript et build Webpack réussis ; lint sans erreur avec un avertissement préexistant dans `scripts/generate-scene-decor.mjs`.
 
 Les vérifications de rendu ont été faites sous Chrome headless avec accélération logicielle. Elles ne remplacent pas un essai sur téléphones réels et réseaux mobiles. Les changements ne touchent ni le catalogue/réducteur du jeu, ni les contrats Supabase/RPC, ni les migrations ou configurations de secrets.
 
-Captures de contrôle : [les 19 véhicules du plateau](screenshots/vehicles-in-game.webp), [collision en partie](screenshots/race-collision.webp), [progression sur la route](screenshots/race-driving.webp).
+Capture de contrôle : [les 19 véhicules distincts utilisés en course](screenshots/vehicles-in-game.webp). Le panorama de jeu est `public/images/premium/landscape-world.webp`.

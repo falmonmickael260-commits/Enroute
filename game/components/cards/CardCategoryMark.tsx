@@ -80,16 +80,3 @@ export function CardCategoryMark({
     </svg>
   );
 }
-
-export function CardCategoryLegend() {
-  return (
-    <div className="card-category-legend" aria-label="Familles de cartes">
-      {(Object.keys(CARD_IDENTITY) as CardCategory[]).map((category) => (
-        <span key={category} style={{ color: CARD_IDENTITY[category].color }}>
-          <CardCategoryMark category={category} />
-          {CARD_IDENTITY[category].label}
-        </span>
-      ))}
-    </div>
-  );
-}

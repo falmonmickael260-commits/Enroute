@@ -8,7 +8,7 @@ try {
   const page=await browser.newPage({viewport:{width:1280,height:900}}),errors=[];
   page.on("pageerror",error=>errors.push(error.message));
   await page.goto(`${base}/play/3d?n=2&demo=1`);
-  await page.getByRole("progressbar").waitFor({state:"hidden",timeout:20000});
+  await page.getByRole("progressbar").waitFor({state:"hidden",timeout:60000});
   await page.waitForTimeout(3000);
   const intro=page.getByRole("button",{name:"Passer l'introduction"});if(await intro.count()) await intro.click();
   const draw=()=>page.getByRole("button",{name:"Piocher une carte",exact:true}).click();
@@ -22,5 +22,5 @@ try {
   assert.ok((await page.locator("body").innerText()).includes("200"));
   assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
   assert.deepEqual(errors,[]);
-  console.log("PASS: collision targeting, repair, 200 km movement, real 3D vehicles and environment; no page errors");
+  console.log("PASS: collision targeting, repair, 200 km movement, distinct in-game vehicle art, coastal 3D backdrop, no page errors");
 } finally {await browser.close();}

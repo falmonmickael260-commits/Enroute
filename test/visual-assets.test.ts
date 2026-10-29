@@ -7,6 +7,7 @@ import { CARD_CATALOG } from "../game/lib/engine/cardCatalog";
 import { createTouringCar } from "../game/components/scene/premiumCars";
 
 test("every vehicle and every card has its delivered optimized illustration", () => {
+  assert.ok(existsSync("public/images/premium/landscape-world.webp"));
   for (const car of CARS)
     assert.ok(
       existsSync(`public/images/premium/vehicles/${car.id}.webp`),
