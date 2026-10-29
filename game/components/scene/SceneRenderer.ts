@@ -259,7 +259,11 @@ export class SceneRenderer {
     const lane = new Map<string, { lateral: number; along: number }>();
     for (const c of clusters) {
       const slots = slotsFor(c.length);
-      c.forEach((p, i) => lane.set(p.id, slots[i] ?? { lateral: 0, along: 0 }));
+      const lateralScale = this.stage.vehiclePresentation === "2.5d" ? 1.5 : 1;
+      c.forEach((p, i) => {
+        const slot = slots[i] ?? { lateral: 0, along: 0 };
+        lane.set(p.id, { ...slot, lateral: slot.lateral * lateralScale });
+      });
     }
 
     for (const p of players) {
@@ -353,7 +357,7 @@ export class SceneRenderer {
     const wanted = p.car || "kilomax";
     if (car.carId === wanted) return;
     car.carId = wanted;
-    const ready = loadCarModel(wanted, p.color, p.repaint ?? true, this.stage.castShadows);
+    const ready = loadCarModel(wanted, p.color, p.repaint ?? true, this.stage.castShadows, this.stage.vehiclePresentation);
     void ready.then((model) => {
       if (!model) return;
       if (car.carId !== wanted || !this.cars.has(car.id) || this.disposed) { model.root.userData.disposeModel?.(); return; }
@@ -767,6 +771,18 @@ export class SceneRenderer {
       let turn = yaw - car.prevYaw;
       turn = Math.atan2(Math.sin(turn), Math.cos(turn));
       car.prevYaw = yaw;
+      const artwork = m.root.userData.vehicleSprite as THREE.Sprite | undefined;
+      if (artwork) {
+        const p0 = this.stage.project(car.frame.position, 1);
+        const forward = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
+        const p1 = this.stage.project(car.frame.position.clone().add(forward), 1);
+        const dx = p1.x - p0.x;
+        const dy = p1.y - p0.y;
+        // Race art is authored nose-up (vertical in the image). Rotate only
+        // by the difference from screen-up so a straight road keeps the car
+        // upright instead of turning a side-profile asset across the lane.
+        (artwork.material as THREE.SpriteMaterial).rotation = Math.atan2(dx, -dy);
+      }
       const roll = car.km !== car.toKm && dt > 0 ? THREE.MathUtils.clamp((-turn / dt) * 0.09, -0.13, 0.13) : 0;
       m.root.rotation.z += (roll - m.root.rotation.z) * Math.min(1, dt * 6);
       // the winner, once over the line: two doughnuts in a cloud of smoke
@@ -788,16 +804,22 @@ export class SceneRenderer {
 
       // the driver's ring breathes; the others stay dim
       const ringMat = car.ring.material as THREE.MeshBasicMaterial;
-      ringMat.opacity = car.active ? 0.7 + 0.25 * Math.sin(t / 260) : 0.28;
-      const rs = car.active ? 1 + 0.05 * Math.sin(t / 260) : 1;
-      car.ring.scale.set(rs, rs * 1.35, 1);
+      const illustrated = this.stage.vehiclePresentation === "2.5d";
+      car.ring.visible = !illustrated;
+      ringMat.opacity = illustrated
+        ? (car.active ? 0.28 + 0.1 * Math.sin(t / 420) : 0.12)
+        : (car.active ? 0.7 + 0.25 * Math.sin(t / 260) : 0.28);
+      const ringBase = illustrated ? 0.25 : 1;
+      const rs = car.active ? 1 + (illustrated ? 0.018 : 0.05) * Math.sin(t / 260) : 1;
+      car.ring.scale.set(rs * ringBase, rs * ringBase * 1.35, 1);
 
       // protection just installed: green bubble and sparkles
       const bubble = clamp01((t - car.bubbleAt) / 1100);
       if (bubble < 1) {
+        car.ring.visible = true;
         const k = pulse(bubble);
         ringMat.color.set("#5dffa0");
-        car.ring.scale.set(1 + k * 0.9, (1 + k * 0.9) * 1.35, 1);
+        car.ring.scale.set((1 + k * 0.9) * ringBase, (1 + k * 0.9) * ringBase * 1.35, 1);
         ringMat.opacity = 0.95 * (1 - bubble) + 0.3;
         if (bubble < 0.08) this.burst(m.root, "#8dffbe", 3, 0.6);
       } else ringMat.color.set((m.paint.color as THREE.Color).getStyle());

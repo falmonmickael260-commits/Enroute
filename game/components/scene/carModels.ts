@@ -2,6 +2,7 @@ import * as THREE from "three";
 import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import type { CarModel } from "./models";
 import { isCarId } from "../../lib/cars";
+import { buildVehicleModel } from "./vehicleModels";
 
 /**
  * Kenney Car Kit vehicles (CC0) turned into the CarModel the scene animates:
@@ -15,7 +16,11 @@ const SCALE = 0.43;
 const gltfCache = new Map<string, Promise<GLTF | null>>();
 const paintCache = new Map<string, Promise<THREE.Texture | null>>();
 const vehicleImageCache = new Map<string, Promise<HTMLImageElement | null>>();
-
+const GLTF_CAR_IDS = new Set([
+  "supercar", "retro", "sedan-sports", "hatchback-sports", "sedan",
+  "suv", "suv-luxury", "van", "truck", "race", "race-future",
+  "kart-oodi", "tractor", "taxi", "police",
+]);
 const ART_HUE: Record<string, number> = {
   "#e8352b": 0,
   "#1f86ea": 205,
@@ -24,10 +29,55 @@ const ART_HUE: Record<string, number> = {
   "#8e4cf0": 265,
   "#f04aa6": 320,
 };
+const RACE_SPRITES: Record<string, string> = {
+  supercar: "topdown-supercar",
+  retro: "topdown-retro",
+  "sedan-sports": "hatchback-custom",
+  "hatchback-sports": "hatchback-custom",
+  sedan: "sedan-custom",
+  suv: "suv-custom",
+  "suv-luxury": "suv-custom",
+  van: "van-custom",
+  truck: "pickup-custom",
+  race: "formula-custom",
+  "race-future": "formula-custom",
+  "kart-oodi": "formula-custom",
+  taxi: "sedan-custom",
+  police: "sedan-custom",
+};
+const RACE_SPRITE_HUE: Record<string, number> = {
+  "topdown-supercar": 0, "topdown-retro": 205, "suv-custom": 120,
+  "hatchback-custom": 0, "formula-custom": 0,
+  "sedan-custom": 0, "van-custom": 0, "pickup-custom": 24,
+};
 
-/** The generated, transparent cutout art used for each chosen car in a race. */
+/** Premium thumbnails for the garage; the race itself uses physical 3D models. */
 export function vehicleArtUrl(id: string) {
   return isCarId(id) ? `/images/premium/vehicles/${id}.webp` : null;
+}
+
+/** Race-facing artwork, distinct from the unchanged side-view garage thumbnails. */
+export function raceVehicleArtUrl(id: string) {
+  const sprite = RACE_SPRITES[id];
+  return sprite ? `/images/premium/vehicles/race-${sprite}.webp` : vehicleArtUrl(id);
+}
+
+export function vehicleModelUrl(id: string) {
+  return GLTF_CAR_IDS.has(id) ? `/models/cars/${id}.glb` : null;
+}
+
+function loadGltf(id: string): Promise<GLTF | null> {
+  let p = gltfCache.get(id);
+  if (!p) {
+    p = new GLTFLoader().loadAsync(vehicleModelUrl(id) ?? `/models/cars/${id}.glb`).catch(() => null);
+    gltfCache.set(id, p);
+  }
+  return p;
+}
+
+/** Starts downloading a car before it's needed (e.g. as soon as it's picked). */
+export function prefetchCar(id: string) {
+  if (GLTF_CAR_IDS.has(id)) void loadGltf(id);
 }
 
 function loadVehicleImage(id: string) {
@@ -37,91 +87,74 @@ function loadVehicleImage(id: string) {
       const image = new Image();
       image.onload = () => resolve(image);
       image.onerror = () => resolve(null);
-      image.src = vehicleArtUrl(id) ?? "";
+      image.src = raceVehicleArtUrl(id) ?? "";
     });
     vehicleImageCache.set(id, pending);
   }
   return pending ?? Promise.resolve(null);
 }
 
-/** Builds the exact same CarModel contract around the premium in-game artwork. */
-export function createArtworkVehicleModel(
-  id: string,
-  color: string,
-  repaint: boolean,
-  image: HTMLImageElement,
-): CarModel {
+function createArtworkVehicleModel(id: string, color: string, repaint: boolean, image: HTMLImageElement): CarModel {
+  const source = document.createElement("canvas");
+  source.width = image.naturalWidth || image.width;
+  source.height = image.naturalHeight || image.height;
+  const sourceContext = source.getContext("2d", { willReadFrequently: true });
+  if (!sourceContext) throw new Error("Impossible de préparer l’illustration du véhicule");
+  sourceContext.drawImage(image, 0, 0, source.width, source.height);
+  const pixels = sourceContext.getImageData(0, 0, source.width, source.height).data;
+  let left = source.width, top = source.height, right = 0, bottom = 0;
+  for (let y = 0; y < source.height; y += 2) {
+    for (let x = 0; x < source.width; x += 2) {
+      if (pixels[(y * source.width + x) * 4 + 3] < 20) continue;
+      left = Math.min(left, x); top = Math.min(top, y);
+      right = Math.max(right, x); bottom = Math.max(bottom, y);
+    }
+  }
+  if (right <= left || bottom <= top) { left = 0; top = 0; right = source.width - 1; bottom = source.height - 1; }
+  const padX = Math.round((right - left) * 0.025);
+  const padY = Math.round((bottom - top) * 0.035);
+  left = Math.max(0, left - padX); top = Math.max(0, top - padY);
+  right = Math.min(source.width - 1, right + padX); bottom = Math.min(source.height - 1, bottom + padY);
   const canvas = document.createElement("canvas");
-  canvas.width = image.naturalWidth || image.width;
-  canvas.height = image.naturalHeight || image.height;
+  canvas.width = right - left + 1; canvas.height = bottom - top + 1;
   const context = canvas.getContext("2d");
   if (!context) throw new Error("Impossible de préparer l’illustration du véhicule");
-  if (repaint) context.filter = `hue-rotate(${ART_HUE[color.toLowerCase()] ?? 0}deg)`;
-  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+  if (repaint) {
+    const targetHue = ART_HUE[color.toLowerCase()] ?? 0;
+    const sourceHue = RACE_SPRITE_HUE[RACE_SPRITES[id] ?? id] ?? 0;
+    context.filter = `hue-rotate(${(targetHue - sourceHue + 360) % 360}deg)`;
+  }
+  context.drawImage(source, left, top, canvas.width, canvas.height, 0, 0, canvas.width, canvas.height);
   const texture = new THREE.CanvasTexture(canvas);
   texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 4;
+  texture.anisotropy = 8;
 
   const root = new THREE.Group();
   const body = new THREE.Group();
   const spriteMaterial = new THREE.SpriteMaterial({
-    map: texture,
-    transparent: true,
-    alphaTest: 0.035,
-    depthWrite: false,
-    toneMapped: false,
+    map: texture, transparent: true, alphaTest: 0.04, depthWrite: false,
+    toneMapped: false, sizeAttenuation: false,
   });
-  const artwork = new THREE.Sprite(spriteMaterial);
-  artwork.center.set(0.5, 0.08);
-  artwork.scale.set(2.2, 2.2 * (canvas.height / canvas.width), 1);
-  artwork.position.y = 0.015;
-  body.add(artwork);
+  const sprite = new THREE.Sprite(spriteMaterial);
+  sprite.center.set(0.5, 0.04);
+  sprite.scale.set(0.68, 0.68 * canvas.height / canvas.width, 1);
+  sprite.position.y = 0.015;
+  sprite.renderOrder = 1;
+  body.add(sprite);
   root.add(body);
-
   const mounts = { roof: new THREE.Group(), rear: new THREE.Group(), front: new THREE.Group() };
-  mounts.roof.position.set(0, 1.12, 0);
-  mounts.rear.position.set(0, 0.32, -0.7);
-  mounts.front.position.set(0, 0.32, 0.7);
+  mounts.roof.position.y = 0.45;
+  mounts.rear.position.z = -0.35;
+  mounts.front.position.z = 0.35;
   body.add(mounts.roof, mounts.rear, mounts.front);
-  const brakeLights = new THREE.MeshStandardMaterial({
-    color: "#b3141b",
-    emissive: "#ff1f2a",
-    emissiveIntensity: 0.3,
-  });
+  const brakeLights = new THREE.MeshStandardMaterial({ color: "#b3141b", emissive: "#ff1f2a", emissiveIntensity: 0.3 });
   const paint = new THREE.MeshStandardMaterial({ color });
   root.userData.vehicleId = id;
-  root.userData.renderRevision = 3;
-  root.userData.artwork = true;
-  root.userData.disposeModel = () => {
-    texture.dispose();
-    spriteMaterial.dispose();
-    brakeLights.dispose();
-    paint.dispose();
-  };
-  return {
-    root,
-    body,
-    wheels: [],
-    brakeLights,
-    paint,
-    mounts,
-    exhaust: new THREE.Vector3(0, 0.1, -0.72),
-  };
-}
-
-function loadGltf(id: string): Promise<GLTF | null> {
-  let p = gltfCache.get(id);
-  if (!p) {
-    p = new GLTFLoader().loadAsync(`/models/cars/${id}.glb`).catch(() => null);
-    gltfCache.set(id, p);
-  }
-  return p;
-}
-
-/** Starts downloading a car before it's needed (e.g. as soon as it's picked). */
-export function prefetchCar(id: string) {
-  if (isCarId(id)) void loadVehicleImage(id);
-  else void loadGltf(id);
+  root.userData.vehicleSprite = sprite;
+  root.userData.renderRevision = 5;
+  root.userData.presentation = "2.5d";
+  root.userData.disposeModel = () => { texture.dispose(); spriteMaterial.dispose(); brakeLights.dispose(); paint.dispose(); };
+  return { root, body, wheels: [], brakeLights, paint, mounts, exhaust: new THREE.Vector3(0, 0.08, -0.42) };
 }
 
 // ---------------------------------------------------------------- repaint
@@ -278,12 +311,12 @@ function localAxis(node: THREE.Object3D, world: THREE.Vector3): "x" | "y" | "z" 
  * false). Resolves null if the file can't be loaded: the caller keeps the
  * car it already shows.
  */
-export async function loadCarModel(id: string, color: string, repaint: boolean, castShadow: boolean): Promise<CarModel | null> {
-  if (isCarId(id)) {
+export async function loadCarModel(id: string, color: string, repaint: boolean, castShadow: boolean, presentation: "3d" | "2.5d" = "3d"): Promise<CarModel | null> {
+  if (presentation === "2.5d") {
     const image = await loadVehicleImage(id);
-    if (!image) return null;
-    return createArtworkVehicleModel(id, color, repaint, image);
+    return image ? createArtworkVehicleModel(id, color, repaint, image) : null;
   }
+  if (!GLTF_CAR_IDS.has(id)) return isCarId(id) ? buildVehicleModel(id, color) : null;
   const gltf = await loadGltf(id);
   if (!gltf) return null;
   const scene = gltf.scene.clone(true);

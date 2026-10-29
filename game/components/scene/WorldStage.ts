@@ -202,17 +202,29 @@ const asphaltTexture = () =>
 
 /** Soft ripples on the sea (multiplies its colour). */
 const rippleTexture = () =>
-  canvasTexture(128, 128, (g) => {
+  canvasTexture(512, 512, (g) => {
     g.fillStyle = "#ffffff";
-    g.fillRect(0, 0, 128, 128);
+    g.fillRect(0, 0, 512, 512);
     const r = rng(31);
-    for (let i = 0; i < 60; i++) {
-      g.strokeStyle = `rgba(10,70,110,${0.03 + r() * 0.06})`;
-      g.lineWidth = 0.8 + r() * 1.6;
-      const x = r() * 128;
-      const y = r() * 128;
+    // Broken, wind-stretched wavelets read as water grain rather than tiled rings.
+    for (let i = 0; i < 330; i++) {
+      const x = r() * 560 - 24;
+      const y = r() * 520 - 8;
+      const length = 8 + r() * 54;
+      g.strokeStyle = `rgba(${r() > 0.45 ? "24,74,91" : "228,247,235"},${0.035 + r() * 0.1})`;
+      g.lineWidth = 0.5 + r() * 2.2;
       g.beginPath();
-      g.arc(x, y, 3 + r() * 14, Math.PI * (1.05 + r() * 0.2), Math.PI * (1.6 + r() * 0.3));
+      g.moveTo(x, y);
+      g.bezierCurveTo(x + length * 0.3, y - 2 - r() * 3, x + length * 0.7, y + 1 + r() * 3, x + length, y - 1);
+      g.stroke();
+    }
+    for (let i = 0; i < 90; i++) {
+      const x = r() * 512;
+      const y = r() * 512;
+      g.strokeStyle = `rgba(255,255,255,${0.08 + r() * 0.14})`;
+      g.lineWidth = 0.6 + r() * 1.2;
+      g.beginPath();
+      g.ellipse(x, y, 4 + r() * 15, 1 + r() * 3, -0.08 + r() * 0.16, 0, Math.PI * 1.5);
       g.stroke();
     }
   });
@@ -473,6 +485,7 @@ const glowTexture = (falloff = 1) =>
 // ---------------------------------------------------------------- the stage
 
 export class WorldStage implements Stage {
+  readonly vehiclePresentation = "3d" as const;
   readonly camera = new THREE.PerspectiveCamera(50, 1, 0.3, 700);
   private readonly look: Look;
   private readonly sunOffset: THREE.Vector3;
@@ -556,7 +569,6 @@ export class WorldStage implements Stage {
     this.buildRoad(scene);
     this.buildViaduct(scene);
     this.buildScenery(scene);
-    this.buildMountainsAndClouds(scene);
     this.buildStartAndFinish(scene);
     this.buildRoadside(scene);
     this.buildGulls(scene);
@@ -605,8 +617,8 @@ export class WorldStage implements Stage {
 
   private terrainHeight(x: number, z: number) {
     const { dist, y: roadY } = this.road.nearest(x, z);
-    // hills rise inland (to the left), cliffs drop into the sea on the right
-    const inland = Math.max(0, -x - 4) * 0.32 + Math.max(0, noise2(x, z)) * 2.2 + 0.3;
+    // Low rolling coastal slopes leave the panoramic cliffs and sea in view.
+    const inland = Math.max(0, -x - 4) * 0.12 + Math.max(0, noise2(x, z)) * 0.72 + 0.12;
     const flat = THREE.MathUtils.smoothstep(dist, HALF_WIDTH + 1.4, HALF_WIDTH + 7);
     let h = THREE.MathUtils.lerp(roadY - 0.1, roadY + inland, flat);
     const toSea = x - coastX(z);
@@ -656,38 +668,70 @@ export class WorldStage implements Stage {
   }
 
   private buildSea(scene: THREE.Scene) {
-    const geo = new THREE.PlaneGeometry(400, 400);
+    const geo = new THREE.PlaneGeometry(400, 400, 96, 96);
     geo.rotateX(-Math.PI / 2);
-    // ripples drift one way and the sun glints sparkle the other
+    geo.translate(120, 0, -80);
+    // The cove shifts naturally from translucent coastal turquoise to deep water.
+    const positions = geo.getAttribute("position") as THREE.BufferAttribute;
+    const colors = new Float32Array(positions.count * 3);
+    const shallowColor = new THREE.Color("#64c9c2");
+    const turquoise = new THREE.Color("#328f9b");
+    const deep = new THREE.Color("#1a536e");
+    const color = new THREE.Color();
+    for (let i = 0; i < positions.count; i++) {
+      const x = positions.getX(i);
+      const z = positions.getZ(i);
+      const distance = Math.max(0, x - coastX(z));
+      if (distance < 11) color.copy(shallowColor).lerp(turquoise, THREE.MathUtils.smoothstep(distance, 0, 11));
+      else color.copy(turquoise).lerp(deep, THREE.MathUtils.smoothstep(distance, 11, 75));
+      const variation = (noise2(x * 0.065, z * 0.065) - 0.5) * 0.09;
+      color.offsetHSL(variation * 0.12, variation * 0.25, variation);
+      colors[i * 3] = color.r;
+      colors[i * 3 + 1] = color.g;
+      colors[i * 3 + 2] = color.b;
+    }
+    geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
+    // Fine overlapping wavelets drift one way and the sun glints the other.
     const ripples = rippleTexture();
     const glints = glintTexture();
-    ripples.repeat.set(37, 41);
-    glints.repeat.set(70, 70);
+    ripples.repeat.set(19, 22);
+    glints.repeat.set(44, 48);
     this.seaMaps = [ripples, glints];
     const sea = new THREE.Mesh(
       geo,
-      new THREE.MeshStandardMaterial({
-        color: this.look.sea,
+      new THREE.MeshPhysicalMaterial({
+        vertexColors: true,
         map: ripples,
+        bumpMap: ripples,
+        bumpScale: 0.035,
         emissive: this.look.glints[0],
         emissiveMap: glints,
-        emissiveIntensity: this.look.glints[1],
-        roughness: 0.12,
-        metalness: 0.25,
+        emissiveIntensity: this.look.glints[1] * 0.45,
+        roughness: 0.24,
+        metalness: 0.16,
+        clearcoat: 0.72,
+        clearcoatRoughness: 0.18,
         ...BEHIND,
       }),
     );
-    sea.position.set(120, SEA_LEVEL, -80);
+    sea.position.y = SEA_LEVEL;
     sea.receiveShadow = true;
     scene.add(sea);
-    // lighter shallows along the shore
+    // Pale foam at the waterline separates wet rock, shallows and open sea.
+    const foam = new THREE.Mesh(
+      ribbonFoam(),
+      new THREE.MeshBasicMaterial({ color: "#e9f2e8", transparent: true, opacity: 0.62, depthWrite: false, side: THREE.DoubleSide }),
+    );
+    foam.position.y = SEA_LEVEL + 0.045;
+    scene.add(foam);
+    // A softly colored shallow shelf under the moving water.
     const shallow = new THREE.Mesh(
       ribbonCoast(),
-      new THREE.MeshStandardMaterial({ color: this.look.shallows, roughness: 0.2, transparent: true, opacity: 0.8 }),
+      new THREE.MeshStandardMaterial({ color: "#67b9b5", roughness: 0.24, metalness: 0.08, transparent: true, opacity: 0.32 }),
     );
     shallow.position.y = SEA_LEVEL + 0.02;
     scene.add(shallow);
-    this.disposables.push(geo, ripples, glints, sea.material as THREE.Material, shallow.geometry, shallow.material as THREE.Material);
+    this.disposables.push(geo, ripples, glints, sea.material as THREE.Material, shallow.geometry, shallow.material as THREE.Material, foam.geometry, foam.material as THREE.Material);
   }
 
   private buildRoad(scene: THREE.Scene) {
@@ -830,14 +874,13 @@ export class WorldStage implements Stage {
 
     // villages on the hillside, like the picture
     const villages = [
-      { x: -14, z: -30, n: 16, spread: 9 },
-      { x: -12, z: -62, n: 14, spread: 8 },
-      { x: -6, z: -120, n: 12, spread: 8 },
-      { x: 20, z: -140, n: 6, spread: 5 },
-      { x: -10, z: 4, n: 7, spread: 6 },
+      { x: -18, z: -52, n: 6, spread: 5 },
+      { x: -14, z: -88, n: 5, spread: 5 },
+      { x: -7, z: -122, n: 4, spread: 4 },
+      { x: 20, z: -140, n: 3, spread: 4 },
     ];
     for (const v of villages) {
-      for (let i = 0; i < v.n * 3 && walls.length < 70; i++) {
+      for (let i = 0; i < v.n * 3 && walls.length < 24; i++) {
         const x = v.x + (r() - 0.5) * 2 * v.spread;
         const z = v.z + (r() - 0.5) * 2 * v.spread;
         if (!free(x, z, 3.2)) continue;
@@ -854,7 +897,7 @@ export class WorldStage implements Stage {
     }
 
     // cypresses, umbrella pines and olive bushes everywhere else
-    for (let i = 0; i < 1600; i++) {
+    for (let i = 0; i < 500; i++) {
       const x = -60 + r() * 90;
       const z = 30 - r() * 200;
       if (!free(x, z, 2.2)) continue;
@@ -893,10 +936,13 @@ export class WorldStage implements Stage {
       scene.add(mesh);
       this.disposables.push(geo, material);
     };
-    add(crownGeometry("cypress"), new THREE.MeshStandardMaterial({ roughness: 0.95 }), cypress);
+    const foliage = landscapeTexture("foliage");
+    const foliageMaterial = () => new THREE.MeshStandardMaterial({ map: foliage, bumpMap: foliage, bumpScale: 0.035, roughness: 0.94 });
+    add(crownGeometry("cypress"), foliageMaterial(), cypress);
     add(new THREE.CylinderGeometry(1, 1, 1, 6), new THREE.MeshStandardMaterial({ color: "#6b4a2e", roughness: 1 }), trunks);
-    add(crownGeometry("pine"), new THREE.MeshStandardMaterial({ color: "#38573d", roughness: 0.95 }), pines);
-    add(crownGeometry("bush"), new THREE.MeshStandardMaterial({ roughness: 0.95 }), bushes);
+    add(crownGeometry("pine"), foliageMaterial(), pines);
+    add(crownGeometry("bush"), foliageMaterial(), bushes);
+    this.disposables.push(foliage);
     const plaster=landscapeTexture("plaster"),tiles=landscapeTexture("tiles"),windowMap=landscapeTexture("window");
     this.disposables.push(plaster,tiles,windowMap);
     add(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ map:plaster,bumpMap:plaster,bumpScale:.025,roughness: 0.92 }), walls);
@@ -1022,8 +1068,8 @@ export class WorldStage implements Stage {
 
     // grass and wild flowers along the verge on the hill side
     const flowerColors = ["#e8c879", "#f3e8d0", "#c98773", "#d4bf8b"];
-    for (let l = start; l < this.road.total; l += 0.9) {
-      if (this.onBridge(l) || r() < 0.35) continue;
+    for (let l = start; l < this.road.total; l += 1.45) {
+      if (this.onBridge(l) || r() < 0.48) continue;
       const { point, right } = this.road.at(l);
       const k = -(HALF_WIDTH + 1.15 + r() * 1.2);
       const x = point.x + right.x * k + (r() - 0.5) * 0.4;
@@ -1129,7 +1175,7 @@ export class WorldStage implements Stage {
       [this.road.finishLen, -7, 3],
     ] as const) {
       // spectators behind the wall, facing the road
-      for (let i = 0; i < 16; i++) {
+      for (let i = 0; i < 8; i++) {
         const l = at + from + r() * (to - from);
         const { point, right } = this.road.at(l);
         const k = -(HALF_WIDTH + 2.1 + r() * 1.8);
@@ -1941,6 +1987,29 @@ function ribbonCoast() {
   for (let z = 40; z >= -220; z -= 2) {
     const x = coastX(z);
     positions.push(x - 1, 0, z, x + 5, 0, z);
+    if (row > 0) {
+      const a = (row - 1) * 2;
+      index.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
+    }
+    row++;
+  }
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+  geo.setIndex(index);
+  geo.computeVertexNormals();
+  return geo;
+}
+
+/** Irregular broken foam at the visible edge of the cove. */
+function ribbonFoam() {
+  const positions: number[] = [];
+  const index: number[] = [];
+  let row = 0;
+  for (let z = 40; z >= -220; z -= 0.6) {
+    const x = coastX(z) + Math.sin(z * 1.7) * 0.12 + Math.sin(z * 4.9) * 0.045;
+    const inner = Math.sin(z * 2.3) * 0.11;
+    const outer = 0.3 + 0.36 * (0.5 + 0.5 * Math.sin(z * 1.1 + Math.sin(z * 0.23)));
+    positions.push(x - 0.45 + inner, 0, z, x + outer, 0, z);
     if (row > 0) {
       const a = (row - 1) * 2;
       index.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
