@@ -2,8 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import * as THREE from "three";
 import { createTouringCar } from "../game/components/scene/premiumCars";
-import { CARS } from "../game/lib/cars";
-import { vehicleArtUrl } from "../game/components/scene/carModels";
+import { BUILT_CARS, CARS } from "../game/lib/cars";
+import { vehicleArtUrl, vehicleModelUrl } from "../game/components/scene/carModels";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -34,8 +34,15 @@ for (const id of [
 }
 
 for (const car of CARS)
-  test(`${car.id}: the in-game race selects its own high-resolution vehicle artwork`, () => {
-    const url = vehicleArtUrl(car.id);
-    assert.equal(url, `/images/premium/vehicles/${car.id}.webp`);
-    assert.ok(existsSync(resolve(process.cwd(), `public${url}`)));
+  test(`${car.id}: garage art and its 3D model are available`, () => {
+    const art = vehicleArtUrl(car.id);
+    assert.equal(art, `/images/premium/vehicles/${car.id}.webp`);
+    assert.ok(existsSync(resolve(process.cwd(), `public${art}`)));
+    const model = vehicleModelUrl(car.id);
+    if (model) {
+      assert.equal(model, `/models/cars/${car.id}.glb`);
+      assert.ok(existsSync(resolve(process.cwd(), `public${model}`)));
+      return;
+    }
+    assert.ok(BUILT_CARS.has(car.id), `${car.id} has a native 3D model`);
   });

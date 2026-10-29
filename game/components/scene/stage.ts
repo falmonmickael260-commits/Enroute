@@ -46,6 +46,8 @@ export interface Stage {
   readonly camera: THREE.Camera;
   /** Real shadows from the sun instead of the soft blob under each car. */
   readonly castShadows: boolean;
+  /** Whether the cars are placed over a painted image or a full 3D environment. */
+  readonly groundPresentation: "picture" | "world";
   init(renderer: THREE.WebGLRenderer, scene: THREE.Scene): void;
   resize(width: number, height: number, bottomInset: number): void;
   /**

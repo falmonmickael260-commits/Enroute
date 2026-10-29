@@ -14,7 +14,7 @@ export function ridgeGeometry() {
 
 /** Small, locally generated textures: no image downloads and no per-frame canvas work. */
 export function landscapeTexture(
-  kind: "ground" | "plaster" | "tiles" | "window",
+  kind: "ground" | "plaster" | "tiles" | "window" | "foliage",
 ) {
   const canvas = document.createElement("canvas");
   canvas.width = 256;
@@ -32,6 +32,8 @@ export function landscapeTexture(
         ? "#c2a593"
         : kind === "window"
           ? "#bfc5ba"
+          : kind === "foliage"
+            ? "#e7eadf"
           : "#ece9df";
   ctx.fillRect(0, 0, 256, 256);
   if (kind === "ground" || kind === "plaster") {
@@ -69,6 +71,29 @@ export function landscapeTexture(
         ctx.quadraticCurveTo(x + 16, y + 39, x + 32, y + 31);
         ctx.stroke();
       }
+  } else if (kind === "foliage") {
+    // Fine leaf mottling breaks up the toy-like, featureless solid tree crowns.
+    for (let i = 0; i < 1450; i++) {
+      const x = random() * 256;
+      const y = random() * 256;
+      const rx = 0.7 + random() * 2.8;
+      const ry = 0.35 + random() * 1.15;
+      const shade = Math.floor(42 + random() * 82);
+      ctx.fillStyle = `rgba(${shade},${shade + 12},${shade - 14},${0.14 + random() * 0.25})`;
+      ctx.beginPath();
+      ctx.ellipse(x, y, rx, ry, random() * Math.PI, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    for (let i = 0; i < 90; i++) {
+      const x = random() * 256;
+      const y = random() * 256;
+      ctx.strokeStyle = `rgba(54,75,48,${0.08 + random() * 0.13})`;
+      ctx.lineWidth = 0.4 + random() * 0.8;
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.quadraticCurveTo(x + (random() - 0.5) * 8, y + 3, x + (random() - 0.5) * 12, y + 7);
+      ctx.stroke();
+    }
   } else {
     ctx.fillStyle = "#273735";
     ctx.fillRect(36, 8, 184, 240);
@@ -118,9 +143,9 @@ export function crownGeometry(kind: "cypress" | "pine" | "bush") {
             new THREE.Vector2(0.13, 0.43),
             new THREE.Vector2(0, 0.5),
           ],
-          12,
+          20,
         )
-      : new THREE.SphereGeometry(0.6, 14, 10);
+      : new THREE.SphereGeometry(0.6, 20, 14);
   const p = geometry.getAttribute("position");
   for (let i = 0; i < p.count; i++) {
     const x = p.getX(i),

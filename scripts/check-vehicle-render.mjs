@@ -1,6 +1,7 @@
 import { build } from "esbuild";
 import { chromium } from "playwright";
 import { mkdirSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 const output = process.env.TEST_ARTIFACTS ?? "/tmp/kilomax-vehicles";
 mkdirSync(output, { recursive: true });
 const bundle = await build({
@@ -23,8 +24,28 @@ try {
   });
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
+  page.on("console", (message) => {
+    if (message.type() === "error" && /models\/cars|premium\/vehicles/.test(message.text())) errors.push(message.text());
+  });
+  page.on("requestfailed", (request) => {
+    if (/models\/cars|premium\/vehicles/.test(request.url())) errors.push(`${request.url()}: ${request.failure()?.errorText}`);
+  });
+  await page.route("http://gallery.local/**", async (route) => {
+    const path = new URL(route.request().url()).pathname;
+    const file = resolve(process.cwd(), "public", `.${path}`);
+    try {
+      const contentType = path.endsWith(".glb")
+        ? "model/gltf-binary"
+        : "image/webp";
+      await route.fulfill({ body: readFileSync(file), contentType });
+    } catch {
+      await route.fulfill({ status: 404, body: "Not found" });
+    }
+  });
+  await page.goto("http://gallery.local/");
   await page.setContent(
     "<html><body style='margin:0;background:#15212b'></body></html>",
+    { waitUntil: "domcontentloaded" },
   );
   const ids = [
     "supercar", "retro", "sedan-sports", "hatchback-sports", "sedan",
@@ -32,13 +53,14 @@ try {
     "kart-oodi", "tractor", "taxi", "police", "kilomax", "moto",
     "scooter", "quad",
   ];
-  const sources = Object.fromEntries(ids.map((id) => [
-    id,
-    `data:image/webp;base64,${readFileSync(`public/images/premium/vehicles/${id}.webp`).toString("base64")}`,
-  ]));
-  await page.evaluate((art) => { window.vehicleArtSources = art; }, sources);
   await page.addScriptTag({ content: bundle.outputFiles[0].text });
-  await page.waitForFunction(() => Array.isArray(window.vehicleGalleryResults), null, { timeout: 20000 });
+  try {
+    await page.waitForFunction(() => Array.isArray(window.vehicleGalleryResults), null, { timeout: 20000 });
+  } catch (error) {
+    await page.screenshot({ path: `${output}/vehicle-gallery-error.png` });
+    console.error(JSON.stringify({ error: error.message, errors }));
+    throw error;
+  }
   await page.screenshot({ path: `${output}/native-vehicles.png` });
   console.log(
     JSON.stringify({
@@ -46,7 +68,8 @@ try {
       errors,
     }),
   );
-  if (errors.length || (await page.evaluate(() => window.vehicleGalleryResults?.length)) !== 19) process.exitCode = 1;
+  const results = await page.evaluate(() => window.vehicleGalleryResults ?? []);
+  if (errors.length || results.length !== ids.length || results.some((model, index) => model.id !== ids[index] || model.triangles < 10 || model.artwork)) process.exitCode = 1;
 } finally {
   await browser.close();
 }
