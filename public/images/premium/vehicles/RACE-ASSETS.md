@@ -1,1 +1,0 @@
-Race-view vehicle sprites in this folder are original KILOMAX-specific assets generated individually for the supercar, retro coupe, SUV, hatchback, sedan, van, pickup and formula vehicle. The existing side-view vehicle thumbnails remain unchanged for the garage.

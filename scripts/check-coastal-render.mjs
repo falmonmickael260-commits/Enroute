@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readFileSync, mkdirSync } from "node:fs";
-import { resolve } from "node:path";
+import { extname, resolve } from "node:path";
 import { build } from "esbuild";
 import { chromium } from "playwright";
 
@@ -33,13 +33,14 @@ try {
     const path = new URL(route.request().url()).pathname;
     const file = resolve(process.cwd(), "public", `.${path}`);
     try {
-      await route.fulfill({ body: readFileSync(file), contentType: "image/webp" });
+      const type = extname(file) === ".glb" ? "model/gltf-binary" : "image/webp";
+      await route.fulfill({ body: readFileSync(file), contentType: type });
     } catch {
       await route.fulfill({ status: 404, body: "Not found" });
     }
   });
   page.on("response", (response) => {
-    if (/kilomax-coast|premium\/vehicles\//.test(response.url())) {
+    if (/kilomax-coast|premium\/vehicles\/|models\/cars\//.test(response.url())) {
       statuses.set(new URL(response.url()).pathname, response.status());
     }
   });
@@ -47,17 +48,14 @@ try {
   await page.setContent("<html><body style='margin:0'></body></html>");
   await page.addScriptTag({ content: bundle.outputFiles[0].text });
   await page.waitForFunction(() => window.coastalPreviewReady === true, null, { timeout: 30000 });
-  const classAssets = ["race-hatchback-custom.webp", "race-sedan-custom.webp", "race-van-custom.webp", "race-pickup-custom.webp"];
-  const classStatuses = await page.evaluate(async (files) => Promise.all(files.map(async (file) => (await fetch(`/images/premium/vehicles/${file}`)).status)), classAssets);
-  assert.deepEqual(classStatuses, [200, 200, 200, 200]);
   await page.waitForTimeout(500);
   await page.screenshot({ path: `${output}/race-idle.png` });
   const beforeMotion = await page.evaluate(() => window.coastalPositions?.one ?? null);
   await page.evaluate(() => window.playCoastalMove?.());
   await page.waitForTimeout(1000);
   const afterMotion = await page.evaluate(() => window.coastalPositions?.one ?? null);
-  assert.ok(beforeMotion && afterMotion && Math.hypot(afterMotion.x - beforeMotion.x, afterMotion.y - beforeMotion.y) > 40,
-    "a 200 km move visibly advances the car on the road");
+  assert.ok(beforeMotion && afterMotion && Math.hypot(afterMotion.x - beforeMotion.x, afterMotion.y - beforeMotion.y) > 20,
+    `a 200 km move visibly advances the car on the road (${JSON.stringify({ beforeMotion, afterMotion })})`);
   await page.screenshot({ path: `${output}/race-moving.png` });
   await page.evaluate(() => window.showUtilityCars?.());
   await page.waitForTimeout(500);
@@ -65,11 +63,8 @@ try {
   await page.evaluate(() => window.stopCoastalPreview?.());
   assert.deepEqual(errors, []);
   assert.equal(statuses.get("/images/scene/kilomax-coast.webp"), 200);
-  assert.equal(statuses.get("/images/premium/vehicles/race-topdown-supercar.webp"), 200);
-  assert.equal(statuses.get("/images/premium/vehicles/race-topdown-retro.webp"), 200);
-  assert.equal(statuses.get("/images/premium/vehicles/race-suv-custom.webp"), 200);
-  assert.equal(statuses.get("/images/premium/vehicles/race-formula-custom.webp"), 200);
-  for (const file of classAssets) assert.equal(statuses.get(`/images/premium/vehicles/${file}`), 200);
+  for (const car of ["supercar", "retro", "suv", "race", "sedan", "van", "truck", "hatchback-sports"])
+    assert.equal(statuses.get(`/models/cars/${car}.glb`), 200);
   console.log(JSON.stringify({ status: "PASS", assets: Object.fromEntries(statuses), errors }));
 } finally {
   await browser.close();

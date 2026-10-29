@@ -14,7 +14,7 @@ const CAR_SIZE = 0.95;
 export class PictureStage implements Stage {
   readonly camera: THREE.OrthographicCamera;
   readonly castShadows = false;
-  readonly vehiclePresentation = "2.5d" as const;
+  readonly groundPresentation = "picture" as const;
   private readonly sinP: number;
 
   constructor(private readonly path: ScenePath) {

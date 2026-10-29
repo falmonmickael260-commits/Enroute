@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import * as THREE from "three";
 import { createTouringCar } from "../game/components/scene/premiumCars";
 import { BUILT_CARS, CARS } from "../game/lib/cars";
-import { raceVehicleArtUrl, vehicleArtUrl, vehicleModelUrl } from "../game/components/scene/carModels";
+import { vehicleArtUrl, vehicleModelUrl } from "../game/components/scene/carModels";
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 
@@ -34,7 +34,7 @@ for (const id of [
 }
 
 for (const car of CARS)
-  test(`${car.id}: 2.5D art and the detailed 3D fallback are both available`, () => {
+  test(`${car.id}: garage art and its 3D model are available`, () => {
     const art = vehicleArtUrl(car.id);
     assert.equal(art, `/images/premium/vehicles/${car.id}.webp`);
     assert.ok(existsSync(resolve(process.cwd(), `public${art}`)));
@@ -46,10 +46,3 @@ for (const car of CARS)
     }
     assert.ok(BUILT_CARS.has(car.id), `${car.id} has a native 3D model`);
   });
-
-test("race view has distinct forward-facing sprites for the main vehicle classes", () => {
-  const ids = ["supercar", "retro", "suv", "hatchback-sports", "sedan", "van", "truck", "race"];
-  const urls = ids.map((id) => raceVehicleArtUrl(id));
-  assert.equal(new Set(urls).size, ids.length);
-  for (const url of urls) assert.ok(url && existsSync(resolve(process.cwd(), `public${url}`)), String(url));
-});

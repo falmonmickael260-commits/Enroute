@@ -485,7 +485,7 @@ const glowTexture = (falloff = 1) =>
 // ---------------------------------------------------------------- the stage
 
 export class WorldStage implements Stage {
-  readonly vehiclePresentation = "3d" as const;
+  readonly groundPresentation = "world" as const;
   readonly camera = new THREE.PerspectiveCamera(50, 1, 0.3, 700);
   private readonly look: Look;
   private readonly sunOffset: THREE.Vector3;
