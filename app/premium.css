@@ -37,33 +37,9 @@
     sans-serif;
   letter-spacing: 0.08em;
 }
-.card-category-legend {
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  margin: 3px 0;
-  font:
-    750 8px var(--font-geist-sans),
-    sans-serif;
-  letter-spacing: 0.06em;
-}
-.card-category-legend > span {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  white-space: nowrap;
-}
-.card-category-legend svg {
-  width: 12px;
-  height: 12px;
-}
 @media (orientation: landscape) and (max-height: 520px) {
   .hand-card-family {
     display: none;
-  }
-  .card-category-legend {
-    margin: 0;
-    font-size: 7px;
   }
 }
 .race-impact {

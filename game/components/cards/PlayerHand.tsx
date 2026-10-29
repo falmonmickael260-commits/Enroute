@@ -5,7 +5,6 @@ import { AnimatePresence, motion } from "framer-motion";
 import type { CardInstance, GameState, PlayerState } from "@/game/types/game";
 import { canOfferCard as isCardPlayable } from "@/game/lib/cardAffordance";
 import { Card } from "./Card";
-import { CardCategoryLegend } from "./CardCategoryMark";
 
 // "lg" card box, in CSS px before the fan's scale.
 const CARD_W = 128;
@@ -85,7 +84,6 @@ export function PlayerHand({
 
   return (
     <div className="relative flex w-full flex-col items-center">
-      <CardCategoryLegend />
       {/* Floats above the fan so selecting a card never shifts the layout. */}
       <div className="pointer-events-none absolute inset-x-0 bottom-full z-[60] mb-1 flex justify-center">
       <AnimatePresence>

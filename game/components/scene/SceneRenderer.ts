@@ -26,7 +26,6 @@ import {
 } from "./models";
 import { loadCarModel } from "./carModels";
 import { createTouringCar } from "./premiumCars";
-import { buildVehicleModel } from "./vehicleModels";
 
 /**
  * Draws and animates the 3D pieces of a race: cars, hazards, protections and
@@ -92,8 +91,6 @@ const easeOutBack = (t: number) => {
   return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
 };
 const clamp01 = (t: number) => Math.max(0, Math.min(1, t));
-/** Vehicles modelled in code, by id (the others are loaded from their file). */
-const BUILT: Record<string, (color: string) => CarModel> = Object.fromEntries(["kilomax","moto","scooter","quad"].map(id=>[id,(color:string)=>buildVehicleModel(id,color)]));
 const UNIT_SCALE = new THREE.Vector3(1, 1, 1);
 /** A wheel's own size, as its model made it (the Kenney cars shrink theirs). */
 const restScale = (wheel: THREE.Object3D): THREE.Vector3 => (wheel.userData.rest as THREE.Vector3 | undefined) ?? UNIT_SCALE;
@@ -345,7 +342,7 @@ export class SceneRenderer {
       beamAt: -1e9,
       active: p.active,
       scale: 1,
-      carId: "kilomax",
+      carId: "__loading__",
       prevYaw: 0,
       lastSkid: 0,
     };
@@ -356,8 +353,7 @@ export class SceneRenderer {
     const wanted = p.car || "kilomax";
     if (car.carId === wanted) return;
     car.carId = wanted;
-    const build = BUILT[wanted];
-    const ready = build ? Promise.resolve(build(p.color)) : loadCarModel(wanted, p.color, p.repaint ?? true, this.stage.castShadows);
+    const ready = loadCarModel(wanted, p.color, p.repaint ?? true, this.stage.castShadows);
     void ready.then((model) => {
       if (!model) return;
       if (car.carId !== wanted || !this.cars.has(car.id) || this.disposed) { model.root.userData.disposeModel?.(); return; }
@@ -865,6 +861,7 @@ export class SceneRenderer {
   dispose() {
     this.disposed = true;
     cancelAnimationFrame(this.raf);
+    for (const car of this.cars.values()) car.model.root.userData.disposeModel?.();
     this.scene.traverse((o) => {
       const m = o as THREE.Mesh;
       m.geometry?.dispose();

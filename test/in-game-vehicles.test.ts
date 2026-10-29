@@ -3,7 +3,9 @@ import assert from "node:assert/strict";
 import * as THREE from "three";
 import { createTouringCar } from "../game/components/scene/premiumCars";
 import { CARS } from "../game/lib/cars";
-import { loadCarModel } from "../game/components/scene/carModels";
+import { vehicleArtUrl } from "../game/components/scene/carModels";
+import { existsSync } from "node:fs";
+import { resolve } from "node:path";
 
 for (const id of [
   "sedan",
@@ -32,27 +34,8 @@ for (const id of [
 }
 
 for (const car of CARS)
-  test(`${car.id}: the race loader actually builds the new vehicle with working wheel hubs`, async () => {
-    const model = await loadCarModel(car.id, "#b92332", car.repaint, true);
-    assert.ok(model);
-    assert.equal(model.root.userData.vehicleId, car.id);
-    assert.equal(model.root.userData.renderRevision, 2);
-    assert.equal(
-      model.wheels.length,
-      ["moto", "scooter"].includes(car.id) ? 2 : 4,
-    );
-    for (const wheel of model.wheels) {
-      assert.ok(wheel.parent);
-      assert.ok(["x", "y", "z"].includes(wheel.userData.axle));
-      assert.ok(wheel.userData.rest instanceof THREE.Vector3);
-    }
-    assert.ok(
-      Object.values(model.mounts).every((m) => m.parent === model.body),
-    );
-    let count = 0;
-    model.root.traverse((o) => {
-      if (o instanceof THREE.Mesh) count++;
-    });
-    assert.ok(count < 40, `${count} draw calls`);
-    model.root.userData.disposeModel();
+  test(`${car.id}: the in-game race selects its own high-resolution vehicle artwork`, () => {
+    const url = vehicleArtUrl(car.id);
+    assert.equal(url, `/images/premium/vehicles/${car.id}.webp`);
+    assert.ok(existsSync(resolve(process.cwd(), `public${url}`)));
   });

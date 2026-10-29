@@ -21,7 +21,7 @@ import { useShortLandscape } from "@/game/hooks/useShortLandscape";
 import { Card } from "@/game/components/cards/Card";
 import { CardArt } from "@/game/components/cards/CardArt";
 import { CardIllustration } from "@/game/components/cards/CardIllustration";
-import { CARD_IDENTITY, CardCategoryLegend, CardCategoryMark } from "@/game/components/cards/CardCategoryMark";
+import { CARD_IDENTITY, CardCategoryMark } from "@/game/components/cards/CardCategoryMark";
 
 /** Why a card can't be played right now, in the player's words. */
 function whyNot(player: PlayerState, def: CardDef, state: GameState): string {
@@ -198,7 +198,6 @@ export function SceneHand({
 
   const prompt = (
     <>
-      <CardCategoryLegend />
       <p className="text-center font-hud text-[0.7rem] font-semibold leading-tight text-white/70">
         {mustDraw ? (short ? "← Touchez la pioche" : "↖ Touchez la pioche") : canAct ? "Touchez une carte" : ""}
       </p>
