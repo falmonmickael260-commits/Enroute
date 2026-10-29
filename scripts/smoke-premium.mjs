@@ -53,6 +53,9 @@ try {
   await page.waitForTimeout(2500);
   await page.getByRole("progressbar").waitFor({ state: "hidden", timeout: 20000 });
   assert.equal(await page.locator("[data-card-id]").count(), 20);
+  for(const category of ["distance","attaque","defense","special"]) {
+    assert.equal(await page.locator(`[data-card-category="${category}"]`).count(),5);
+  }
   assert.equal(
     await page
       .locator("img.premium-card-art")
@@ -104,6 +107,7 @@ try {
   await page.locator("button[data-card-id]").last().click();
   await page.getByRole("button", { name: "Défausser", exact: true }).click();
   await page.waitForTimeout(2000);
+  await page.waitForFunction(()=>Array.from(document.querySelectorAll("button[data-card-id]")).every(card=>Number(getComputedStyle(card.parentElement).opacity)>.98));
   await page.screenshot({ path: `${output}/race.png` });
   await page
     .getByRole("button", { name: "Passer au plateau classique" })
