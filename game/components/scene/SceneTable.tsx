@@ -44,30 +44,32 @@ function AnimatedDistance({
   move: Extract<AnimationEvent, { kind: "move" }> | null;
 }) {
   const moveKey = move?.id ?? null;
-  const [display, setDisplay] = useState(() => ({ key: moveKey, value: move?.from ?? distance }));
+  const from = move?.from ?? distance;
+  const to = move?.to ?? distance;
+  const duration = move ? animationDuration(move) : 0;
+  const [display, setDisplay] = useState(() => ({ key: moveKey, value: from, progress: 0 }));
   if (display.key !== moveKey || (!move && display.value !== distance)) {
-    setDisplay({ key: moveKey, value: move?.from ?? distance });
+    setDisplay({ key: moveKey, value: from, progress: 0 });
   }
 
   useEffect(() => {
-    if (!move) return;
-    const duration = animationDuration(move);
-    let startedAt: number | null = null;
-    let frame = 0;
-    const tick = (now: number) => {
-      startedAt ??= now;
-      const progress = Math.max(0, Math.min(1, (now - startedAt) / duration));
+    if (!moveKey) return;
+    const startedAt = performance.now();
+    let timer = 0;
+    const tick = () => {
+      const progress = Math.max(0, Math.min(1, (performance.now() - startedAt) / duration));
       const eased = progress < 0.5 ? 4 * progress ** 3 : 1 - ((-2 * progress + 2) ** 3) / 2;
-      setDisplay({ key: moveKey, value: Math.round(move.from + (move.to - move.from) * eased) });
-      if (progress < 1) frame = requestAnimationFrame(tick);
+      setDisplay({ key: moveKey, value: Math.round(from + (to - from) * eased), progress });
+      if (progress >= 1) window.clearInterval(timer);
     };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, [distance, moveKey, move]);
+    timer = window.setInterval(tick, 50);
+    tick();
+    return () => window.clearInterval(timer);
+  }, [distance, duration, from, moveKey, to]);
 
-  const value = display.key === moveKey ? display.value : move?.from ?? distance;
+  const value = display.key === moveKey ? display.value : from;
   return (
-    <span data-distance-counter={playerId} data-distance-value={value}>
+    <span data-distance-counter={playerId} data-distance-value={value} data-distance-move={moveKey ?? ""} data-distance-progress={display.progress} data-distance-duration={duration}>
       {value}
       <span className="ml-0.5 text-[0.65em] text-white/70">km</span>
     </span>

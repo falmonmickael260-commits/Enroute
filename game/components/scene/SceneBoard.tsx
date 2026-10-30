@@ -122,7 +122,7 @@ export function SceneBoard({
       const frameCover = coverRef.current;
       const viewport = viewportRef.current;
       if (movingCar && frameCover && viewport.width && viewport.height) {
-        const zoom = Math.max(1.15, Math.min(2.6, 230 / Math.max(1, movingCar.size / 0.78)));
+        const zoom = Math.max(1.15, Math.min(2.6, 230 / Math.max(1, movingCar.size / 0.9)));
         const fx = frameCover.left + movingCar.x * frameCover.scale;
         const fy = frameCover.top + movingCar.y * frameCover.scale;
         const cx = viewport.width / 2;

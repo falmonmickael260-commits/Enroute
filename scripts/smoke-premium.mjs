@@ -95,7 +95,7 @@ try {
       size: Number(node.dataset.carSize),
     })));
     assert.equal(placement.length, count);
-    assert.ok(placement.every((car) => Number.isFinite(car.x) && car.size > 0));
+    assert.ok(placement.every((car) => Number.isFinite(car.x) && car.size >= 200), `${count} cars remain large enough to read at the starting grid`);
     assert.ok(new Set(placement.map((car) => Math.round(car.x))).size === count, `${count} cars occupy distinct road positions`);
     await page.screenshot({ path: `${output}/grid-${count}.png` });
   }
@@ -166,8 +166,18 @@ try {
         return Number(row?.getAttribute("data-distance-km")) > 0;
       }, movedPlayerId);
       const distanceCounter = page.locator(`[data-distance-counter="${movedPlayerId}"]`);
-      await page.waitForFunction((id) => Number(document.querySelector(`[data-distance-counter="${id}"]`)?.getAttribute("data-distance-value")) > 0, movedPlayerId);
-      await page.waitForTimeout(150);
+      try {
+        await page.waitForFunction((id) => {
+          const counter = document.querySelector(`[data-distance-counter="${id}"]`);
+          const row = [...document.querySelectorAll("[data-player-id]")].find((element) => element.getAttribute("data-player-id") === id);
+          const value = Number(counter?.getAttribute("data-distance-value"));
+          const target = Number(row?.getAttribute("data-distance-km"));
+          return value > 0 && value < target;
+        }, movedPlayerId, { timeout: 5000 });
+      } catch (error) {
+        console.error("distance animation state", await page.locator(`[data-distance-counter="${movedPlayerId}"]`).getAttribute("outerHTML"), await page.locator(`[data-player-id="${movedPlayerId}"]`).getAttribute("data-distance-km"));
+        throw error;
+      }
       const midDistance = Number(await distanceCounter.getAttribute("data-distance-value"));
       const finalDistance = Number(await page.locator(`[data-player-id="${movedPlayerId}"]`).getAttribute("data-distance-km"));
       assert.ok(midDistance > 0 && midDistance < finalDistance, "the HUD distance counts up during the car's move");
