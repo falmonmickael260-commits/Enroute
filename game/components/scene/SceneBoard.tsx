@@ -72,9 +72,9 @@ export function SceneBoard({
       for (const [id, p] of order) {
         const el = labelRefs.current.get(id);
         if (!el) continue;
-        const scale = Math.max(0.55, Math.min(1.25, p.size / 110));
-        const w = 130 * scale;
-        const h = 44 * scale;
+        const scale = Math.max(0.45, Math.min(0.9, p.size / 150));
+        const w = 118 * scale;
+        const h = 38 * scale;
         let y = p.y - p.size * 0.62;
         for (let guard = 0; guard < 6; guard++) {
           const hit = placed.find((q) => Math.abs(q.x - p.x) < (q.w + w) / 2 && Math.abs(q.y - y) < (q.h + h) / 2);
@@ -166,7 +166,7 @@ export function SceneBoard({
     // never show past the picture's edges
     x = Math.min(-cover.left * z + 0, Math.max(box.width - (cover.left + cover.w) * z, x));
     y = Math.min(-cover.top * z, Math.max(box.height - (cover.top + cover.h) * z, y));
-    return { x, y, scale: z, rotateX: 5 };
+    return { x, y, scale: z, rotateX: 4 };
   }, [cover, focus, box.width, box.height, bottomInset]);
 
   const markers = useMemo(() => {
@@ -182,7 +182,7 @@ export function SceneBoard({
   const finish = path.finish;
 
   return (
-    <div ref={boxRef} className="absolute inset-0 overflow-hidden" style={{ perspective: 1400 }}>
+    <div ref={boxRef} className="absolute inset-0 overflow-hidden" style={{ perspective: 1000 }}>
       {!loaded ? (
         <div className="absolute inset-0 z-10 flex items-center justify-center">
           <div className="h-10 w-10 animate-spin rounded-full border-4 border-white/20 border-t-[#ffd23f]" />
@@ -230,7 +230,7 @@ export function SceneBoard({
                 >
                   <defs>
                     <clipPath id="coastal-water">
-                      <path d="M710 145 C820 132 928 158 1024 145 L1024 1536 L858 1536 C842 1430 826 1344 828 1256 C830 1168 798 1094 806 1010 C814 920 850 850 844 760 C838 674 850 602 880 520 C902 458 876 418 910 360 C938 312 978 282 962 238 C950 205 870 170 710 145 Z" />
+                      <path d="M700 300 C800 285 938 300 1024 330 L1024 820 C980 792 946 748 910 708 C872 666 836 622 800 584 C770 548 756 498 735 458 C720 422 700 366 700 300 Z" />
                     </clipPath>
                   </defs>
                   <g clipPath="url(#coastal-water)">
