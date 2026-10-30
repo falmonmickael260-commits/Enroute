@@ -3,7 +3,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import type { CardInstance, GameState, PlayerState } from "@/game/types/game";
-import { canOfferCard as isCardPlayable } from "@/game/lib/cardAffordance";
+import { isCardPlayable } from "@/game/lib/engine/rules";
 import { Card } from "./Card";
 
 // "lg" card box, in CSS px before the fan's scale.

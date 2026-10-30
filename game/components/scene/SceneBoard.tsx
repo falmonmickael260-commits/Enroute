@@ -29,17 +29,12 @@ export function SceneBoard({
   event,
   def,
   bottomInset = 0,
-  intro = false,
-  onReady,
 }: {
   state: GameState;
   event: AnimationEvent | null;
   def: SceneDef;
   /** Height covered by the hand at the bottom: the start line must stay above it. */
   bottomInset?: number;
-  /** Opening countdown for this race. */
-  intro?: boolean;
-  onReady?: () => void;
 }) {
   const path = useMemo(() => new ScenePath(def), [def]);
   const [boxRef, box] = useElementSize<HTMLDivElement>();
@@ -48,16 +43,6 @@ export function SceneBoard({
   const stateRef = useRef(state);
   const rendererRef = useRef<SceneRenderer | null>(null);
   const labelRefs = useRef(new Map<string, HTMLDivElement>());
-
-  useEffect(() => {
-    if (loaded) onReady?.();
-  }, [loaded, onReady]);
-
-  const previousIntro = useRef(intro);
-  useEffect(() => {
-    if (previousIntro.current && !intro) rendererRef.current?.launchGrid();
-    previousIntro.current = intro;
-  }, [intro]);
 
   // cover the box with the picture, keeping the road centred horizontally
   const cover = useMemo(() => {
@@ -87,9 +72,9 @@ export function SceneBoard({
       for (const [id, p] of order) {
         const el = labelRefs.current.get(id);
         if (!el) continue;
-        const scale = Math.max(0.45, Math.min(0.9, p.size / 150));
-        const w = 118 * scale;
-        const h = 38 * scale;
+        const scale = Math.max(0.55, Math.min(1.25, p.size / 110));
+        const w = 130 * scale;
+        const h = 44 * scale;
         let y = p.y - p.size * 0.62;
         for (let guard = 0; guard < 6; guard++) {
           const hit = placed.find((q) => Math.abs(q.x - p.x) < (q.w + w) / 2 && Math.abs(q.y - y) < (q.h + h) / 2);
@@ -181,7 +166,7 @@ export function SceneBoard({
     // never show past the picture's edges
     x = Math.min(-cover.left * z + 0, Math.max(box.width - (cover.left + cover.w) * z, x));
     y = Math.min(-cover.top * z, Math.max(box.height - (cover.top + cover.h) * z, y));
-    return { x, y, scale: z, rotateX: 4 };
+    return { x, y, scale: z, rotateX: 5 };
   }, [cover, focus, box.width, box.height, bottomInset]);
 
   const markers = useMemo(() => {
@@ -194,13 +179,10 @@ export function SceneBoard({
       return { km, x: p.x + -p.ty * p.s * 1.45 * side, y: p.y + p.tx * p.s * 1.45 * side, s: p.s };
     });
   }, [path, state.target]);
-  const start = path.start;
-  const startHalfWidth = start.s * 1.45;
-  const startAngle = (Math.atan2(start.tx, -start.ty) * 180) / Math.PI;
   const finish = path.finish;
 
   return (
-    <div ref={boxRef} className="absolute inset-0 overflow-hidden" style={{ perspective: 1000 }}>
+    <div ref={boxRef} className="absolute inset-0 overflow-hidden" style={{ perspective: 1400 }}>
       {!loaded ? (
         <div className="absolute inset-0 z-10 flex items-center justify-center">
           <div className="h-10 w-10 animate-spin rounded-full border-4 border-white/20 border-t-[#ffd23f]" />
@@ -240,49 +222,6 @@ export function SceneBoard({
                 className="absolute left-0 top-0 origin-top-left"
                 style={{ width: def.width, height: def.height, transform: `scale(${cover.scale})` }}
               >
-                <svg
-                  aria-hidden="true"
-                  viewBox={`0 0 ${def.width} ${def.height}`}
-                  preserveAspectRatio="none"
-                  className={styles.water}
-                >
-                  <defs>
-                    <clipPath id="coastal-water">
-                      <path d="M700 300 C800 285 938 300 1024 330 L1024 820 C980 792 946 748 910 708 C872 666 836 622 800 584 C770 548 756 498 735 458 C720 422 700 366 700 300 Z" />
-                    </clipPath>
-                  </defs>
-                  <g clipPath="url(#coastal-water)">
-                    <path className={styles.waterWave} d="M900 252 C937 242 968 258 1025 244 M944 316 C970 306 990 321 1030 310 M914 390 C949 380 979 399 1032 385 M898 472 C936 460 971 480 1031 466 M890 555 C932 545 969 565 1032 551 M906 650 C944 638 978 659 1032 646 M897 750 C936 738 976 760 1034 745 M882 856 C926 844 970 865 1035 851 M860 970 C914 958 965 980 1036 965 M864 1082 C918 1070 970 1092 1037 1078 M874 1200 C925 1188 973 1210 1036 1195 M892 1320 C936 1308 979 1330 1038 1316 M894 1432 C940 1420 984 1442 1036 1428" />
-                    <path className={`${styles.waterWave} ${styles.waterWaveSoft}`} d="M920 276 C953 267 984 283 1030 270 M930 430 C962 420 992 438 1031 425 M908 604 C949 594 981 612 1032 600 M914 806 C953 796 987 814 1035 802 M880 1030 C927 1020 978 1038 1037 1026 M896 1250 C940 1240 982 1258 1037 1246 M910 1460 C950 1450 991 1468 1036 1456" />
-                  </g>
-                </svg>
-                <svg
-                  aria-label="Ligne de départ"
-                  role="img"
-                  viewBox={`0 0 ${def.width} ${def.height}`}
-                  preserveAspectRatio="none"
-                  className={`${styles.startLine} absolute inset-0 h-full w-full ${intro ? styles.startLineIntro : ""}`}
-                >
-                  <defs>
-                    <pattern id="start-checkers" width="28" height="18" patternUnits="userSpaceOnUse">
-                      <rect width="28" height="18" fill="#f7f4e8" />
-                      <path d="M0 0h14v9H0zM14 9h14v9H14z" fill="#171b22" />
-                    </pattern>
-                  </defs>
-                  <g transform={`translate(${start.x} ${start.y}) rotate(${startAngle})`}>
-                    <rect
-                      x={-startHalfWidth}
-                      y={-9}
-                      width={startHalfWidth * 2}
-                      height={18}
-                      rx={2}
-                      fill="url(#start-checkers)"
-                      stroke="#fff"
-                      strokeWidth={2}
-                    />
-                    <path d={`M${-startHalfWidth} 15 H${startHalfWidth}`} stroke="rgba(0,0,0,.55)" strokeWidth={4} />
-                  </g>
-                </svg>
                 {markers.map((m) => (
                   <div
                     key={m.km}

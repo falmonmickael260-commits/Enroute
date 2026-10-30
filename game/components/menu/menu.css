@@ -426,12 +426,12 @@
   }
   .home-logo-mark {
     height: min(36dvh, 100%);
-    width: auto;
+    width: auto !important;
     max-width: min(94vw, 34rem);
   }
   .home-logo-mark img {
-    height: 100%;
-    width: auto;
+    height: 100% !important;
+    width: auto !important;
     max-width: 100%;
     object-fit: contain;
   }

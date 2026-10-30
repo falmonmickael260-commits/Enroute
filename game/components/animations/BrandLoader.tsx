@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { motion } from "framer-motion";
 import clsx from "clsx";
-import { BRAND, BRAND_NAME, LOGO_ASPECT, LOGO_READY } from "@/game/lib/brand";
+import { BACKGROUND, BRAND, BRAND_NAME, LOGO_ASPECT, LOGO_READY } from "@/game/lib/brand";
 import styles from "./BrandLoader.module.css";
 
 /** Share of the bar each part of the loading stands for. */
@@ -91,7 +91,7 @@ export function BrandLoader({ onFinish }: { onFinish: () => void }) {
     };
 
     const portrait = window.matchMedia("(orientation: portrait)").matches;
-    const bg = { src: "/images/premium/coast.webp", bytes: 300000 };
+    const bg = portrait ? BACKGROUND.portrait : BACKGROUND.landscape;
     const bgFile = bg ? load(bg.src, bg.bytes, (p) => set("background", p)) : Promise.resolve(null);
     if (!bg) set("background", 1);
     bgFile.then((url) => {
@@ -155,23 +155,23 @@ export function BrandLoader({ onFinish }: { onFinish: () => void }) {
   return (
     <motion.div
       className={styles.root}
-      role="status"
-      aria-label="Chargement de KILOMAX"
       style={rootStyle}
       initial={{ opacity: 1 }}
       exit={{ opacity: 0, transition: { duration: 0.7, ease: [0.4, 0, 0.2, 1] } }}
     >
       {/* the official picture for this orientation, filling the screen without distortion */}
       <div className={clsx(styles.bg, bgShown && styles.bgIn)} aria-hidden>
+        {BACKGROUND.portrait && BACKGROUND.landscape ? (
           <picture>
-            <source media="(orientation: portrait)" srcSet={bgUrl.portrait ?? "/images/premium/coast.webp"} />
+            <source media="(orientation: portrait)" srcSet={bgUrl.portrait ?? BACKGROUND.portrait.src} />
             <img
-              src={bgUrl.landscape ?? "/images/premium/coast.webp"}
+              src={bgUrl.landscape ?? BACKGROUND.landscape.src}
               alt=""
               draggable={false}
-              style={{ objectPosition: "65% center" }}
+              style={{ ["--landscape-position" as string]: BACKGROUND.landscapePosition }}
             />
           </picture>
+        ) : null}
       </div>
 
       <div className={styles.stack}>

@@ -10,7 +10,11 @@ import {
   createBeam,
   createBlobShadow,
   createBullBar,
+  createCar,
   createFlame,
+  createMoto,
+  createQuad,
+  createScooter,
   createGlowRing,
   createJerrycan,
   createLimitPlate,
@@ -25,8 +29,6 @@ import {
   type CarModel,
 } from "./models";
 import { loadCarModel } from "./carModels";
-import { createTouringCar } from "./premiumCars";
-import { slotsFor } from "./carLayout";
 
 /**
  * Draws and animates the 3D pieces of a race: cars, hazards, protections and
@@ -64,6 +66,27 @@ export type SceneCue =
   | { kind: "shield" }
   | { kind: "gps" };
 
+const LANES: Record<number, number[]> = { 1: [0], 2: [-0.42, 0.42], 3: [-0.56, 0, 0.56], 4: [-0.62, -0.2, 0.22, 0.64] };
+/** Au-delà de 4 voitures groupées, on les range en rangées de 3 (la route est trop étroite). */
+const ROW_SIZE = 3;
+/** Recul de la rangée arrière, en longueurs de voiture dans l'axe de la route. */
+const ROW_GAP = 1.3;
+
+/**
+ * Place de chaque voiture d'un groupe (trié du plus en retard au plus en
+ * avance) : décalage latéral et recul longitudinal, en longueurs de voiture.
+ * Jusqu'à 4 voitures : une seule ligne de front. À 5 ou 6 : les 3 premières
+ * forment la rangée avant, les autres la rangée arrière, reculée de ROW_GAP.
+ */
+function slotsFor(count: number): { lateral: number; along: number }[] {
+  if (count <= 4) return (LANES[count] ?? [0]).map((lateral) => ({ lateral, along: 0 }));
+  const back = count - ROW_SIZE;
+  return [
+    ...LANES[back].map((lateral) => ({ lateral, along: -ROW_GAP })),
+    ...LANES[ROW_SIZE].map((lateral) => ({ lateral, along: 0 })),
+  ];
+}
+
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const easeOutBack = (t: number) => {
   const c1 = 1.9;
@@ -71,6 +94,8 @@ const easeOutBack = (t: number) => {
   return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
 };
 const clamp01 = (t: number) => Math.max(0, Math.min(1, t));
+/** Vehicles modelled in code, by id (the others are loaded from their file). */
+const BUILT: Record<string, (color: string) => CarModel> = { kilomax: createCar, moto: createMoto, scooter: createScooter, quad: createQuad };
 const UNIT_SCALE = new THREE.Vector3(1, 1, 1);
 /** A wheel's own size, as its model made it (the Kenney cars shrink theirs). */
 const restScale = (wheel: THREE.Object3D): THREE.Vector3 => (wheel.userData.rest as THREE.Vector3 | undefined) ?? UNIT_SCALE;
@@ -151,7 +176,6 @@ export class SceneRenderer {
   /** The winner does a few doughnuts past the line. */
   private winnerId: string | null = null;
   private celebrateAt = 0;
-  private gridLaunchAt = 0;
   onFrame: ((positions: Map<string, CarScreenPos>) => void) | null = null;
   /** Where each car is along the road this frame (read by the race audio). */
   onMotion: ((cars: { id: string; km: number }[]) => void) | null = null;
@@ -210,7 +234,6 @@ export class SceneRenderer {
   reset() {
     for (const car of this.cars.values()) {
       this.scene.remove(car.frame);
-      car.model.root.userData.disposeModel?.();
       for (const prop of car.props.values()) if (prop.world) this.scene.remove(prop.world);
     }
     this.cars.clear();
@@ -223,12 +246,6 @@ export class SceneRenderer {
     this.fireworksUntil = now + 4200;
     this.winnerId = winnerId ?? null;
     this.celebrateAt = now;
-  }
-
-  /** Small visual-only rollout after the coastal starting countdown. */
-  launchGrid(now = performance.now()) {
-    this.gridLaunchAt = now;
-    for (const car of this.cars.values()) car.lastSkid = now - 200;
   }
 
   update(players: ScenePlayer[], target: number, now = performance.now()) {
@@ -281,7 +298,6 @@ export class SceneRenderer {
     for (const [id, car] of this.cars) {
       if (!seen.has(id)) {
         this.scene.remove(car.frame);
-        car.model.root.userData.disposeModel?.();
         for (const prop of car.props.values()) if (prop.world) this.scene.remove(prop.world);
         this.cars.delete(id);
       }
@@ -290,7 +306,7 @@ export class SceneRenderer {
 
   private createCarEntity(p: ScenePlayer): CarEntity {
     const frame = new THREE.Group();
-    const model = createTouringCar("kilomax", p.color);
+    const model = createCar(p.color);
     const ring = createGlowRing(p.color);
     const flame = createFlame();
     flame.position.copy(model.exhaust);
@@ -329,7 +345,7 @@ export class SceneRenderer {
       beamAt: -1e9,
       active: p.active,
       scale: 1,
-      carId: "__loading__",
+      carId: "kilomax",
       prevYaw: 0,
       lastSkid: 0,
     };
@@ -340,10 +356,10 @@ export class SceneRenderer {
     const wanted = p.car || "kilomax";
     if (car.carId === wanted) return;
     car.carId = wanted;
-    const ready = loadCarModel(wanted, p.color, p.repaint ?? true, this.stage.castShadows);
+    const build = BUILT[wanted];
+    const ready = build ? Promise.resolve(build(p.color)) : loadCarModel(wanted, p.color, p.repaint ?? true, this.stage.castShadows);
     void ready.then((model) => {
-      if (!model) return;
-      if (car.carId !== wanted || !this.cars.has(car.id) || this.disposed) { model.root.userData.disposeModel?.(); return; }
+      if (!model || car.carId !== wanted || !this.cars.has(car.id) || this.disposed) return;
       this.swapModel(car, model);
     });
   }
@@ -364,7 +380,6 @@ export class SceneRenderer {
         if ((o as THREE.Mesh).isMesh) o.castShadow = true;
       });
     model.brakeLights.emissiveIntensity = old.brakeLights.emissiveIntensity;
-    old.root.userData.disposeModel?.();
     car.model = model;
   }
 
@@ -681,7 +696,6 @@ export class SceneRenderer {
       const m = car.model;
       let swerve = 0;
       let flameOn = false;
-      let launchSpin = 0;
       if (car.km !== car.toKm) {
         const a = clamp01((t - car.moveStart) / car.moveDur);
         const eased = car.style === "turbo" ? 1 - Math.pow(1 - a, 3) : easeInOut(a);
@@ -746,18 +760,6 @@ export class SceneRenderer {
       car.flame.visible = flameOn;
       if (flameOn) car.flame.scale.set(1, 1, 0.8 + Math.random() * 0.5);
 
-      const launchAge = t - this.gridLaunchAt;
-      if (this.gridLaunchAt > 0 && launchAge >= 0 && launchAge < 950 && car.km === car.toKm && !car.props.size) {
-        const progress = launchAge / 950;
-        const kick = Math.sin(progress * Math.PI);
-        m.body.rotation.x = -0.045 * kick;
-        launchSpin = (1 - progress) * dt * 7;
-        if (progress < 0.45 && t - car.lastSkid > 100) {
-          car.lastSkid = t;
-          for (const side of [-1, 1]) this.emit(m.root, new THREE.Vector3(side * 0.17, 0.04, -0.36), "#d9d9d9", 0.42, 700, 0.65);
-        }
-      }
-
       car.lateral += (car.lateralTarget - car.lateral) * Math.min(1, dt * 5);
       car.along += (car.alongTarget - car.along) * Math.min(1, dt * 5);
       this.place(car, car.km, swerve);
@@ -781,7 +783,7 @@ export class SceneRenderer {
         } else if (d >= 1) m.root.rotation.y = 0;
       }
       // wheels spin with the distance covered
-      const spin = ((car.km - prevKm) / Math.max(1, this.target)) * 900 + launchSpin;
+      const spin = ((car.km - prevKm) / Math.max(1, this.target)) * 900;
       for (const w of m.wheels) w.rotation[(w.userData.axle as "x" | "y" | "z" | undefined) ?? "x"] += spin;
       // idle engine shimmer
       if (!car.props.size && car.km === car.toKm) m.body.position.y = Math.sin(t / 90 + car.id.length) * 0.004;
@@ -861,7 +863,6 @@ export class SceneRenderer {
   dispose() {
     this.disposed = true;
     cancelAnimationFrame(this.raf);
-    for (const car of this.cars.values()) car.model.root.userData.disposeModel?.();
     this.scene.traverse((o) => {
       const m = o as THREE.Mesh;
       m.geometry?.dispose();

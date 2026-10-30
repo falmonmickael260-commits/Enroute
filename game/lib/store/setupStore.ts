@@ -11,7 +11,6 @@ export interface SetupPlayer {
   color: PlayerColor;
   car: CarId;
   ready: boolean;
-  isBot?: boolean;
 }
 
 export const PLAYER_COLORS: PlayerColor[] = ["crimson", "azure", "amber", "emerald", "violet", "rose"];
@@ -22,7 +21,6 @@ interface SetupState {
   ambiance: AmbianceId;
   target: number;
   createLocalGame: (playerNames: string[], ambiance: AmbianceId, target: number) => string;
-  createBotGame: (playerName: string, botCount: number, ambiance: AmbianceId, target: number) => string;
   joinByCode: (code: string) => void;
   toggleReady: (id: string) => void;
   setCar: (id: string, car: CarId) => void;
@@ -42,21 +40,6 @@ export const useSetupStore = create<SetupState>((set, get) => ({
       color: PLAYER_COLORS[i % PLAYER_COLORS.length],
       car: defaultCar(i),
       ready: false,
-    }));
-    set({ code, players, ambiance, target });
-    return code;
-  },
-  createBotGame: (playerName, botCount, ambiance, target) => {
-    const code = generateGameCode();
-    const botNames = ["Léo", "Mia", "Axel", "Zoé", "Noa"];
-    const count = Math.max(1, Math.min(botNames.length, Math.floor(botCount)));
-    const players: SetupPlayer[] = [playerName.trim() || "Joueur 1", ...botNames.slice(0, count)].map((name, i) => ({
-      id: `p${i + 1}-${Math.random().toString(36).slice(2, 7)}`,
-      name: i === 0 ? name : `IA ${name}`,
-      color: PLAYER_COLORS[i % PLAYER_COLORS.length],
-      car: defaultCar(i),
-      ready: true,
-      isBot: i > 0,
     }));
     set({ code, players, ambiance, target });
     return code;
