@@ -22,6 +22,11 @@ function cueFor(prev: GameState, next: GameState): { playerId: string; cue: Scen
   const after = next.players.find((p) => p.id === before.id);
   if (!after) return null;
   if (after.distance !== before.distance) {
+    const passedAnotherCar = prev.players.some((other) => {
+      if (other.id === before.id) return false;
+      const nextOther = next.players.find((player) => player.id === other.id);
+      return nextOther !== undefined && before.distance <= other.distance && after.distance > nextOther.distance;
+    });
     const style: MoveStyle =
       def.special === "turbo"
         ? "turbo"
@@ -31,15 +36,17 @@ function cueFor(prev: GameState, next: GameState): { playerId: string; cue: Scen
             ? "overtake"
             : def.special === "derniereLigneDroite"
               ? "sprint"
+              : passedAnotherCar
+                ? "overtake"
               : (def.value ?? 0) >= 200
                 ? "fast"
                 : "drive";
-    return { playerId: after.id, cue: { kind: "move", style } };
+    return { playerId: after.id, cue: { kind: "move", style, ...(def.special ? { special: def.special } : {}) } };
   }
   if (def.category === "defense") {
     return { playerId: after.id, cue: { kind: after.shields.length > before.shields.length ? "shield" : "repair" } };
   }
-  if (def.special === "gpsStrategique") return { playerId: after.id, cue: { kind: "gps" } };
+  if (def.special === "gpsStrategique") return { playerId: after.id, cue: { kind: "gps", special: def.special } };
   return null;
 }
 
@@ -47,6 +54,7 @@ export function pushState(renderer: SceneRenderer, prev: GameState | null, state
   if (prev && prev.startedAt !== state.startedAt) renderer.reset();
   const cue = prev ? cueFor(prev, state) : null;
   if (cue) renderer.cue(cue.playerId, cue.cue);
+  if (cue && "special" in cue.cue && cue.cue.special) raceAudio.specialCue();
   if (cue?.cue.kind === "move") raceAudio.launch(cue.cue.style);
   const current = state.players[state.currentPlayerIndex]?.id;
   renderer.update(

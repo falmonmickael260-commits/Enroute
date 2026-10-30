@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
-import type { DefenseType, HazardType } from "@/game/types/game";
+import type { DefenseType, HazardType, SpecialType } from "@/game/types/game";
 import type { Stage, Shot, StageCar } from "./stage";
 import {
   createAntenna,
@@ -59,10 +59,10 @@ export interface CarScreenPos {
 export type MoveStyle = "drive" | "fast" | "turbo" | "shortcut" | "overtake" | "sprint";
 
 export type SceneCue =
-  | { kind: "move"; style: MoveStyle }
+  | { kind: "move"; style: MoveStyle; special?: SpecialType }
   | { kind: "repair" }
   | { kind: "shield" }
-  | { kind: "gps" };
+  | { kind: "gps"; special?: SpecialType };
 
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
 const easeOutBack = (t: number) => {
@@ -128,6 +128,9 @@ interface CarEntity {
   lastPuff: number;
   bubbleAt: number;
   beamAt: number;
+  specialAt: number;
+  specialKind: SpecialType | null;
+  lastSpecialPuff: number;
   active: boolean;
   scale: number;
   /** Which car model is shown (or on its way). */
@@ -204,6 +207,12 @@ export class SceneRenderer {
     else if (cue.kind === "repair") this.burst(car.model.root, "#8dffbe", 16, 0.7);
     else if (cue.kind === "shield") car.bubbleAt = now;
     else if (cue.kind === "gps") car.beamAt = now;
+    if ("special" in cue && cue.special) {
+      car.specialAt = now;
+      car.specialKind = cue.special;
+      car.lastSpecialPuff = now - 300;
+      this.burst(car.model.root, "#bd8bff", 16, 0.9);
+    }
   }
 
   /** Back to the start grid (new game). */
@@ -327,6 +336,9 @@ export class SceneRenderer {
       lastPuff: 0,
       bubbleAt: -1e9,
       beamAt: -1e9,
+      specialAt: -1e9,
+      specialKind: null,
+      lastSpecialPuff: 0,
       active: p.active,
       scale: 1,
       carId: "__loading__",
@@ -801,6 +813,18 @@ export class SceneRenderer {
         ringMat.opacity = 0.95 * (1 - bubble) + 0.3;
         if (bubble < 0.08) this.burst(m.root, "#8dffbe", 3, 0.6);
       } else ringMat.color.set((m.paint.color as THREE.Color).getStyle());
+      const specialAge = t - car.specialAt;
+      if (car.specialKind && specialAge >= 0 && specialAge < 1250) {
+        const progress = specialAge / 1250;
+        const halo = Math.sin(progress * Math.PI);
+        ringMat.color.set("#bd8bff");
+        ringMat.opacity = 0.5 + halo * 0.45;
+        car.ring.scale.set(1.18 + halo * 0.42, (1.18 + halo * 0.42) * 1.35, 1);
+        if (specialAge < 520 && t - car.lastSpecialPuff > 115) {
+          car.lastSpecialPuff = t;
+          this.emit(m.root, new THREE.Vector3((Math.random() - 0.5) * 0.35, 0.2 + Math.random() * 0.2, (Math.random() - 0.5) * 0.45), "#bd8bff", 0.9, 850, 0.75);
+        }
+      } else car.specialKind = null;
       for (const item of car.equipment.values()) {
         const e = clamp01((t - item.born) / 650);
         item.root.position.y = (1 - easeOutBack(e)) * 1.2;

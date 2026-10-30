@@ -28,7 +28,7 @@ const COUNT = [
   { at: 3600, label: "3" },
   { at: 4300, label: "2" },
   { at: 5000, label: "1" },
-  { at: 5700, label: "PARTEZ !" },
+  { at: 5700, label: "GO !" },
 ];
 
 /**
@@ -74,7 +74,7 @@ export function IntroCinematic({ title, subtitle, onDone }: { title: string; sub
   const countOn = count && elapsed < INTRO_MS;
 
   return (
-    <div className="fixed inset-0 z-[60]" onClick={() => setClosing(true)} role="button" aria-label="Passer l'introduction">
+    <div className="fixed inset-0 z-[60]" data-cinematic="intro" data-intro-phase={closing ? "closing" : countOn ? "countdown" : titleOn ? "title" : "flyover"} onClick={() => setClosing(true)} role="button" aria-label="Passer l'introduction">
       <Letterbox on={!closing} />
       <AnimatePresence>
         {titleOn && !closing ? (
@@ -94,7 +94,7 @@ export function IntroCinematic({ title, subtitle, onDone }: { title: string; sub
           <motion.p
             key={count.label}
             className="pointer-events-none absolute inset-x-0 top-[30%] text-center font-display text-7xl text-white drop-shadow-[0_6px_18px_rgba(0,0,0,0.65)] sm:text-8xl"
-            style={{ color: count.label === "PARTEZ !" ? "#7dff9b" : undefined }}
+            style={{ color: count.label === "GO !" ? "#7dff9b" : undefined }}
             initial={{ opacity: 0, scale: 1.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.7 }}
@@ -116,7 +116,7 @@ export function IntroCinematic({ title, subtitle, onDone }: { title: string; sub
 /** The winner crosses the line: bands and a headline while the camera films it. */
 export function FinishCinematic({ name, color }: { name: string; color: string }) {
   return (
-    <div className="pointer-events-none fixed inset-0 z-[60]">
+    <div className="pointer-events-none fixed inset-0 z-[60]" data-cinematic="finish">
       <Letterbox on />
       <motion.div
         className="absolute inset-x-0 top-[16%] flex flex-col items-center text-center"

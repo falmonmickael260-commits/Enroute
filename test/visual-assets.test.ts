@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import * as THREE from "three";
 import { CARS } from "../game/lib/cars";
 import { CARD_CATALOG } from "../game/lib/engine/cardCatalog";
@@ -9,7 +9,7 @@ import coastalScene from "../game/components/scene/scenes/provisoire.json";
 import { ScenePath } from "../game/components/scene/scenePath";
 
 test("four-lane coastal race art is aligned with a longer in-game route", () => {
-  assert.equal(coastalScene.image, "/images/scene/kilomax-coast-forward.webp");
+  assert.equal(coastalScene.image, "/images/scene/kilomax-coast-premium-v2.webp");
   assert.ok(existsSync(`public${coastalScene.image}`));
   assert.ok(coastalScene.finishIndex - coastalScene.startIndex >= 8);
   const path = new ScenePath(coastalScene);
@@ -17,6 +17,16 @@ test("four-lane coastal race art is aligned with a longer in-game route", () => 
   const finish = path.atKm(1000, 1000);
   assert.ok(start.s >= 240, "four-lane road width at the start");
   assert.ok(start.y - finish.y >= 600, "visibly extended race route");
+});
+
+test("race progress stays in the HUD instead of oversized roadside kilometre boards", () => {
+  const illustratedBoard = readFileSync("game/components/scene/SceneBoard.tsx", "utf8");
+  const worldStage = readFileSync("game/components/scene/WorldStage.ts", "utf8");
+  assert.doesNotMatch(illustratedBoard, /markers\.map/);
+  assert.doesNotMatch(illustratedBoard, /styles\.sign/);
+  assert.doesNotMatch(illustratedBoard, /styles\.finish/);
+  assert.doesNotMatch(worldStage, /const km = Math\.round\(\(target \* i\) \/ 5\)/);
+  assert.match(worldStage, /signTexture\("ARRIVÉE", true\)/);
 });
 
 test("every vehicle and every card has its delivered optimized illustration", () => {

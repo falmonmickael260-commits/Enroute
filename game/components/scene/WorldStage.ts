@@ -1578,22 +1578,8 @@ export class WorldStage implements Stage {
     });
     this.signs.clear();
     const post = new THREE.MeshStandardMaterial({ color: "#a7adb6", metalness: 0.5, roughness: 0.4 });
-    for (let i = 0; i < 5; i++) {
-      const km = Math.round((target * i) / 5);
-      const { point, right, forward } = this.road.at(this.road.kmToLen(km, target));
-      const k = -(HALF_WIDTH + 1.9);
-      const g = new THREE.Group();
-      const board = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.8, 0.08), new THREE.MeshStandardMaterial({ map: signTexture(String(km)) }));
-      board.position.y = 1.9;
-      board.castShadow = true;
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.9, 6), post);
-      pole.position.y = 0.95;
-      g.add(board, pole);
-      g.position.set(point.x + right.x * k, point.y, point.z + right.z * k);
-      g.rotation.y = Math.atan2(forward.x, forward.z) + Math.PI;
-      this.signs.add(g);
-    }
-    // finish arch
+    // Keep the finish arch, but let the HUD carry race distance. Large roadside
+    // kilometre boards dominated the driving scene and obscured the route.
     const { point, right, forward } = this.road.at(this.road.finishLen);
     const arch = new THREE.Group();
     for (const side of [-1, 1]) {
@@ -1602,7 +1588,7 @@ export class WorldStage implements Stage {
       pole.castShadow = true;
       arch.add(pole);
     }
-    const banner = new THREE.Mesh(new THREE.BoxGeometry(HALF_WIDTH * 2 + 1.4, 1.1, 0.1), new THREE.MeshStandardMaterial({ map: signTexture(String(target), true) }));
+    const banner = new THREE.Mesh(new THREE.BoxGeometry(HALF_WIDTH * 2 + 1.4, 1.1, 0.1), new THREE.MeshStandardMaterial({ map: signTexture("ARRIVÉE", true) }));
     banner.position.y = 3.9;
     banner.castShadow = true;
     arch.add(banner);
