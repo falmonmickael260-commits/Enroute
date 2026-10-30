@@ -139,7 +139,16 @@ export function SceneTable({
   const [worldReady, setWorldReady] = useState(false);
   const onWorldReady = useCallback(() => setWorldReady(true), []);
   const introPending = introFor === introKey;
-  const intro = introPending && worldReady;
+  const [introFallbackKey, setIntroFallbackKey] = useState<string | null>(null);
+  // Start the countdown once the board is visible. If WebGL is slow or
+  // unavailable, show it over the fallback board after a short grace period
+  // instead of letting the cinematic expire unseen during initialization.
+  const intro = introPending && (worldReady || introFallbackKey === introKey);
+  useEffect(() => {
+    if (!introPending || worldReady) return;
+    const t = setTimeout(() => setIntroFallbackKey(introKey), 900);
+    return () => clearTimeout(t);
+  }, [introPending, worldReady, introKey]);
   const endIntro = useCallback(() => {
     PLAYED_INTROS.add(introKey);
     setIntroFor(null);

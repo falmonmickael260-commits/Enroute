@@ -227,6 +227,9 @@ export function SceneBoard({
   const start = path.start;
   const startHalfWidth = start.s * 1.45;
   const startAngle = (Math.atan2(start.tx, -start.ty) * 180) / Math.PI;
+  const finish = path.finish;
+  const finishHalfWidth = finish.s * 1.45;
+  const finishAngle = (Math.atan2(finish.tx, -finish.ty) * 180) / Math.PI;
 
   return (
     <div ref={boxRef} className="absolute inset-0 overflow-hidden" style={{ perspective: 1000 }}>
@@ -309,6 +312,46 @@ export function SceneBoard({
                       strokeWidth={4}
                     />
                     <path d={`M${-startHalfWidth} 24 H${startHalfWidth}`} stroke="rgba(0,0,0,.7)" strokeWidth={8} />
+                  </g>
+                </svg>
+                <svg
+                  aria-label="Ligne d'arrivée"
+                  role="img"
+                  viewBox={`0 0 ${def.width} ${def.height}`}
+                  preserveAspectRatio="none"
+                  className="pointer-events-none absolute inset-0 h-full w-full"
+                >
+                  <defs>
+                    <pattern id="finish-checkers" width="24" height="24" patternUnits="userSpaceOnUse">
+                      <rect width="24" height="24" fill="#f7f4e8" />
+                      <path d="M0 0h12v12H0zM12 12h12v12H12z" fill="#171b22" />
+                    </pattern>
+                  </defs>
+                  <g transform={`translate(${finish.x} ${finish.y}) rotate(${finishAngle})`}>
+                    <rect
+                      x={-finishHalfWidth}
+                      y={-14}
+                      width={finishHalfWidth * 2}
+                      height={28}
+                      fill="url(#finish-checkers)"
+                      stroke="#fff"
+                      strokeWidth={3}
+                    />
+                    <text
+                      x={0}
+                      y={-20}
+                      textAnchor="middle"
+                      fill="#fff"
+                      stroke="rgba(8, 14, 24, .9)"
+                      strokeWidth={5}
+                      paintOrder="stroke"
+                      fontFamily="sans-serif"
+                      fontSize={20}
+                      fontWeight={800}
+                      letterSpacing={2}
+                    >
+                      ARRIVÉE
+                    </text>
                   </g>
                 </svg>
                 <canvas ref={setCanvas} className="pointer-events-none absolute inset-0 h-full w-full" />

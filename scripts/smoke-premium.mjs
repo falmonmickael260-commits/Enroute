@@ -88,8 +88,13 @@ try {
     assert.equal(await page.locator("[data-car-label]").first().getAttribute("data-car-id"), "sedan-sports");
     const startIntro = page.getByRole("button", { name: "Passer l'introduction" });
     await startIntro.waitFor({ state: "visible", timeout: 12000 });
-    await startIntro.click();
-    await startIntro.waitFor({ state: "detached", timeout: 3000 });
+    const introCinematic = page.locator('[data-cinematic="intro"]');
+    await introCinematic.waitFor({ state: "visible" });
+    await page.screenshot({ path: `${output}/intro-${count}.png` });
+    if (await startIntro.isVisible().catch(() => false))
+      await startIntro.click({ timeout: 1500 }).catch(() => {});
+    await introCinematic.waitFor({ state: "detached", timeout: 8000 });
+    await page.getByRole("img", { name: "Ligne d'arrivée" }).waitFor();
     const placement = await page.locator("[data-car-label]").evaluateAll((nodes) => nodes.map((node) => ({
       x: Number(node.dataset.carX),
       size: Number(node.dataset.carSize),

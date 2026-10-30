@@ -74,7 +74,7 @@ export function IntroCinematic({ title, subtitle, onDone }: { title: string; sub
   const countOn = count && elapsed < INTRO_MS;
 
   return (
-    <div className="fixed inset-0 z-[60]" onClick={() => setClosing(true)} role="button" aria-label="Passer l'introduction">
+    <div className="fixed inset-0 z-[60]" data-cinematic="intro" data-intro-phase={closing ? "closing" : countOn ? "countdown" : titleOn ? "title" : "flyover"} onClick={() => setClosing(true)} role="button" aria-label="Passer l'introduction">
       <Letterbox on={!closing} />
       <AnimatePresence>
         {titleOn && !closing ? (
@@ -116,7 +116,7 @@ export function IntroCinematic({ title, subtitle, onDone }: { title: string; sub
 /** The winner crosses the line: bands and a headline while the camera films it. */
 export function FinishCinematic({ name, color }: { name: string; color: string }) {
   return (
-    <div className="pointer-events-none fixed inset-0 z-[60]">
+    <div className="pointer-events-none fixed inset-0 z-[60]" data-cinematic="finish">
       <Letterbox on />
       <motion.div
         className="absolute inset-x-0 top-[16%] flex flex-col items-center text-center"
