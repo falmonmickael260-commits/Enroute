@@ -153,6 +153,10 @@ try {
       const beforeY = Number(await carLabel.getAttribute("data-car-y"));
       const beforeX = Number(await carLabel.getAttribute("data-car-x"));
       const beforeSize = Number(await carLabel.getAttribute("data-car-size"));
+      const beforeCamera = await page.locator("[data-race-camera]").evaluate((node) => {
+        const matrix = new DOMMatrix(getComputedStyle(node).transform);
+        return [matrix.m41, matrix.m42];
+      });
       await distanceCard.click();
       await page.getByRole("button", { name: /JOUER CETTE CARTE/ }).click();
       await page.waitForFunction((id) => {
@@ -161,13 +165,27 @@ try {
         );
         return Number(row?.getAttribute("data-distance-km")) > 0;
       }, movedPlayerId);
+      const distanceCounter = page.locator(`[data-distance-counter="${movedPlayerId}"]`);
+      await page.waitForFunction((id) => Number(document.querySelector(`[data-distance-counter="${id}"]`)?.getAttribute("data-distance-value")) > 0, movedPlayerId);
+      await page.waitForTimeout(150);
+      const midDistance = Number(await distanceCounter.getAttribute("data-distance-value"));
+      const finalDistance = Number(await page.locator(`[data-player-id="${movedPlayerId}"]`).getAttribute("data-distance-km"));
+      assert.ok(midDistance > 0 && midDistance < finalDistance, "the HUD distance counts up during the car's move");
       await page.waitForTimeout(1800);
       const afterY = Number(await carLabel.getAttribute("data-car-y"));
       const afterX = Number(await carLabel.getAttribute("data-car-x"));
       const afterSize = Number(await carLabel.getAttribute("data-car-size"));
+      const afterCamera = await page.locator("[data-race-camera]").evaluate((node) => {
+        const matrix = new DOMMatrix(getComputedStyle(node).transform);
+        return [matrix.m41, matrix.m42];
+      });
       assert.ok(
         Math.max(Math.abs(afterX - beforeX), Math.abs(afterY - beforeY), Math.abs(afterSize - beforeSize)) > 2,
         "distance cards visibly move the car along the road",
+      );
+      assert.ok(
+        Math.hypot(afterCamera[0] - beforeCamera[0], afterCamera[1] - beforeCamera[1]) > 2,
+        "the camera follows the car during a real distance move",
       );
       break;
     }

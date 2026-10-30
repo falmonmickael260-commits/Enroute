@@ -13,6 +13,15 @@ const DEFAULT_DURATIONS: Record<AnimationEvent["kind"], number> = {
   victory: 10,
 };
 
+export function animationDuration(event: AnimationEvent) {
+  if (event.kind === "move") {
+    // Keep the follow shot alive until the car's eased, authoritative travel
+    // is effectively complete. Distances are real kilometres, not UI timing.
+    return Math.min(3300, 950 + Math.abs(event.to - event.from) * 7);
+  }
+  return DEFAULT_DURATIONS[event.kind];
+}
+
 export function useAnimationQueue(queue: AnimationEvent[], onConsume: () => void) {
   // Reconnection / renderer fallback can mount with pending events already present.
   const [current, setCurrent] = useState<AnimationEvent | null>(() => queue[0] ?? null);
@@ -30,7 +39,7 @@ export function useAnimationQueue(queue: AnimationEvent[], onConsume: () => void
 
   useEffect(() => {
     if (!current) return;
-    const duration = DEFAULT_DURATIONS[current.kind];
+    const duration = animationDuration(current);
     const timer = setTimeout(() => {
       setCurrent(null);
       onConsume();

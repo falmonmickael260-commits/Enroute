@@ -22,6 +22,11 @@ function cueFor(prev: GameState, next: GameState): { playerId: string; cue: Scen
   const after = next.players.find((p) => p.id === before.id);
   if (!after) return null;
   if (after.distance !== before.distance) {
+    const passedAnotherCar = prev.players.some((other) => {
+      if (other.id === before.id) return false;
+      const nextOther = next.players.find((player) => player.id === other.id);
+      return nextOther !== undefined && before.distance <= other.distance && after.distance > nextOther.distance;
+    });
     const style: MoveStyle =
       def.special === "turbo"
         ? "turbo"
@@ -31,6 +36,8 @@ function cueFor(prev: GameState, next: GameState): { playerId: string; cue: Scen
             ? "overtake"
             : def.special === "derniereLigneDroite"
               ? "sprint"
+              : passedAnotherCar
+                ? "overtake"
               : (def.value ?? 0) >= 200
                 ? "fast"
                 : "drive";

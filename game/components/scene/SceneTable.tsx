@@ -4,11 +4,13 @@ import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import clsx from "clsx";
 import type { GameTableProps } from "@/game/components/table/GameTable";
+import type { AnimationEvent } from "@/game/types/game";
 import { useAnimationQueue } from "@/game/hooks/useAnimationQueue";
 import { useElementSize } from "@/game/hooks/useElementSize";
 import { useShortLandscape } from "@/game/hooks/useShortLandscape";
 import { useSound } from "@/game/hooks/useSound";
 import { useRaceAudio } from "@/game/audio/useRaceAudio";
+import { animationDuration } from "@/game/hooks/useAnimationQueue";
 import { EventToast } from "@/game/components/animations/EventToast";
 import { RaceImpact } from "@/game/components/animations/RaceImpact";
 import { VictoryOverlay } from "@/game/components/animations/VictoryOverlay";
@@ -31,6 +33,46 @@ import type { SceneDef } from "./scenePath";
  */
 /** Races whose opening flyover was already shown on this device. */
 const PLAYED_INTROS = new Set<string>();
+
+function AnimatedDistance({
+  playerId,
+  distance,
+  move,
+}: {
+  playerId: string;
+  distance: number;
+  move: Extract<AnimationEvent, { kind: "move" }> | null;
+}) {
+  const moveKey = move?.id ?? null;
+  const [display, setDisplay] = useState(() => ({ key: moveKey, value: move?.from ?? distance }));
+  if (display.key !== moveKey || (!move && display.value !== distance)) {
+    setDisplay({ key: moveKey, value: move?.from ?? distance });
+  }
+
+  useEffect(() => {
+    if (!move) return;
+    const duration = animationDuration(move);
+    let startedAt: number | null = null;
+    let frame = 0;
+    const tick = (now: number) => {
+      startedAt ??= now;
+      const progress = Math.max(0, Math.min(1, (now - startedAt) / duration));
+      const eased = progress < 0.5 ? 4 * progress ** 3 : 1 - ((-2 * progress + 2) ** 3) / 2;
+      setDisplay({ key: moveKey, value: Math.round(move.from + (move.to - move.from) * eased) });
+      if (progress < 1) frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, [distance, moveKey, move]);
+
+  const value = display.key === moveKey ? display.value : move?.from ?? distance;
+  return (
+    <span data-distance-counter={playerId} data-distance-value={value}>
+      {value}
+      <span className="ml-0.5 text-[0.65em] text-white/70">km</span>
+    </span>
+  );
+}
 
 export function SceneTable({
   state,
@@ -184,8 +226,13 @@ export function SceneTable({
                         <span className="font-hud text-[0.55rem] font-bold uppercase tracking-wider text-[#ff8a7e]">Hors ligne</span>
                       ) : (
                         <span className={clsx("shrink-0 font-display leading-none text-[#ffd23f] drop-shadow", crowded ? "text-base" : "text-lg")}>
-                          {p.distance}
-                          <span className="ml-0.5 text-[0.65em] text-white/70">km</span>
+                          <AnimatedDistance
+                            playerId={p.id}
+                            distance={p.distance}
+                            move={state.animationQueue.find((queued): queued is Extract<AnimationEvent, { kind: "move" }> =>
+                              queued.kind === "move" && queued.playerId === p.id && queued.to === p.distance,
+                            ) ?? null}
+                          />
                         </span>
                       )}
                       {p.distance === leaderKm && leaderKm > 0 && !offline ? <span className="text-xs">👑</span> : null}
