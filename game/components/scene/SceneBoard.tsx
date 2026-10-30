@@ -222,6 +222,22 @@ export function SceneBoard({
                 className="absolute left-0 top-0 origin-top-left"
                 style={{ width: def.width, height: def.height, transform: `scale(${cover.scale})` }}
               >
+                <svg
+                  aria-hidden="true"
+                  viewBox={`0 0 ${def.width} ${def.height}`}
+                  preserveAspectRatio="none"
+                  className={styles.water}
+                >
+                  <defs>
+                    <clipPath id="coastal-water">
+                      <path d="M710 145 C820 132 928 158 1024 145 L1024 1536 L858 1536 C842 1430 826 1344 828 1256 C830 1168 798 1094 806 1010 C814 920 850 850 844 760 C838 674 850 602 880 520 C902 458 876 418 910 360 C938 312 978 282 962 238 C950 205 870 170 710 145 Z" />
+                    </clipPath>
+                  </defs>
+                  <g clipPath="url(#coastal-water)">
+                    <path className={styles.waterWave} d="M900 252 C937 242 968 258 1025 244 M944 316 C970 306 990 321 1030 310 M914 390 C949 380 979 399 1032 385 M898 472 C936 460 971 480 1031 466 M890 555 C932 545 969 565 1032 551 M906 650 C944 638 978 659 1032 646 M897 750 C936 738 976 760 1034 745 M882 856 C926 844 970 865 1035 851 M860 970 C914 958 965 980 1036 965 M864 1082 C918 1070 970 1092 1037 1078 M874 1200 C925 1188 973 1210 1036 1195 M892 1320 C936 1308 979 1330 1038 1316 M894 1432 C940 1420 984 1442 1036 1428" />
+                    <path className={`${styles.waterWave} ${styles.waterWaveSoft}`} d="M920 276 C953 267 984 283 1030 270 M930 430 C962 420 992 438 1031 425 M908 604 C949 594 981 612 1032 600 M914 806 C953 796 987 814 1035 802 M880 1030 C927 1020 978 1038 1037 1026 M896 1250 C940 1240 982 1258 1037 1246 M910 1460 C950 1450 991 1468 1036 1456" />
+                  </g>
+                </svg>
                 {markers.map((m) => (
                   <div
                     key={m.km}
