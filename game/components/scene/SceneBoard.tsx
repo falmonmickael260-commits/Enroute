@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { animate, motion, motionValue } from "framer-motion";
+import { motion } from "framer-motion";
 import type { AnimationEvent, GameState } from "@/game/types/game";
 import { useElementSize } from "@/game/hooks/useElementSize";
 import { ScenePath, type SceneDef } from "./scenePath";
@@ -73,16 +73,6 @@ export function SceneBoard({
     const top = Math.max(box.height - h, Math.min(0, box.height - room - startY * scale));
     return { scale, w, h, left, top };
   }, [box.width, box.height, def, bottomInset]);
-  const cameraValues = useMemo(() => ({ x: motionValue(0), y: motionValue(0), scale: motionValue(1) }), []);
-  const coverRef = useRef(cover);
-  const viewportRef = useRef({ width: box.width, height: box.height, bottomInset });
-  const eventRef = useRef(event);
-
-  useEffect(() => {
-    coverRef.current = cover;
-    viewportRef.current = { width: box.width, height: box.height, bottomInset };
-    eventRef.current = event;
-  }, [cover, box.width, box.height, bottomInset, event]);
 
   // create the WebGL layer once the canvas is in the page
   useEffect(() => {
@@ -109,28 +99,6 @@ export function SceneBoard({
         placed.push({ x: p.x, y, w, h });
         el.style.transform = `translate(${p.x}px, ${y}px) translate(-50%, -100%) scale(${scale})`;
         el.dataset.active = p.active ? "1" : "0";
-        el.dataset.carX = String(p.x);
-        el.dataset.carY = String(p.y);
-        el.dataset.carSize = String(p.size);
-      }
-
-      // Keep the active car framed during the whole authoritative move. The
-      // renderer supplies its interpolated position every frame, so this shot
-      // follows real game progress instead of animating toward a fake endpoint.
-      const activeEvent = eventRef.current;
-      const movingCar = activeEvent?.kind === "move" ? positions.get(activeEvent.playerId) : undefined;
-      const frameCover = coverRef.current;
-      const viewport = viewportRef.current;
-      if (movingCar && frameCover && viewport.width && viewport.height) {
-        const zoom = Math.max(1.15, Math.min(2.6, 230 / Math.max(1, movingCar.size / 0.9)));
-        const fx = frameCover.left + movingCar.x * frameCover.scale;
-        const fy = frameCover.top + movingCar.y * frameCover.scale;
-        const cx = viewport.width / 2;
-        const cy = Math.max(viewport.height * 0.3, (viewport.height - viewport.bottomInset) * 0.48);
-        const wantedX = Math.min(-frameCover.left * zoom, Math.max(viewport.width - (frameCover.left + frameCover.w) * zoom, cx - fx * zoom));
-        const wantedY = Math.min(-frameCover.top * zoom, Math.max(viewport.height - (frameCover.top + frameCover.h) * zoom, cy - fy * zoom));
-        cameraValues.x.set(cameraValues.x.get() + (wantedX - cameraValues.x.get()) * 0.16);
-        cameraValues.y.set(cameraValues.y.get() + (wantedY - cameraValues.y.get()) * 0.16);
       }
     };
     renderer.onMotion = (cars) => raceAudio.motion(cars);
@@ -141,7 +109,7 @@ export function SceneBoard({
       rendererRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canvas, path, cameraValues]);
+  }, [canvas, path]);
 
   // sharper canvas on dense screens
   useEffect(() => {
@@ -216,20 +184,20 @@ export function SceneBoard({
     return { x, y, scale: z, rotateX: 4 };
   }, [cover, focus, box.width, box.height, bottomInset]);
 
-  useEffect(() => {
-    const scale = animate(cameraValues.scale, camera.scale, { duration: 0.75, ease: [0.22, 1, 0.36, 1] });
-    if (event?.kind === "move") return () => scale.stop();
-    const x = animate(cameraValues.x, camera.x, { duration: 1.1, ease: [0.45, 0, 0.2, 1] });
-    const y = animate(cameraValues.y, camera.y, { duration: 1.1, ease: [0.45, 0, 0.2, 1] });
-    return () => { scale.stop(); x.stop(); y.stop(); };
-  }, [camera, cameraValues, event?.kind]);
-
+  const markers = useMemo(() => {
+    const steps = 5;
+    return Array.from({ length: steps }, (_, i) => {
+      const km = Math.round((state.target * i) / steps);
+      const p = path.atKm(km, state.target);
+      // on the inner side of the bend, a little off the road
+      const side = p.tx > 0 ? -1 : 1;
+      return { km, x: p.x + -p.ty * p.s * 1.45 * side, y: p.y + p.tx * p.s * 1.45 * side, s: p.s };
+    });
+  }, [path, state.target]);
   const start = path.start;
   const startHalfWidth = start.s * 1.45;
   const startAngle = (Math.atan2(start.tx, -start.ty) * 180) / Math.PI;
   const finish = path.finish;
-  const finishHalfWidth = finish.s * 1.45;
-  const finishAngle = (Math.atan2(finish.tx, -finish.ty) * 180) / Math.PI;
 
   return (
     <div ref={boxRef} className="absolute inset-0 overflow-hidden" style={{ perspective: 1000 }}>
@@ -247,9 +215,10 @@ export function SceneBoard({
           transition={{ duration: 1.1, ease: [0.45, 0, 0.2, 1] }}
         >
           <motion.div
-            data-race-camera
             className="absolute left-0 top-0"
-            style={{ width: box.width, height: box.height, transformOrigin: "0 0", x: cameraValues.x, y: cameraValues.y, scale: cameraValues.scale }}
+            style={{ width: box.width, height: box.height, transformOrigin: "0 0" }}
+            animate={{ x: camera.x, y: camera.y, scale: camera.scale }}
+            transition={{ duration: 1.1, ease: [0.45, 0, 0.2, 1] }}
           >
             <div
               className="absolute"
@@ -295,71 +264,44 @@ export function SceneBoard({
                   className={`${styles.startLine} absolute inset-0 h-full w-full ${intro ? styles.startLineIntro : ""}`}
                 >
                   <defs>
-                    <pattern id="start-checkers" width="32" height="40" patternUnits="userSpaceOnUse">
-                      <rect width="32" height="40" fill="#f7f4e8" />
-                      <path d="M0 0h16v20H0zM16 20h16v20H16z" fill="#171b22" />
+                    <pattern id="start-checkers" width="28" height="18" patternUnits="userSpaceOnUse">
+                      <rect width="28" height="18" fill="#f7f4e8" />
+                      <path d="M0 0h14v9H0zM14 9h14v9H14z" fill="#171b22" />
                     </pattern>
                   </defs>
                   <g transform={`translate(${start.x} ${start.y}) rotate(${startAngle})`}>
                     <rect
                       x={-startHalfWidth}
-                      y={-20}
+                      y={-9}
                       width={startHalfWidth * 2}
-                      height={40}
-                      rx={3}
+                      height={18}
+                      rx={2}
                       fill="url(#start-checkers)"
                       stroke="#fff"
-                      strokeWidth={4}
+                      strokeWidth={2}
                     />
-                    <path d={`M${-startHalfWidth} 24 H${startHalfWidth}`} stroke="rgba(0,0,0,.7)" strokeWidth={8} />
+                    <path d={`M${-startHalfWidth} 15 H${startHalfWidth}`} stroke="rgba(0,0,0,.55)" strokeWidth={4} />
                   </g>
                 </svg>
-                <svg
-                  aria-label="Ligne d'arrivée"
-                  role="img"
-                  viewBox={`0 0 ${def.width} ${def.height}`}
-                  preserveAspectRatio="none"
-                  className="pointer-events-none absolute inset-0 h-full w-full"
+                {markers.map((m) => (
+                  <div
+                    key={m.km}
+                    className={`${styles.sign} absolute`}
+                    style={{ left: m.x, top: m.y, transform: `translate(-50%, -100%) scale(${Math.max(0.45, m.s / 120)})` }}
+                  >
+                    <span>{m.km}</span>
+                  </div>
+                ))}
+                <div
+                  className={`${styles.finish} absolute`}
+                  style={{ left: finish.x, top: finish.y, transform: `translate(-50%, -100%) scale(${Math.max(0.5, finish.s / 55)})` }}
                 >
-                  <defs>
-                    <pattern id="finish-checkers" width="24" height="24" patternUnits="userSpaceOnUse">
-                      <rect width="24" height="24" fill="#f7f4e8" />
-                      <path d="M0 0h12v12H0zM12 12h12v12H12z" fill="#171b22" />
-                    </pattern>
-                  </defs>
-                  <g transform={`translate(${finish.x} ${finish.y}) rotate(${finishAngle})`}>
-                    <rect
-                      x={-finishHalfWidth}
-                      y={-14}
-                      width={finishHalfWidth * 2}
-                      height={28}
-                      fill="url(#finish-checkers)"
-                      stroke="#fff"
-                      strokeWidth={3}
-                    />
-                    <text
-                      x={0}
-                      y={-20}
-                      textAnchor="middle"
-                      fill="#fff"
-                      stroke="rgba(8, 14, 24, .9)"
-                      strokeWidth={5}
-                      paintOrder="stroke"
-                      fontFamily="sans-serif"
-                      fontSize={20}
-                      fontWeight={800}
-                      letterSpacing={2}
-                    >
-                      ARRIVÉE
-                    </text>
-                  </g>
-                </svg>
+                  <span>{state.target}</span>
+                </div>
                 <canvas ref={setCanvas} className="pointer-events-none absolute inset-0 h-full w-full" />
                 {state.players.map((p, i) => (
                   <div
                     key={p.id}
-                    data-car-label={p.id}
-                    data-car-id={p.car ?? ""}
                     ref={(el) => {
                       if (el) labelRefs.current.set(p.id, el);
                       else labelRefs.current.delete(p.id);

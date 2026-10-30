@@ -3,9 +3,7 @@ import { ScenePath } from "./scenePath";
 import type { Placement, ScreenPoint, Stage } from "./stage";
 
 /** Car length relative to the road's half-width at that point. */
-// The source image has a wide four-lane road: use most of each lane's width
-// so the models remain readable on portrait phones without touching lanes.
-const CAR_SIZE = 0.9;
+const CAR_SIZE = 0.42;
 
 /**
  * An illustrated picture used as the ground: an orthographic camera tilted to
