@@ -76,13 +76,16 @@ try {
     await page.getByRole("button", { name: String(count), exact: true }).click();
     await page.getByRole("button", { name: /Générer le code/ }).click();
     await page.waitForURL("**/play/lobby/**");
-    await page.getByRole("button", { name: /Choisir un véhicule/ }).first().click();
-    assert.equal(await page.locator(".garage-grid button").filter({ hasText: "Rétro" }).count(), 0);
+    const picker = page.locator("[data-car-picker]").first();
+    assert.equal(await picker.getAttribute("data-selected-car"), "supercar");
+    await page.getByRole("button", { name: "Voiture suivante" }).first().click();
+    await page.waitForFunction(() => document.querySelector("[data-car-picker]")?.getAttribute("data-selected-car") === "sedan-sports");
     while (await page.getByRole("button", { name: "PRÊT", exact: true }).count())
       await page.getByRole("button", { name: "PRÊT", exact: true }).first().click();
     await page.getByRole("button", { name: "LANCER LA PARTIE" }).click();
     await page.waitForURL("**/play/game/**");
     await page.waitForFunction((n) => document.querySelectorAll("[data-car-label]").length === n, count);
+    assert.equal(await page.locator("[data-car-label]").first().getAttribute("data-car-id"), "sedan-sports");
     const startIntro = page.getByRole("button", { name: "Passer l'introduction" });
     await startIntro.waitFor({ state: "visible", timeout: 12000 });
     await startIntro.click();
@@ -101,15 +104,10 @@ try {
   await page.getByRole("button", { name: "6", exact: true }).click();
   await page.getByRole("button", { name: /Générer le code/ }).click();
   await page.waitForURL("**/play/lobby/**");
-  await page
-    .getByRole("button", { name: /Choisir un véhicule/ })
-    .first()
-    .click();
-  assert.equal(await page.locator(".garage-grid button").filter({ hasText: "Rétro" }).count(), 0);
-  await page
-    .locator(".garage-grid button")
-    .filter({ hasText: "Berline" })
-    .click();
+  const firstPicker = page.locator("[data-car-picker]").first();
+  assert.equal(await firstPicker.getAttribute("data-selected-car"), "supercar");
+  for (let i = 0; i < 3; i++) await page.getByRole("button", { name: "Voiture suivante" }).first().click();
+  assert.equal(await firstPicker.getAttribute("data-selected-car"), "sedan");
   await page.screenshot({ path: `${output}/garage.png`, fullPage: true });
   while (await page.getByRole("button", { name: "PRÊT", exact: true }).count())
     await page
@@ -119,6 +117,7 @@ try {
   await page.getByRole("button", { name: "LANCER LA PARTIE" }).click();
   await page.waitForURL("**/play/game/**");
   await page.getByRole("img", { name: "Ligne de départ" }).waitFor();
+  await page.waitForFunction(() => document.querySelector("[data-car-label]")?.getAttribute("data-car-id") === "sedan");
   await page.getByRole("button", { name: "Passer l'introduction" }).waitFor();
   await page.waitForTimeout(1100);
   await page.screenshot({ path: `${output}/race-start.png` });
@@ -150,6 +149,10 @@ try {
         .locator('[data-player-active="true"]')
         .first()
         .getAttribute("data-player-id");
+      const carLabel = page.locator(`[data-car-label="${movedPlayerId}"]`);
+      const beforeY = Number(await carLabel.getAttribute("data-car-y"));
+      const beforeX = Number(await carLabel.getAttribute("data-car-x"));
+      const beforeSize = Number(await carLabel.getAttribute("data-car-size"));
       await distanceCard.click();
       await page.getByRole("button", { name: /JOUER CETTE CARTE/ }).click();
       await page.waitForFunction((id) => {
@@ -158,6 +161,14 @@ try {
         );
         return Number(row?.getAttribute("data-distance-km")) > 0;
       }, movedPlayerId);
+      await page.waitForTimeout(1800);
+      const afterY = Number(await carLabel.getAttribute("data-car-y"));
+      const afterX = Number(await carLabel.getAttribute("data-car-x"));
+      const afterSize = Number(await carLabel.getAttribute("data-car-size"));
+      assert.ok(
+        Math.max(Math.abs(afterX - beforeX), Math.abs(afterY - beforeY), Math.abs(afterSize - beforeSize)) > 2,
+        "distance cards visibly move the car along the road",
+      );
       break;
     }
     await page.locator("button[data-card-id]").last().click();
@@ -165,7 +176,6 @@ try {
     await page.getByRole("button", { name: "Piocher une carte", exact: true }).click();
   }
   assert.ok(movedPlayerId, "a distance card moves a real 3D race car");
-  await page.waitForTimeout(1800);
   await page.getByRole("button", { name: "Piocher une carte", exact: true }).click();
   await page.locator("button[data-card-id]").last().click();
   await page.getByRole("button", { name: "Défausser", exact: true }).click();
@@ -183,10 +193,14 @@ try {
   await page.getByRole("button", { name: /Contre des bots/ }).click();
   await page.getByRole("button", { name: "3D — Voitures et effets animés" }).click();
   await page.getByRole("button", { name: "2 bots", exact: true }).click();
+  await page.getByRole("button", { name: "Voiture suivante" }).click();
+  await page.getByRole("button", { name: "Voiture suivante" }).click();
+  assert.equal(await page.locator("[data-car-picker]").getAttribute("data-selected-car"), "hatchback-sports");
   await page.getByLabel("Nom du joueur 1").fill("Pilote humain");
   await page.getByRole("button", { name: "Démarrer la course" }).click();
   await page.waitForURL("**/play/game/**");
   await page.waitForFunction(() => document.querySelectorAll("[data-player-id]").length === 3);
+  await page.waitForFunction(() => document.querySelector("[data-car-label]")?.getAttribute("data-car-id") === "hatchback-sports");
   const humanId = await page.locator('[data-player-active="true"]').getAttribute("data-player-id");
   assert.ok(humanId);
   assert.match(await page.locator(`[data-player-id="${humanId}"]`).innerText(), /Pilote humain/);

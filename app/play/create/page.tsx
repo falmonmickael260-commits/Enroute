@@ -12,6 +12,8 @@ import { OnlineError } from "@/game/lib/online/api";
 import { getIncomingPlatformToken, peekPlatformUsername } from "@/game/lib/online/platformToken";
 import { setBoardView, useBoardView } from "@/game/lib/store/boardViewStore";
 import { MAX_PLAYERS } from "@/game/lib/engine/deck";
+import { CarPicker } from "@/game/components/ui/CarPicker";
+import { defaultCar, type CarId } from "@/game/lib/cars";
 import {
   ChevronRightIcon,
   FlagIcon,
@@ -48,9 +50,11 @@ export default function CreateGamePage() {
   const router = useRouter();
   const createLocalGame = useSetupStore((s) => s.createLocalGame);
   const createBotGame = useSetupStore((s) => s.createBotGame);
+  const setCar = useSetupStore((s) => s.setCar);
 
   const [playerCount, setPlayerCount] = useState(2);
   const [botCount, setBotCount] = useState(2);
+  const [botPlayerCar, setBotPlayerCar] = useState<CarId>(() => defaultCar(0));
   const [names, setNames] = useState<string[]>(["Joueur 1", "Joueur 2", "Joueur 3", "Joueur 4", "Joueur 5", "Joueur 6"]);
   const [ambiance, setAmbiance] = useState<AmbianceId>("jour");
   const [target, setTarget] = useState(1000);
@@ -63,6 +67,8 @@ export default function CreateGamePage() {
   const handleStart = async () => {
     if (mode === "bots") {
       const code = createBotGame(names[0], botCount, ambiance, target);
+      const player = useSetupStore.getState().players.find((pilot) => !pilot.isBot);
+      if (player) setCar(player.id, botPlayerCar);
       router.push(`/play/game/${code}`);
       return;
     }
@@ -188,6 +194,17 @@ export default function CreateGamePage() {
           ))}
         </div>
       </section>
+
+      {mode === "bots" ? (
+        <section>
+          <SectionLabel icon={<HelmetIcon />}>Votre voiture</SectionLabel>
+          <CarPicker
+            value={botPlayerCar}
+            color="crimson"
+            onChange={setBotPlayerCar}
+          />
+        </section>
+      ) : null}
 
       <section>
         <SectionLabel icon={<SunIcon />}>Ambiance du plateau</SectionLabel>

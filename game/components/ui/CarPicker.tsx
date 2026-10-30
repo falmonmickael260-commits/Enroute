@@ -1,16 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import clsx from "clsx";
 import type { PlayerColor } from "@/game/types/game";
-import { CARS, carInfo, type CarId } from "@/game/lib/cars";
-import { VehicleArt } from "./VehicleArt";
+import { CARS, carInfo, carThumb, type CarId } from "@/game/lib/cars";
 import { prefetchCar } from "@/game/components/scene/carModels";
 
-/**
- * The pilot's garage: the chosen car in their colour, the previous and next
- * ones a tap away (no scrolling).
- */
+/** The compact, one-tap garage used by the original lobby. */
 export function CarPicker({
   value,
   color,
@@ -24,77 +20,60 @@ export function CarPicker({
   disabled?: boolean;
   compact?: boolean;
 }) {
-  const [expanded, setExpanded] = useState(false);
-  const index = Math.max(
-    0,
-    CARS.findIndex((c) => c.id === value),
-  );
-  const step = (d: number) =>
-    onChange(CARS[(index + d + CARS.length) % CARS.length].id);
+  const index = Math.max(0, CARS.findIndex((car) => car.id === value));
   const car = carInfo(value);
+  const step = (delta: number) =>
+    onChange(CARS[(index + delta + CARS.length) % CARS.length].id);
 
-  // the car file starts loading as soon as it's chosen, so the race opens with it
-  useEffect(() => prefetchCar(value), [value]);
+  useEffect(() => prefetchCar(car.id), [car.id]);
 
   const arrow =
-    "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-white/25 bg-black/40 font-menu text-xl font-bold text-white transition active:scale-90 disabled:opacity-30";
+    "flex h-11 w-11 shrink-0 touch-manipulation items-center justify-center rounded-full border border-white/25 bg-black/40 font-menu text-2xl font-bold text-white transition active:scale-90 disabled:opacity-30";
+
   return (
     <div
-      className={clsx("premium-garage", compact && "premium-garage-compact")}
-    >
-      <div className="flex items-center justify-center gap-2">
-        <button
-          type="button"
-          className={arrow}
-          onClick={() => step(-1)}
-          disabled={disabled}
-          aria-label="Voiture précédente"
-        >
-          ‹
-        </button>
-        <button
-          type="button"
-          className="garage-preview"
-          onClick={() => setExpanded(!expanded)}
-          disabled={disabled}
-          aria-expanded={expanded}
-          aria-label={`Choisir un véhicule : ${car.label}`}
-        >
-          <VehicleArt key={`${car.id}:${color}`} car={car.id} color={color} />
-          <span className="garage-car-name">{car.label}</span>
-          <span className="garage-index">
-            {String(index + 1).padStart(2, "0")} / {CARS.length} · Garage
-          </span>
-        </button>
-        <button
-          type="button"
-          className={arrow}
-          onClick={() => step(1)}
-          disabled={disabled}
-          aria-label="Voiture suivante"
-        >
-          ›
-        </button>
-      </div>
-      {expanded && (
-        <div className="garage-grid" aria-label="Les véhicules">
-          {CARS.map((option) => (
-            <button
-              key={option.id}
-              type="button"
-              disabled={disabled}
-              aria-pressed={value === option.id}
-              onClick={() => {
-                onChange(option.id);
-                setExpanded(false);
-              }}
-            >
-              <VehicleArt car={option.id} color={color} />
-              <span>{option.label}</span>
-            </button>
-          ))}
-        </div>
+      data-car-picker
+      data-selected-car={car.id}
+      className={clsx(
+        "flex min-w-0 items-center gap-2",
+        compact ? "justify-end" : "justify-center",
       )}
+    >
+      <button
+        type="button"
+        className={arrow}
+        onClick={() => step(-1)}
+        disabled={disabled}
+        aria-label="Voiture précédente"
+      >
+        ‹
+      </button>
+      <div className="flex w-[7.5rem] min-w-0 flex-col items-center">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={carThumb(car.id, color)}
+          alt={car.label}
+          width={240}
+          height={160}
+          draggable={false}
+          className={clsx(
+            "h-auto object-contain",
+            compact ? "w-[6.2rem]" : "w-[7.5rem]",
+          )}
+        />
+        <span className="-mt-1 text-center font-menu text-sm font-bold uppercase tracking-wide text-white/90">
+          {car.label}
+        </span>
+      </div>
+      <button
+        type="button"
+        className={arrow}
+        onClick={() => step(1)}
+        disabled={disabled}
+        aria-label="Voiture suivante"
+      >
+        ›
+      </button>
     </div>
   );
 }

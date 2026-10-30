@@ -100,6 +100,7 @@ export function SceneBoard({
         el.style.transform = `translate(${p.x}px, ${y}px) translate(-50%, -100%) scale(${scale})`;
         el.dataset.active = p.active ? "1" : "0";
         el.dataset.carX = String(p.x);
+        el.dataset.carY = String(p.y);
         el.dataset.carSize = String(p.size);
       }
     };
@@ -186,20 +187,9 @@ export function SceneBoard({
     return { x, y, scale: z, rotateX: 4 };
   }, [cover, focus, box.width, box.height, bottomInset]);
 
-  const markers = useMemo(() => {
-    const steps = 5;
-    return Array.from({ length: steps }, (_, i) => {
-      const km = Math.round((state.target * i) / steps);
-      const p = path.atKm(km, state.target);
-      // on the inner side of the bend, a little off the road
-      const side = p.tx > 0 ? -1 : 1;
-      return { km, x: p.x + -p.ty * p.s * 1.45 * side, y: p.y + p.tx * p.s * 1.45 * side, s: p.s };
-    });
-  }, [path, state.target]);
   const start = path.start;
   const startHalfWidth = start.s * 1.45;
   const startAngle = (Math.atan2(start.tx, -start.ty) * 180) / Math.PI;
-  const finish = path.finish;
 
   return (
     <div ref={boxRef} className="absolute inset-0 overflow-hidden" style={{ perspective: 1000 }}>
@@ -266,45 +256,31 @@ export function SceneBoard({
                   className={`${styles.startLine} absolute inset-0 h-full w-full ${intro ? styles.startLineIntro : ""}`}
                 >
                   <defs>
-                    <pattern id="start-checkers" width="28" height="18" patternUnits="userSpaceOnUse">
-                      <rect width="28" height="18" fill="#f7f4e8" />
-                      <path d="M0 0h14v9H0zM14 9h14v9H14z" fill="#171b22" />
+                    <pattern id="start-checkers" width="32" height="40" patternUnits="userSpaceOnUse">
+                      <rect width="32" height="40" fill="#f7f4e8" />
+                      <path d="M0 0h16v20H0zM16 20h16v20H16z" fill="#171b22" />
                     </pattern>
                   </defs>
                   <g transform={`translate(${start.x} ${start.y}) rotate(${startAngle})`}>
                     <rect
                       x={-startHalfWidth}
-                      y={-9}
+                      y={-20}
                       width={startHalfWidth * 2}
-                      height={18}
-                      rx={2}
+                      height={40}
+                      rx={3}
                       fill="url(#start-checkers)"
                       stroke="#fff"
-                      strokeWidth={2}
+                      strokeWidth={4}
                     />
-                    <path d={`M${-startHalfWidth} 15 H${startHalfWidth}`} stroke="rgba(0,0,0,.55)" strokeWidth={4} />
+                    <path d={`M${-startHalfWidth} 24 H${startHalfWidth}`} stroke="rgba(0,0,0,.7)" strokeWidth={8} />
                   </g>
                 </svg>
-                {markers.map((m) => (
-                  <div
-                    key={m.km}
-                    className={`${styles.sign} absolute`}
-                    style={{ left: m.x, top: m.y, transform: `translate(-50%, -100%) scale(${Math.max(0.45, m.s / 120)})` }}
-                  >
-                    <span>{m.km}</span>
-                  </div>
-                ))}
-                <div
-                  className={`${styles.finish} absolute`}
-                  style={{ left: finish.x, top: finish.y, transform: `translate(-50%, -100%) scale(${Math.max(0.5, finish.s / 55)})` }}
-                >
-                  <span>{state.target}</span>
-                </div>
                 <canvas ref={setCanvas} className="pointer-events-none absolute inset-0 h-full w-full" />
                 {state.players.map((p, i) => (
                   <div
                     key={p.id}
                     data-car-label={p.id}
+                    data-car-id={p.car ?? ""}
                     ref={(el) => {
                       if (el) labelRefs.current.set(p.id, el);
                       else labelRefs.current.delete(p.id);
