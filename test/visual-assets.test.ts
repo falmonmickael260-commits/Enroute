@@ -9,7 +9,7 @@ import coastalScene from "../game/components/scene/scenes/provisoire.json";
 import { ScenePath } from "../game/components/scene/scenePath";
 
 test("four-lane coastal race art is aligned with a longer in-game route", () => {
-  assert.equal(coastalScene.image, "/images/scene/kilomax-coast-forward.webp");
+  assert.equal(coastalScene.image, "/images/scene/kilomax-coast-charcoal.webp");
   assert.ok(existsSync(`public${coastalScene.image}`));
   assert.ok(coastalScene.finishIndex - coastalScene.startIndex >= 8);
   const path = new ScenePath(coastalScene);

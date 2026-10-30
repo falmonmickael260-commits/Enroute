@@ -38,19 +38,19 @@ try {
     await page.goto(base);
     await page.waitForTimeout(4000);
     await page.getByRole("progressbar").waitFor({ state: "hidden", timeout: 20000 });
-    assert.ok(
-      await page.getByRole("link", { name: /Jouer À toi/ }).isVisible(),
-    );
+    const playCtas = page.locator('a[href="/play/create"]:visible');
+    assert.ok(await playCtas.count(), `home play action is visible at ${width}x${height}`);
     assert.equal(
       await page.evaluate(
         () => document.documentElement.scrollWidth > innerWidth,
       ),
       false,
     );
-    const rect = await page
-      .getByRole("link", { name: /Jouer À toi/ })
-      .boundingBox();
-    assert.ok(rect && rect.y >= 0 && rect.y + rect.height <= height);
+    const fullyVisiblePlay = await playCtas.evaluateAll((items) => items.some((item) => {
+      const rect = item.getBoundingClientRect();
+      return rect.y >= 0 && rect.y + rect.height <= innerHeight;
+    }));
+    assert.ok(fullyVisiblePlay, `home play action fits at ${width}x${height}`);
     await page.screenshot({ path: `${output}/home-${width}.png` });
   }
   await page.setViewportSize({ width: 390, height: 844 });
@@ -70,6 +70,32 @@ try {
     0,
   );
   await page.screenshot({ path: `${output}/cards.png`, fullPage: true });
+  for (const count of [2, 3, 4]) {
+    await page.goto(`${base}/play/create`);
+    await page.getByRole("button", { name: /Sur cet appareil/ }).click();
+    await page.getByRole("button", { name: String(count), exact: true }).click();
+    await page.getByRole("button", { name: /Générer le code/ }).click();
+    await page.waitForURL("**/play/lobby/**");
+    await page.getByRole("button", { name: /Choisir un véhicule/ }).first().click();
+    assert.equal(await page.locator(".garage-grid button").filter({ hasText: "Rétro" }).count(), 0);
+    while (await page.getByRole("button", { name: "PRÊT", exact: true }).count())
+      await page.getByRole("button", { name: "PRÊT", exact: true }).first().click();
+    await page.getByRole("button", { name: "LANCER LA PARTIE" }).click();
+    await page.waitForURL("**/play/game/**");
+    await page.waitForFunction((n) => document.querySelectorAll("[data-car-label]").length === n, count);
+    const startIntro = page.getByRole("button", { name: "Passer l'introduction" });
+    await startIntro.waitFor({ state: "visible", timeout: 12000 });
+    await startIntro.click();
+    await startIntro.waitFor({ state: "detached", timeout: 3000 });
+    const placement = await page.locator("[data-car-label]").evaluateAll((nodes) => nodes.map((node) => ({
+      x: Number(node.dataset.carX),
+      size: Number(node.dataset.carSize),
+    })));
+    assert.equal(placement.length, count);
+    assert.ok(placement.every((car) => Number.isFinite(car.x) && car.size > 0));
+    assert.ok(new Set(placement.map((car) => Math.round(car.x))).size === count, `${count} cars occupy distinct road positions`);
+    await page.screenshot({ path: `${output}/grid-${count}.png` });
+  }
   await page.goto(`${base}/play/create`);
   await page.getByRole("button", { name: /Sur cet appareil/ }).click();
   await page.getByRole("button", { name: "6", exact: true }).click();
@@ -79,6 +105,7 @@ try {
     .getByRole("button", { name: /Choisir un véhicule/ })
     .first()
     .click();
+  assert.equal(await page.locator(".garage-grid button").filter({ hasText: "Rétro" }).count(), 0);
   await page
     .locator(".garage-grid button")
     .filter({ hasText: "Berline" })
@@ -93,9 +120,10 @@ try {
   await page.waitForURL("**/play/game/**");
   await page.getByRole("img", { name: "Ligne de départ" }).waitFor();
   await page.getByRole("button", { name: "Passer l'introduction" }).waitFor();
+  await page.waitForTimeout(1100);
   await page.screenshot({ path: `${output}/race-start.png` });
   await page.waitForTimeout(14000);
-  for (const id of ["supercar", "retro", "sedan-sports", "suv", "race", "van"])
+  for (const id of ["supercar", "sedan", "sedan-sports", "suv", "race", "van"])
     assert.equal(raceCarModels.get(id), 200, `3D race model ${id}.glb loaded`);
   assert.equal(await page.locator("canvas").count(), 1);
   assert.equal(

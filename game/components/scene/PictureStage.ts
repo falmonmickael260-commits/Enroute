@@ -3,7 +3,7 @@ import { ScenePath } from "./scenePath";
 import type { Placement, ScreenPoint, Stage } from "./stage";
 
 /** Car length relative to the road's half-width at that point. */
-const CAR_SIZE = 0.42;
+const CAR_SIZE = 0.64;
 
 /**
  * An illustrated picture used as the ground: an orthographic camera tilted to

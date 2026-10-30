@@ -121,7 +121,7 @@ export function SceneTable({
       </button>
     ) : null;
   // while a cinematic plays, the interface steps aside
-  const cinema = introPending || (!!winner && !scene && !victoryReady);
+  const cinema = introPending || (!!winner && !victoryReady);
   // from 4 pilots on (or on a phone held sideways), each one fits on a single
   // line so the road stays visible
   const short = useShortLandscape();
@@ -281,7 +281,7 @@ export function SceneTable({
         ) : null}
       </AnimatePresence>
       {intro ? <IntroCinematic title="KILOMAX" subtitle={`Corniche d'Azur · ${state.target} km`} onDone={endIntro} /> : null}
-      {winner && !scene && !victoryReady ? <FinishCinematic name={winner.name} color={CAR_PAINT[winner.color]} /> : null}
+      {winner && !victoryReady ? <FinishCinematic name={winner.name} color={CAR_PAINT[winner.color]} /> : null}
       {isMyTurn ? (
         <TargetPicker pending={controls.pendingTarget} state={state} onPick={controls.resolveTarget} onCancel={controls.cancelTarget} />
       ) : null}

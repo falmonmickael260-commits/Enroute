@@ -28,7 +28,7 @@ const COUNT = [
   { at: 3600, label: "3" },
   { at: 4300, label: "2" },
   { at: 5000, label: "1" },
-  { at: 5700, label: "PARTEZ !" },
+  { at: 5700, label: "GO !" },
 ];
 
 /**
@@ -94,7 +94,7 @@ export function IntroCinematic({ title, subtitle, onDone }: { title: string; sub
           <motion.p
             key={count.label}
             className="pointer-events-none absolute inset-x-0 top-[30%] text-center font-display text-7xl text-white drop-shadow-[0_6px_18px_rgba(0,0,0,0.65)] sm:text-8xl"
-            style={{ color: count.label === "PARTEZ !" ? "#7dff9b" : undefined }}
+            style={{ color: count.label === "GO !" ? "#7dff9b" : undefined }}
             initial={{ opacity: 0, scale: 1.8 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.7 }}

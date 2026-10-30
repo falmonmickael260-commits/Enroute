@@ -99,6 +99,8 @@ export function SceneBoard({
         placed.push({ x: p.x, y, w, h });
         el.style.transform = `translate(${p.x}px, ${y}px) translate(-50%, -100%) scale(${scale})`;
         el.dataset.active = p.active ? "1" : "0";
+        el.dataset.carX = String(p.x);
+        el.dataset.carSize = String(p.size);
       }
     };
     renderer.onMotion = (cars) => raceAudio.motion(cars);
@@ -302,6 +304,7 @@ export function SceneBoard({
                 {state.players.map((p, i) => (
                   <div
                     key={p.id}
+                    data-car-label={p.id}
                     ref={(el) => {
                       if (el) labelRefs.current.set(p.id, el);
                       else labelRefs.current.delete(p.id);

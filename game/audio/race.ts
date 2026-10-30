@@ -213,6 +213,27 @@ class RaceAudio {
     if (style === "turbo" || style === "sprint") this.engine.boost(style === "turbo" ? 900 : 700);
   }
 
+  /** A quiet, rising synth accent identifies the purple special cards. */
+  specialCue() {
+    const ctx = mixer.ctx;
+    const out = mixer.output("effects");
+    if (!ctx || !out || ctx.state !== "running") return;
+    const t = ctx.currentTime;
+    const tone = ctx.createOscillator();
+    const gain = ctx.createGain();
+    tone.type = "sine";
+    tone.frequency.setValueAtTime(460, t);
+    tone.frequency.exponentialRampToValueAtTime(980, t + 0.12);
+    tone.frequency.exponentialRampToValueAtTime(620, t + 0.46);
+    gain.gain.setValueAtTime(0.0001, t);
+    gain.gain.linearRampToValueAtTime(0.12, t + 0.025);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.5);
+    tone.connect(gain);
+    gain.connect(out);
+    tone.start(t);
+    tone.stop(t + 0.52);
+  }
+
   // ------------------------------------------------------------- events
 
   /** A game event is shown: plays what it sounds like. */
