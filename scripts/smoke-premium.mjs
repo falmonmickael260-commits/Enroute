@@ -91,6 +91,9 @@ try {
       .click();
   await page.getByRole("button", { name: "LANCER LA PARTIE" }).click();
   await page.waitForURL("**/play/game/**");
+  await page.getByRole("img", { name: "Ligne de départ" }).waitFor();
+  await page.getByRole("button", { name: "Passer l'introduction" }).waitFor();
+  await page.screenshot({ path: `${output}/race-start.png` });
   await page.waitForTimeout(14000);
   for (const id of ["supercar", "retro", "sedan-sports", "suv", "race", "van"])
     assert.equal(raceCarModels.get(id), 200, `3D race model ${id}.glb loaded`);

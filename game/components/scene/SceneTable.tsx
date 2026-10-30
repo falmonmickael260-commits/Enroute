@@ -82,7 +82,7 @@ export function SceneTable({
   const yourTurn = viewerId ? current.id === viewerId : true;
 
   // a fresh race on the 3D coast opens with the flyover (once per race on this device)
-  const fresh = !scene && !over && state.discard.length === 0 && state.players.every((p) => p.distance === 0);
+  const fresh = !over && state.discard.length === 0 && state.players.every((p) => p.distance === 0);
   const introKey = `${state.id}:${state.startedAt}`;
   const [introFor, setIntroFor] = useState<string | null>(() => (fresh && !PLAYED_INTROS.has(introKey) ? introKey : null));
   const [prevStart, setPrevStart] = useState(state.startedAt);
@@ -139,7 +139,7 @@ export function SceneTable({
       {/* the 3D world fills the screen; the picture keeps its portrait proportions */}
       {!scene ? <WorldBoard state={state} event={currentEvent} bottomInset={handBox.height} overview={overview} intro={intro} onReady={onWorldReady} /> : null}
       <div className={clsx("absolute inset-0 mx-auto", scene && "max-w-[min(100vw,calc(100dvh*0.78))]")}>
-        {scene ? <SceneBoard state={state} event={currentEvent} def={scene} bottomInset={handBox.height} /> : null}
+        {scene ? <SceneBoard state={state} event={currentEvent} def={scene} bottomInset={handBox.height} intro={intro} onReady={onWorldReady} /> : null}
 
         {/* top: players · logo · turn */}
         <div

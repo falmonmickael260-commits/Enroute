@@ -27,6 +27,21 @@
   animation-direction: reverse;
 }
 
+.startLine {
+  overflow: visible;
+  pointer-events: none;
+  filter: drop-shadow(0 3px 4px rgba(0, 0, 0, 0.58));
+}
+
+.startLineIntro {
+  animation: start-line-ready 0.8s ease-in-out infinite alternate;
+}
+
+@keyframes start-line-ready {
+  from { filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.62)); }
+  to { filter: drop-shadow(0 0 12px rgba(255, 205, 64, 0.95)); }
+}
+
 @keyframes sea-glimmer {
   to {
     stroke-dashoffset: -190;
@@ -35,7 +50,8 @@
 
 @media (prefers-reduced-motion: reduce) {
   .waterWave,
-  .waterWaveSoft {
+  .waterWaveSoft,
+  .startLineIntro {
     animation: none;
   }
 }

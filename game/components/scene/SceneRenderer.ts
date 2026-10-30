@@ -151,6 +151,7 @@ export class SceneRenderer {
   /** The winner does a few doughnuts past the line. */
   private winnerId: string | null = null;
   private celebrateAt = 0;
+  private gridLaunchAt = 0;
   onFrame: ((positions: Map<string, CarScreenPos>) => void) | null = null;
   /** Where each car is along the road this frame (read by the race audio). */
   onMotion: ((cars: { id: string; km: number }[]) => void) | null = null;
@@ -222,6 +223,12 @@ export class SceneRenderer {
     this.fireworksUntil = now + 4200;
     this.winnerId = winnerId ?? null;
     this.celebrateAt = now;
+  }
+
+  /** Small visual-only rollout after the coastal starting countdown. */
+  launchGrid(now = performance.now()) {
+    this.gridLaunchAt = now;
+    for (const car of this.cars.values()) car.lastSkid = now - 200;
   }
 
   update(players: ScenePlayer[], target: number, now = performance.now()) {
@@ -674,6 +681,7 @@ export class SceneRenderer {
       const m = car.model;
       let swerve = 0;
       let flameOn = false;
+      let launchSpin = 0;
       if (car.km !== car.toKm) {
         const a = clamp01((t - car.moveStart) / car.moveDur);
         const eased = car.style === "turbo" ? 1 - Math.pow(1 - a, 3) : easeInOut(a);
@@ -738,6 +746,18 @@ export class SceneRenderer {
       car.flame.visible = flameOn;
       if (flameOn) car.flame.scale.set(1, 1, 0.8 + Math.random() * 0.5);
 
+      const launchAge = t - this.gridLaunchAt;
+      if (this.gridLaunchAt > 0 && launchAge >= 0 && launchAge < 950 && car.km === car.toKm && !car.props.size) {
+        const progress = launchAge / 950;
+        const kick = Math.sin(progress * Math.PI);
+        m.body.rotation.x = -0.045 * kick;
+        launchSpin = (1 - progress) * dt * 7;
+        if (progress < 0.45 && t - car.lastSkid > 100) {
+          car.lastSkid = t;
+          for (const side of [-1, 1]) this.emit(m.root, new THREE.Vector3(side * 0.17, 0.04, -0.36), "#d9d9d9", 0.42, 700, 0.65);
+        }
+      }
+
       car.lateral += (car.lateralTarget - car.lateral) * Math.min(1, dt * 5);
       car.along += (car.alongTarget - car.along) * Math.min(1, dt * 5);
       this.place(car, car.km, swerve);
@@ -761,7 +781,7 @@ export class SceneRenderer {
         } else if (d >= 1) m.root.rotation.y = 0;
       }
       // wheels spin with the distance covered
-      const spin = ((car.km - prevKm) / Math.max(1, this.target)) * 900;
+      const spin = ((car.km - prevKm) / Math.max(1, this.target)) * 900 + launchSpin;
       for (const w of m.wheels) w.rotation[(w.userData.axle as "x" | "y" | "z" | undefined) ?? "x"] += spin;
       // idle engine shimmer
       if (!car.props.size && car.km === car.toKm) m.body.position.y = Math.sin(t / 90 + car.id.length) * 0.004;
