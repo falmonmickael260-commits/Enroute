@@ -148,7 +148,6 @@ export function SceneHand({
   const selected = cards.find((c) => c.uid === selectedUid) ?? null;
   const selectedDef = selected ? getCardDef(selected.defId) : null;
   const selectedPlayable = selected && canAct ? isCardPlayable(player, selected.defId, state) : false;
-  const flyingSpecial = flying ? getCardDef(flying.defId).category === "special" : false;
   const top = state.discard[state.discard.length - 1];
 
   const close = () => setSelectedUid(null);
@@ -334,30 +333,20 @@ export function SceneHand({
         ? createPortal(
             <motion.div
               key={flying.key}
-              className={clsx(
-                "pointer-events-none fixed left-0 top-0 z-[70]",
-                flyingSpecial && "drop-shadow-[0_0_30px_rgba(189,139,255,0.9)]",
-              )}
+              className="pointer-events-none fixed left-0 top-0 z-[70]"
               style={{ width: flying.w, height: flying.h }}
               initial={{ x: flying.x, y: flying.y, scale: 1, rotate: 0, opacity: 1 }}
               animate={{
                 x: window.innerWidth / 2 - flying.w / 2,
                 y: window.innerHeight * 0.32 - flying.h / 2,
-                scale: flyingSpecial ? [1, 1.2, 0.35] : [1, 1.12, 0.35],
-                rotate: flyingSpecial ? [0, 8, -14] : [0, -6, 10],
+                scale: [1, 1.12, 0.35],
+                rotate: [0, -6, 10],
                 opacity: [1, 1, 0],
               }}
               transition={{ duration: 0.75, ease: [0.3, 0.7, 0.4, 1] }}
               onAnimationComplete={() => setFlying((f) => (f?.key === flying.key ? null : f))}
             >
-              <Card
-                size="lg"
-                defId={flying.defId}
-                className={clsx(
-                  "!h-full !w-full",
-                  flyingSpecial ? "shadow-[0_0_32px_rgba(189,139,255,0.9)]" : "shadow-[0_0_30px_rgba(255,220,120,0.7)]",
-                )}
-              />
+              <Card size="lg" defId={flying.defId} className="!h-full !w-full shadow-[0_0_30px_rgba(255,220,120,0.7)]" />
             </motion.div>,
             document.body,
           )

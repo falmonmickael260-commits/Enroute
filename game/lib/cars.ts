@@ -1,14 +1,15 @@
 import type { PlayerColor } from "@/game/types/game";
 
 /**
- * The vehicles a pilot can drive. The supercar is a detailed model (Khronos
- * glTF sample), most others come from Kenney's Car Kit (CC0;
+ * The vehicles a pilot can drive. The supercar and the retro car are detailed
+ * models (Khronos glTF samples), most others come from Kenney's Car Kit (CC0;
  * see public/models/cars/CREDITS.md for both); the moto, scooter, quad and the KILOMAX car
  * are built in code (BUILT_CARS). `repaint` ones take the pilot's colour, the
  * others (taxi, police, kart) keep their livery.
  */
 export const CARS = [
   { id: "supercar", label: "Supercar", repaint: true },
+  { id: "retro", label: "Rétro", repaint: true },
   { id: "sedan-sports", label: "Coupé sport", repaint: true },
   { id: "hatchback-sports", label: "Citadine", repaint: true },
   { id: "sedan", label: "Berline", repaint: true },
@@ -36,7 +37,7 @@ export const BUILT_CARS: ReadonlySet<string> = new Set(["kilomax", "moto", "scoo
 export const DEFAULT_CAR: CarId = "sedan-sports";
 
 /** Until they pick one, each seat gets a different car (nobody races a clone). */
-const SEAT_CARS: CarId[] = ["supercar", "sedan", "sedan-sports", "suv", "race", "van"];
+const SEAT_CARS: CarId[] = ["supercar", "retro", "sedan-sports", "suv", "race", "van"];
 
 export function defaultCar(seat: number): CarId {
   return SEAT_CARS[((seat % SEAT_CARS.length) + SEAT_CARS.length) % SEAT_CARS.length];

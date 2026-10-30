@@ -4,13 +4,11 @@ import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import clsx from "clsx";
 import type { GameTableProps } from "@/game/components/table/GameTable";
-import type { AnimationEvent } from "@/game/types/game";
 import { useAnimationQueue } from "@/game/hooks/useAnimationQueue";
 import { useElementSize } from "@/game/hooks/useElementSize";
 import { useShortLandscape } from "@/game/hooks/useShortLandscape";
 import { useSound } from "@/game/hooks/useSound";
 import { useRaceAudio } from "@/game/audio/useRaceAudio";
-import { animationDuration } from "@/game/hooks/useAnimationQueue";
 import { EventToast } from "@/game/components/animations/EventToast";
 import { RaceImpact } from "@/game/components/animations/RaceImpact";
 import { VictoryOverlay } from "@/game/components/animations/VictoryOverlay";
@@ -33,48 +31,6 @@ import type { SceneDef } from "./scenePath";
  */
 /** Races whose opening flyover was already shown on this device. */
 const PLAYED_INTROS = new Set<string>();
-
-function AnimatedDistance({
-  playerId,
-  distance,
-  move,
-}: {
-  playerId: string;
-  distance: number;
-  move: Extract<AnimationEvent, { kind: "move" }> | null;
-}) {
-  const moveKey = move?.id ?? null;
-  const from = move?.from ?? distance;
-  const to = move?.to ?? distance;
-  const duration = move ? animationDuration(move) : 0;
-  const [display, setDisplay] = useState(() => ({ key: moveKey, value: from, progress: 0 }));
-  if (display.key !== moveKey || (!move && display.value !== distance)) {
-    setDisplay({ key: moveKey, value: from, progress: 0 });
-  }
-
-  useEffect(() => {
-    if (!moveKey) return;
-    const startedAt = performance.now();
-    let timer = 0;
-    const tick = () => {
-      const progress = Math.max(0, Math.min(1, (performance.now() - startedAt) / duration));
-      const eased = progress < 0.5 ? 4 * progress ** 3 : 1 - ((-2 * progress + 2) ** 3) / 2;
-      setDisplay({ key: moveKey, value: Math.round(from + (to - from) * eased), progress });
-      if (progress >= 1) window.clearInterval(timer);
-    };
-    timer = window.setInterval(tick, 50);
-    tick();
-    return () => window.clearInterval(timer);
-  }, [distance, duration, from, moveKey, to]);
-
-  const value = display.key === moveKey ? display.value : from;
-  return (
-    <span data-distance-counter={playerId} data-distance-value={value} data-distance-move={moveKey ?? ""} data-distance-progress={display.progress} data-distance-duration={duration}>
-      {value}
-      <span className="ml-0.5 text-[0.65em] text-white/70">km</span>
-    </span>
-  );
-}
 
 export function SceneTable({
   state,
@@ -139,16 +95,7 @@ export function SceneTable({
   const [worldReady, setWorldReady] = useState(false);
   const onWorldReady = useCallback(() => setWorldReady(true), []);
   const introPending = introFor === introKey;
-  const [introFallbackKey, setIntroFallbackKey] = useState<string | null>(null);
-  // Start the countdown once the board is visible. If WebGL is slow or
-  // unavailable, show it over the fallback board after a short grace period
-  // instead of letting the cinematic expire unseen during initialization.
-  const intro = introPending && (worldReady || introFallbackKey === introKey);
-  useEffect(() => {
-    if (!introPending || worldReady) return;
-    const t = setTimeout(() => setIntroFallbackKey(introKey), 900);
-    return () => clearTimeout(t);
-  }, [introPending, worldReady, introKey]);
+  const intro = introPending && worldReady;
   const endIntro = useCallback(() => {
     PLAYED_INTROS.add(introKey);
     setIntroFor(null);
@@ -174,7 +121,7 @@ export function SceneTable({
       </button>
     ) : null;
   // while a cinematic plays, the interface steps aside
-  const cinema = introPending || (!!winner && !victoryReady);
+  const cinema = introPending || (!!winner && !scene && !victoryReady);
   // from 4 pilots on (or on a phone held sideways), each one fits on a single
   // line so the road stays visible
   const short = useShortLandscape();
@@ -237,13 +184,8 @@ export function SceneTable({
                         <span className="font-hud text-[0.55rem] font-bold uppercase tracking-wider text-[#ff8a7e]">Hors ligne</span>
                       ) : (
                         <span className={clsx("shrink-0 font-display leading-none text-[#ffd23f] drop-shadow", crowded ? "text-base" : "text-lg")}>
-                          <AnimatedDistance
-                            playerId={p.id}
-                            distance={p.distance}
-                            move={state.animationQueue.find((queued): queued is Extract<AnimationEvent, { kind: "move" }> =>
-                              queued.kind === "move" && queued.playerId === p.id && queued.to === p.distance,
-                            ) ?? null}
-                          />
+                          {p.distance}
+                          <span className="ml-0.5 text-[0.65em] text-white/70">km</span>
                         </span>
                       )}
                       {p.distance === leaderKm && leaderKm > 0 && !offline ? <span className="text-xs">👑</span> : null}
@@ -339,7 +281,7 @@ export function SceneTable({
         ) : null}
       </AnimatePresence>
       {intro ? <IntroCinematic title="KILOMAX" subtitle={`Corniche d'Azur · ${state.target} km`} onDone={endIntro} /> : null}
-      {winner && !victoryReady ? <FinishCinematic name={winner.name} color={CAR_PAINT[winner.color]} /> : null}
+      {winner && !scene && !victoryReady ? <FinishCinematic name={winner.name} color={CAR_PAINT[winner.color]} /> : null}
       {isMyTurn ? (
         <TargetPicker pending={controls.pendingTarget} state={state} onPick={controls.resolveTarget} onCancel={controls.cancelTarget} />
       ) : null}

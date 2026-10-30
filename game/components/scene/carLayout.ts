@@ -5,9 +5,7 @@
 export function slotsFor(count: number): { lateral: number; along: number }[] {
   const safeCount = Math.max(0, Math.floor(count));
   const columns = [-0.75, -0.25, 0.25, 0.75];
-  // Leave enough longitudinal room for the larger cars; the second grid row
-  // must not be hidden behind the first one on a narrow phone viewport.
-  const rowGap = 4;
+  const rowGap = 1.1;
 
   return Array.from({ length: safeCount }, (_, index) => {
     const row = Math.floor(index / columns.length);
