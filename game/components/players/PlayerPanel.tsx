@@ -87,6 +87,7 @@ function PlayerPlaque({
         </span>
         <span className="plaque-name min-w-0 flex-1 truncate font-hud text-[0.95rem] font-bold text-[var(--color-paper)]">
           {player.name}
+          {player.isBot ? <span className="ml-1 rounded bg-white/10 px-1 py-px text-[0.55rem] font-bold uppercase tracking-wider text-white/65">BOT</span> : null}
           {isViewer ? <span className="ml-1 font-semibold text-white/45">(vous)</span> : null}
         </span>
         {offline ? (

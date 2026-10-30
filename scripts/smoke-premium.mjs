@@ -147,6 +147,28 @@ try {
   await page.locator(".board-frame").waitFor({state:"visible",timeout:10000});
   await page.waitForTimeout(1200);
   await page.screenshot({ path: `${output}/classic.png` });
+
+  await page.goto(`${base}/play/create`);
+  await page.getByRole("button", { name: /Contre des bots/ }).click();
+  await page.getByRole("button", { name: "3D — Voitures et effets animés" }).click();
+  await page.getByRole("button", { name: "2 bots", exact: true }).click();
+  await page.getByLabel("Nom du joueur 1").fill("Pilote humain");
+  await page.getByRole("button", { name: "Démarrer la course" }).click();
+  await page.waitForURL("**/play/game/**");
+  await page.waitForFunction(() => document.querySelectorAll("[data-player-id]").length === 3);
+  const humanId = await page.locator('[data-player-active="true"]').getAttribute("data-player-id");
+  assert.ok(humanId);
+  assert.match(await page.locator(`[data-player-id="${humanId}"]`).innerText(), /Pilote humain/);
+  assert.equal(await page.getByText("BOT", { exact: true }).count(), 2);
+  await page.getByRole("button", { name: "Piocher une carte", exact: true }).click();
+  await page.locator("button[data-card-id]").last().click();
+  await page.getByRole("button", { name: "Défausser", exact: true }).click();
+  await page.waitForFunction((id) => document.querySelector('[data-player-active="true"]')?.getAttribute("data-player-id") !== id, humanId);
+  await page.waitForFunction((id) => document.querySelector('[data-player-active="true"]')?.getAttribute("data-player-id") === id, humanId, { timeout: 20000 });
+  assert.deepEqual(errors, []);
+  await page.getByRole("button", { name: "Passer au plateau classique" }).click();
+  await page.locator(".board-frame").waitFor({ state: "visible", timeout: 10000 });
+
   // A WebGL construction failure must retain the same in-memory game and hand.
   await page.evaluate(() => {
     const original = HTMLCanvasElement.prototype.getContext;
@@ -164,7 +186,7 @@ try {
   console.log("RACE UI", (await page.locator("body").innerText()).slice(-2400));
   assert.deepEqual(errors, []);
   console.log(
-    "PASS: four home viewports, 20 illustrations, six-player garage, six real 3D GLB race models, distance-driven car movement, draw, discard, next turn and classic switch; no page errors",
+    "PASS: four home viewports, 20 illustrations, six-player garage, six real 3D GLB race models, distance-driven movement, automatic two-bot turns, draw, discard, next turn and classic switch; no page errors",
   );
 } finally {
   await browser.close();

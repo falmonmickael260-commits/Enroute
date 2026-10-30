@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useReducer, useState } from "react";
+import { useCallback, useEffect, useReducer, useState } from "react";
 import type { CardInstance, GameState } from "@/game/types/game";
 import { createGame, gameReducer, type GameAction, type NewGameOptions } from "@/game/lib/engine/gameReducer";
 import { getCardDef } from "@/game/lib/engine/cardCatalog";
 import { activePlayer, hasAnyValidTarget } from "@/game/lib/engine/rules";
+import { chooseBotAction } from "@/game/lib/engine/bot";
 
 export interface PendingTarget {
   card: CardInstance;
@@ -77,6 +78,17 @@ export type GameControls = ReturnType<typeof useGameControls>;
 export function useGameEngine(initialOptions: NewGameOptions) {
   const [state, dispatch] = useReducer(gameReducer, initialOptions, createGame);
   const controls = useGameControls(state, dispatch);
+
+  const current = state.players[state.currentPlayerIndex];
+  const botId = current?.isBot ? current.id : null;
+  useEffect(() => {
+    if (!botId || state.phase === "gameover") return;
+    const action = chooseBotAction(state);
+    if (!action) return;
+    const delay = state.phase === "draw" ? 650 : 900;
+    const timer = window.setTimeout(() => dispatch(action), delay);
+    return () => window.clearTimeout(timer);
+  }, [botId, state.phase, state.turn, state.startedAt, state]);
 
   const consumeAnimation = useCallback(() => dispatch({ type: "CLEAR_ANIMATION" }), []);
   const newGame = useCallback((options: NewGameOptions) => dispatch({ type: "NEW_GAME", options }), []);

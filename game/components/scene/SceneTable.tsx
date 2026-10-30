@@ -176,6 +176,7 @@ export function SceneTable({
                       </span>
                       <span className={clsx("min-w-0 flex-1 truncate font-hud font-bold", crowded ? "text-[0.8rem]" : "text-sm")}>
                         {p.name}
+                        {p.isBot ? <span className="ml-1 rounded bg-white/10 px-1 py-px text-[0.55rem] uppercase tracking-wider text-white/65">BOT</span> : null}
                         {p.id === viewerId && !crowded ? <span className="ml-1 font-semibold text-white/50">(vous)</span> : null}
                       </span>
                       {crowded && !offline ? <PlayerStatus player={p} mini /> : null}
