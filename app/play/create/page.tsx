@@ -24,13 +24,12 @@ import {
   UsersIcon,
 } from "@/game/components/menu/icons";
 
-type Mode = "online" | "local" | "bots";
+type Mode = "online" | "local";
 
 // tile pictures taken from the KILOMAX menu design
-const MODES: { id: Mode; label: string; hint: string; image?: string }[] = [
+const MODES: { id: Mode; label: string; hint: string; image: string }[] = [
   { id: "online", label: "En ligne", hint: "Chacun sur son téléphone", image: "/images/menu/mode-online.webp" },
   { id: "local", label: "Sur cet appareil", hint: "On se passe l'écran", image: "/images/menu/mode-local.webp" },
-  { id: "bots", label: "Contre des bots", hint: "Jouez contre l'ordinateur" },
 ];
 
 const BOARDS = [
@@ -47,10 +46,8 @@ const DURATIONS: { label: string; value: number; hint: string }[] = [
 export default function CreateGamePage() {
   const router = useRouter();
   const createLocalGame = useSetupStore((s) => s.createLocalGame);
-  const createBotGame = useSetupStore((s) => s.createBotGame);
 
   const [playerCount, setPlayerCount] = useState(2);
-  const [botCount, setBotCount] = useState(2);
   const [names, setNames] = useState<string[]>(["Joueur 1", "Joueur 2", "Joueur 3", "Joueur 4", "Joueur 5", "Joueur 6"]);
   const [ambiance, setAmbiance] = useState<AmbianceId>("jour");
   const [target, setTarget] = useState(1000);
@@ -61,11 +58,6 @@ export default function CreateGamePage() {
   const platformUsername = peekPlatformUsername(getIncomingPlatformToken());
 
   const handleStart = async () => {
-    if (mode === "bots") {
-      const code = createBotGame(names[0], botCount, ambiance, target);
-      router.push(`/play/game/${code}`);
-      return;
-    }
     if (mode === "local") {
       const code = createLocalGame(names.slice(0, playerCount), ambiance, target);
       router.push(`/play/lobby/${code}`);
@@ -87,7 +79,7 @@ export default function CreateGamePage() {
     }
   };
 
-  const pilots = mode === "local" ? names.slice(0, playerCount) : names.slice(0, 1);
+  const pilots = mode === "online" ? names.slice(0, 1) : names.slice(0, playerCount);
 
   return (
     <InnerPage backHref="/" backLabel="Accueil" title="Créer une partie" subtitle={"Choisis tes options et prends la route\u00a0!"}>
@@ -95,22 +87,9 @@ export default function CreateGamePage() {
         <SectionLabel icon={<UsersIcon />}>Mode de jeu</SectionLabel>
         <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
           {MODES.map((m) => (
-            <button key={m.id} onClick={() => setMode(m.id)} aria-pressed={mode === m.id} aria-label={`${m.label} — ${m.hint}`} className={`menu-option aspect-[3.3/1] ${m.id === "bots" ? "col-span-2" : ""}`}>
-              {m.image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={m.image} alt="" draggable={false} className="absolute inset-0 -z-10 h-full w-full object-cover" />
-              ) : (
-                <>
-                  <span aria-hidden className="absolute inset-0 -z-10 bg-[radial-gradient(ellipse_at_75%_45%,rgba(46,113,191,.55),transparent_55%),linear-gradient(120deg,#14243a,#11151e)]" />
-                  <span className="absolute inset-0 flex items-center justify-center gap-3 px-3 text-left">
-                    <span aria-hidden className="text-3xl drop-shadow-[0_2px_6px_rgba(0,0,0,.6)]">🤖</span>
-                    <span>
-                      <span className="block font-menu text-lg font-extrabold leading-tight sm:text-xl">Contre des bots</span>
-                      <span className="block text-xs text-white/75 sm:text-sm">Jouez contre l&apos;ordinateur</span>
-                    </span>
-                  </span>
-                </>
-              )}
+            <button key={m.id} onClick={() => setMode(m.id)} aria-pressed={mode === m.id} aria-label={`${m.label} — ${m.hint}`} className="menu-option aspect-[3.3/1]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={m.image} alt="" draggable={false} className="absolute inset-0 -z-10 h-full w-full object-cover" />
             </button>
           ))}
         </div>
@@ -142,22 +121,8 @@ export default function CreateGamePage() {
         </section>
       ) : null}
 
-      {mode === "bots" ? (
-        <section>
-          <SectionLabel icon={<UsersIcon />}>Nombre de bots</SectionLabel>
-          <div className="grid grid-cols-5 gap-2.5 sm:gap-3">
-            {Array.from({ length: MAX_PLAYERS - 1 }, (_, i) => i + 1).map((n) => (
-              <button key={n} onClick={() => setBotCount(n)} aria-pressed={botCount === n} aria-label={`${n} ${n === 1 ? "bot" : "bots"}`} className="menu-option py-2.5 text-center font-menu text-3xl font-extrabold italic">
-                {n}
-              </button>
-            ))}
-          </div>
-          <p className="mt-1 text-center text-xs text-white/60">Vous jouez contre {botCount} {botCount === 1 ? "adversaire informatique" : "adversaires informatiques"}.</p>
-        </section>
-      ) : null}
-
       <section>
-        <SectionLabel icon={<HelmetIcon />}>{mode === "local" ? "Pilotes" : "Votre nom de pilote"}</SectionLabel>
+        <SectionLabel icon={<HelmetIcon />}>{mode === "online" ? "Votre nom de pilote" : "Pilotes"}</SectionLabel>
         {mode === "online" && platformUsername ? (
           <p className="-mt-1 mb-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-center text-xs text-white/70">
             Connecté en tant que <strong className="text-white">{platformUsername}</strong> — vos résultats
@@ -228,7 +193,7 @@ export default function CreateGamePage() {
 
       {error ? <p className="text-center text-sm text-[#ff8a7e]">{error}</p> : null}
       <button onClick={handleStart} disabled={busy} className="menu-cta mt-1">
-        {busy ? "Création…" : mode === "bots" ? "Démarrer la course" : "Générer le code de partie"}
+        {busy ? "Création…" : "Générer le code de partie"}
         <ChevronRightIcon className="h-[0.9em] w-[0.9em] shrink-0" />
       </button>
       {mode === "online" ? (

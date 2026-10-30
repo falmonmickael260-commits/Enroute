@@ -10,7 +10,6 @@ import { useShortLandscape } from "@/game/hooks/useShortLandscape";
 import { useSound } from "@/game/hooks/useSound";
 import { useRaceAudio } from "@/game/audio/useRaceAudio";
 import { EventToast } from "@/game/components/animations/EventToast";
-import { RaceImpact } from "@/game/components/animations/RaceImpact";
 import { VictoryOverlay } from "@/game/components/animations/VictoryOverlay";
 import { TargetPicker } from "@/game/components/ui/TargetPicker";
 import { SoundToggle } from "@/game/components/ui/SoundToggle";
@@ -82,7 +81,7 @@ export function SceneTable({
   const yourTurn = viewerId ? current.id === viewerId : true;
 
   // a fresh race on the 3D coast opens with the flyover (once per race on this device)
-  const fresh = !over && state.discard.length === 0 && state.players.every((p) => p.distance === 0);
+  const fresh = !scene && !over && state.discard.length === 0 && state.players.every((p) => p.distance === 0);
   const introKey = `${state.id}:${state.startedAt}`;
   const [introFor, setIntroFor] = useState<string | null>(() => (fresh && !PLAYED_INTROS.has(introKey) ? introKey : null));
   const [prevStart, setPrevStart] = useState(state.startedAt);
@@ -129,7 +128,6 @@ export function SceneTable({
 
   return (
     <main className="relative isolate h-dvh overflow-hidden bg-[#0d1420] text-white">
-      <RaceImpact event={currentEvent} />
       {scene ? (
         // blurred copy of the picture behind the stage on wide screens
         // eslint-disable-next-line @next/next/no-img-element
@@ -139,7 +137,7 @@ export function SceneTable({
       {/* the 3D world fills the screen; the picture keeps its portrait proportions */}
       {!scene ? <WorldBoard state={state} event={currentEvent} bottomInset={handBox.height} overview={overview} intro={intro} onReady={onWorldReady} /> : null}
       <div className={clsx("absolute inset-0 mx-auto", scene && "max-w-[min(100vw,calc(100dvh*0.78))]")}>
-        {scene ? <SceneBoard state={state} event={currentEvent} def={scene} bottomInset={handBox.height} intro={intro} onReady={onWorldReady} /> : null}
+        {scene ? <SceneBoard state={state} event={currentEvent} def={scene} bottomInset={handBox.height} /> : null}
 
         {/* top: players · logo · turn */}
         <div
@@ -157,9 +155,6 @@ export function SceneTable({
                 return (
                   <div
                     key={p.id}
-                    data-player-id={p.id}
-                    data-distance-km={p.distance}
-                    data-player-active={active ? "true" : "false"}
                     className={clsx(
                       "flex flex-col gap-1 rounded-xl border px-2 backdrop-blur-md transition-all",
                       crowded ? "py-0.5" : "py-1",
@@ -176,7 +171,6 @@ export function SceneTable({
                       </span>
                       <span className={clsx("min-w-0 flex-1 truncate font-hud font-bold", crowded ? "text-[0.8rem]" : "text-sm")}>
                         {p.name}
-                        {p.isBot ? <span className="ml-1 rounded bg-white/10 px-1 py-px text-[0.55rem] uppercase tracking-wider text-white/65">BOT</span> : null}
                         {p.id === viewerId && !crowded ? <span className="ml-1 font-semibold text-white/50">(vous)</span> : null}
                       </span>
                       {crowded && !offline ? <PlayerStatus player={p} mini /> : null}

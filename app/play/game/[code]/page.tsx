@@ -20,7 +20,7 @@ export default function GamePage({ params }: { params: Promise<{ code: string }>
     setup.players.length >= 2
       ? {
           id: code,
-          players: setup.players.map((p) => ({ id: p.id, name: p.name, color: p.color, car: p.car, isBot: p.isBot })),
+          players: setup.players.map((p) => ({ id: p.id, name: p.name, color: p.color, car: p.car })),
           ambiance: setup.ambiance,
           target: setup.target,
         }
@@ -62,7 +62,6 @@ function LocalGame({
       state={state}
       controls={controls}
       consumeAnimation={consumeAnimation}
-      viewerId={options.players.some((p) => p.isBot) ? options.players.find((p) => !p.isBot)?.id : undefined}
       onExit={onExit}
       onReplay={() => newGame(options)}
       onNewGame={onNewGame}

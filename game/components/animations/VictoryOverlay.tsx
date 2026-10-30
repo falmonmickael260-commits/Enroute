@@ -4,8 +4,7 @@ import { motion } from "framer-motion";
 import clsx from "clsx";
 import { useState } from "react";
 import type { GameState, PlayerColor, PlayerState } from "@/game/types/game";
-import { carFor } from "@/game/lib/cars";
-import { VehicleArt } from "@/game/components/ui/VehicleArt";
+import { carFor, carThumb } from "@/game/lib/cars";
 import { useShortLandscape } from "@/game/hooks/useShortLandscape";
 
 const COLOR_VAR: Record<PlayerColor, string> = {
@@ -80,7 +79,15 @@ function Podium({ ranked }: { ranked: { p: PlayerState; seat: number }[] }) {
               className="relative flex w-full flex-col items-center"
             >
               {i === 0 ? <span className="absolute -top-5 text-xl drop-shadow">👑</span> : null}
-              <VehicleArt car={carFor(p.car, seat)} color={p.color} className="-mb-1 max-w-[8rem]" />
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={carThumb(carFor(p.car, seat), p.color)}
+                alt=""
+                width={240}
+                height={160}
+                draggable={false}
+                className="-mb-1 h-auto w-full max-w-[5.75rem]"
+              />
               <p className="w-full truncate px-0.5 font-hud text-sm font-bold" style={{ color: COLOR_VAR[p.color] }}>
                 {p.name}
               </p>

@@ -3,7 +3,7 @@ import { ScenePath } from "./scenePath";
 import type { Placement, ScreenPoint, Stage } from "./stage";
 
 /** Car length relative to the road's half-width at that point. */
-const CAR_SIZE = 0.42;
+const CAR_SIZE = 0.95;
 
 /**
  * An illustrated picture used as the ground: an orthographic camera tilted to
@@ -44,12 +44,9 @@ export class PictureStage implements Stage {
     const gl = Math.hypot(gx, gz) || 1;
     // décalage latéral (perpendiculaire) puis longitudinal (dans l'axe de la route)
     const position = new THREE.Vector3(
-      // Lane centres follow the full traced road width; only the car body and
-      // its longitudinal spacing use CAR_SIZE. This keeps four lanes visibly
-      // separated while making each vehicle smaller within its lane.
-      p.x + (-gz * lateral * p.s + gx * along * size) / gl,
+      p.x + ((-gz * lateral + gx * along) / gl) * size,
       0,
-      p.y / this.sinP + (gx * lateral * p.s + gz * along * size) / gl,
+      p.y / this.sinP + ((gx * lateral + gz * along) / gl) * size,
     );
     return { position, yaw: Math.atan2(gx, gz), scale: size };
   }

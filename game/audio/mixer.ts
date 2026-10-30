@@ -113,18 +113,6 @@ class Mixer {
         level.gain.value = levels[bus];
         level.connect(duck);
         duck.connect(this.master);
-        // A quiet, filtered early reflection gives impacts outdoor depth.
-        // It follows the effects fader and master mute, with no feedback loop.
-        if (bus === "effects") {
-          const reflection = ctx.createDelay(0.15);
-          reflection.delayTime.value = 0.075;
-          const air = ctx.createBiquadFilter();
-          air.type = "lowpass";
-          air.frequency.value = 1800;
-          const wet = ctx.createGain();
-          wet.gain.value = 0.065;
-          duck.connect(reflection); reflection.connect(air); air.connect(wet); wet.connect(this.master);
-        }
         this.buses.set(bus, { level, duck });
       }
 

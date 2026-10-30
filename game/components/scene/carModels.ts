@@ -1,8 +1,7 @@
 import * as THREE from "three";
 import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import type { CarModel } from "./models";
-import { BUILT_CARS, isCarId } from "../../lib/cars";
-import { buildVehicleModel } from "./vehicleModels";
+import { BUILT_CARS } from "@/game/lib/cars";
 
 /**
  * Kenney Car Kit vehicles (CC0) turned into the CarModel the scene animates:
@@ -15,85 +14,6 @@ const SCALE = 0.43;
 
 const gltfCache = new Map<string, Promise<GLTF | null>>();
 const paintCache = new Map<string, Promise<THREE.Texture | null>>();
-
-const ART_HUE: Record<string, number> = {
-  "#e8352b": 0,
-  "#1f86ea": 205,
-  "#ffc21a": 42,
-  "#2fae55": 120,
-  "#8e4cf0": 265,
-  "#f04aa6": 320,
-};
-
-/** The generated transparent cutout art used in the garage and previews. */
-export function vehicleArtUrl(id: string) {
-  return isCarId(id) ? `/images/premium/vehicles/${id}.webp` : null;
-}
-
-/** Builds a billboard preview for visual galleries; races use mesh/GLB models. */
-export function createArtworkVehicleModel(
-  id: string,
-  color: string,
-  repaint: boolean,
-  image: HTMLImageElement,
-): CarModel {
-  const canvas = document.createElement("canvas");
-  canvas.width = image.naturalWidth || image.width;
-  canvas.height = image.naturalHeight || image.height;
-  const context = canvas.getContext("2d");
-  if (!context) throw new Error("Impossible de préparer l’illustration du véhicule");
-  if (repaint) context.filter = `hue-rotate(${ART_HUE[color.toLowerCase()] ?? 0}deg)`;
-  context.drawImage(image, 0, 0, canvas.width, canvas.height);
-  const texture = new THREE.CanvasTexture(canvas);
-  texture.colorSpace = THREE.SRGBColorSpace;
-  texture.anisotropy = 4;
-
-  const root = new THREE.Group();
-  const body = new THREE.Group();
-  const spriteMaterial = new THREE.SpriteMaterial({
-    map: texture,
-    transparent: true,
-    alphaTest: 0.035,
-    depthWrite: false,
-    toneMapped: false,
-  });
-  const artwork = new THREE.Sprite(spriteMaterial);
-  artwork.center.set(0.5, 0.08);
-  artwork.scale.set(2.2, 2.2 * (canvas.height / canvas.width), 1);
-  artwork.position.y = 0.015;
-  body.add(artwork);
-  root.add(body);
-
-  const mounts = { roof: new THREE.Group(), rear: new THREE.Group(), front: new THREE.Group() };
-  mounts.roof.position.set(0, 1.12, 0);
-  mounts.rear.position.set(0, 0.32, -0.7);
-  mounts.front.position.set(0, 0.32, 0.7);
-  body.add(mounts.roof, mounts.rear, mounts.front);
-  const brakeLights = new THREE.MeshStandardMaterial({
-    color: "#b3141b",
-    emissive: "#ff1f2a",
-    emissiveIntensity: 0.3,
-  });
-  const paint = new THREE.MeshStandardMaterial({ color });
-  root.userData.vehicleId = id;
-  root.userData.renderRevision = 3;
-  root.userData.artwork = true;
-  root.userData.disposeModel = () => {
-    texture.dispose();
-    spriteMaterial.dispose();
-    brakeLights.dispose();
-    paint.dispose();
-  };
-  return {
-    root,
-    body,
-    wheels: [],
-    brakeLights,
-    paint,
-    mounts,
-    exhaust: new THREE.Vector3(0, 0.1, -0.72),
-  };
-}
 
 function loadGltf(id: string): Promise<GLTF | null> {
   let p = gltfCache.get(id);
@@ -264,12 +184,8 @@ function localAxis(node: THREE.Object3D, world: THREE.Vector3): "x" | "y" | "z" 
  * car it already shows.
  */
 export async function loadCarModel(id: string, color: string, repaint: boolean, castShadow: boolean): Promise<CarModel | null> {
-  // The premium WebP cutouts are for the garage only. During a race use real
-  // geometry so the body has depth and its wheels can rotate with distance.
-  if (BUILT_CARS.has(id)) return buildVehicleModel(id, color);
   const gltf = await loadGltf(id);
-  // Keep a fully 3D procedural car visible if a model file cannot be loaded.
-  if (!gltf) return isCarId(id) ? buildVehicleModel(id, color) : null;
+  if (!gltf) return null;
   const scene = gltf.scene.clone(true);
   const spec = SPECS[id] ?? KENNEY;
 
@@ -285,9 +201,6 @@ export async function loadCarModel(id: string, color: string, repaint: boolean, 
       });
     if ((o as THREE.Mesh).isMesh) all.push(o as THREE.Mesh);
   });
-  // The retro GLB has its tyres baked into one mesh, so there are no wheel
-  // nodes to animate. Use the fully 3D procedural model with real wheel hubs.
-  if (wheels.length === 0 && isCarId(id)) return buildVehicleModel(id, color);
   // remember each wheel's size and axes: animations spin it around its axle
   // and squash it vertically, whatever the file's own orientation
   scene.updateMatrixWorld(true);
@@ -362,7 +275,6 @@ export async function loadCarModel(id: string, color: string, repaint: boolean, 
   const size = box.getSize(new THREE.Vector3());
 
   const root = new THREE.Group();
-  root.userData.renderSource = "gltf-3d";
   const body = new THREE.Group();
   root.add(body);
   body.add(inner);
