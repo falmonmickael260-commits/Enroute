@@ -5,6 +5,19 @@ import * as THREE from "three";
 import { CARS } from "../game/lib/cars";
 import { CARD_CATALOG } from "../game/lib/engine/cardCatalog";
 import { createTouringCar } from "../game/components/scene/premiumCars";
+import coastalScene from "../game/components/scene/scenes/provisoire.json";
+import { ScenePath } from "../game/components/scene/scenePath";
+
+test("four-lane coastal race art is aligned with a longer in-game route", () => {
+  assert.equal(coastalScene.image, "/images/scene/kilomax-coast-four-lane.webp");
+  assert.ok(existsSync(`public${coastalScene.image}`));
+  assert.ok(coastalScene.finishIndex - coastalScene.startIndex >= 10);
+  const path = new ScenePath(coastalScene);
+  const start = path.atKm(0, 1000);
+  const finish = path.atKm(1000, 1000);
+  assert.ok(start.s >= 180, "four-lane road width at the start");
+  assert.ok(start.y - finish.y >= 800, "visibly extended race route");
+});
 
 test("every vehicle and every card has its delivered optimized illustration", () => {
   assert.ok(existsSync("public/images/premium/landscape-world.webp"));
