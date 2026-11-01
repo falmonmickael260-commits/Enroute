@@ -87,6 +87,12 @@ export function rememberSeat(code: string, secret: string) {
   save({ ...session, rooms: Object.fromEntries(rooms) });
 }
 
+export function adoptOnlineSeat(code: string, playerId: string, secret: string) {
+  const current = load();
+  save({ ...current, playerId, rooms: { ...(current.playerId === playerId ? current.rooms : {}), [code]: { secret, joinedAt: Date.now() } } });
+  window.dispatchEvent(new Event('rg:session'));
+}
+
 export function forgetSeat(code: string) {
   const session = load();
   if (!session.rooms[code]) return;
