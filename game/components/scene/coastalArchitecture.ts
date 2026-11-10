@@ -6,6 +6,16 @@ export interface CoastalHouse {
   x: number; y: number; z: number; w: number; h: number; d: number; yaw: number;
 }
 
+/** Share the actual village footprint with planting and garden placement. */
+export function selectVillageHouses(houses: CoastalHouse[]) {
+  const placed: CoastalHouse[] = [];
+  for (const h of houses) {
+    if (placed.some(other => Math.hypot(h.x - other.x, h.z - other.z) < (Math.hypot(h.w, h.d) + Math.hypot(other.w, other.d)) * 0.55)) continue;
+    placed.push(h);
+  }
+  return placed;
+}
+
 type Instance = { matrix: THREE.Matrix4; color: THREE.Color };
 
 /** A real two-slope roof, with front and rear gables instead of a pyramid. */
@@ -90,14 +100,9 @@ export function buildCoastalVillage(
   register("plants", foliageCrown(), { vertexColors: true });
   register("pot", new THREE.CylinderGeometry(0.45, 0.32, 1, 8), { color: "#a15c40" });
 
-  const placed: CoastalHouse[] = [];
-  for (const hs of houses) {
-    // The old random houses could overlap. Keep their anchors, but leave each
-    // accepted villa enough room to read as a building with its own courtyard.
-    if (placed.some(other => Math.hypot(hs.x - other.x, hs.z - other.z) <
-      (Math.hypot(hs.w, hs.d) + Math.hypot(other.w, other.d)) * 0.55)) continue;
-    placed.push(hs);
-    const i = placed.length;
+  const placed = selectVillageHouses(houses);
+  for (const [index, hs] of placed.entries()) {
+    const i = index + 1;
     const wall = new THREE.Color(["#e5d7be", "#eddfc4", "#d9c5aa", "#ead3b4"][i % 4]);
     const roof = new THREE.Color(["#ad6249", "#b96d4b", "#a75b43"][i % 3]);
     const shutter = new THREE.Color(["#547367", "#627d8d", "#6d7352"][i % 3]);
@@ -165,4 +170,5 @@ export function buildCoastalVillage(
     mesh.receiveShadow = true;
     scene.add(mesh);
   }
+  return placed;
 }

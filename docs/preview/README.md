@@ -1,5 +1,22 @@
 # Décor de Kilomax — aperçu de travail
 
+## Reliefs et composition du paysage
+
+Les anciennes masses isolées sont remplacées par des crêtes continues, avec des vallées et des collines plus basses. Les falaises présentent des variations plus douces et des nuances de calcaire. Les arbres sont regroupés en bosquets, avec des clairières, des tailles variées et de l'espace autour des maisons. Les troncs restent ancrés sur le relief visible.
+
+Même cadrage du littoral pour comparer les deux versions :
+
+| Avant cette passe | Nouveau paysage |
+| --- | --- |
+| ![Avant](littoral-detail.webp) | ![Après](paysage-reliefs.webp) |
+
+De petits chemins de pierres et des haies relient les maisons au terrain. La lumière du jour est moins contrastée et les ombres sont plus douces.
+
+![Village, chemins et plantations](village-jardins.webp)
+
+Le sol à proximité de la route conserve son profil d'origine. La route, les voitures et la caméra arrière sont conservées.
+
+
 ## Panneaux et portiques
 
 Plaques arrondies avec bord métallique, face imprimée distincte, vis, fixations arrière et socle. Les repères de distance portent un nombre dominant et l'unité « km ». Les chevrons conservent leur sens et leur position dans les virages.

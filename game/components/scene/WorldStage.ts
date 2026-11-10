@@ -2,9 +2,10 @@ import * as THREE from "three";
 import { createDistanceSign, createFinishBanner, decorateStartGantry, createChevronParts, checkerLineTexture, disposeSignGroup } from "./roadFurniture";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { createSailboatParts, createSeaMaterial } from "./coastalMarine";
-import { buildCoastalVillage, distantRidge } from "./coastalArchitecture";
+import { buildCoastalVillage, selectVillageHouses } from "./coastalArchitecture";
 import type { Placement, ScreenPoint, Shot, Stage, StageCar } from "./stage";
 import { branchingTrunk, treeCrown, layeredCypress, sculptedRock, buildWildPlants } from "./coastalNature";
+import { arrangeVegetation, mountainRange, inlandFoothills, buildVillageGardens } from "./coastalLandscape";
 import type { AmbianceId } from "@/game/types/game";
 
 /**
@@ -383,8 +384,8 @@ const LOOKS: Record<AmbianceId, Look> = {
   jour: {
     sky: ["#2f86dc", "#8cc6ee", "#dceff8"],
     fog: ["#cfe6f2", 70, 320],
-    hemi: ["#dcecff", "#6f7a45", 0.85],
-    sun: ["#ffe7c4", 2.3, [-26, 40, 18]],
+    hemi: ["#dcecff", "#73805d", 1.05],
+    sun: ["#ffe7c4", 1.9, [-26, 40, 18]],
     exposure: 0.95,
     env: 0.35,
     sea: "#16a2c9",
@@ -519,6 +520,7 @@ export class WorldStage implements Stage {
     sc.far = 140;
     this.sun.shadow.bias = -0.0015;
     this.sun.shadow.normalBias = 0.08;
+    this.sun.shadow.radius = 2;
     scene.add(this.sun, this.sun.target);
 
     this.bridges = this.findBridges();
@@ -541,7 +543,9 @@ export class WorldStage implements Stage {
   private terrainHeight(x: number, z: number) {
     const { dist, y: roadY } = this.road.nearest(x, z);
     // hills rise inland (to the left), cliffs drop into the sea on the right
-    const inland = Math.max(0, -x - 4) * 0.32 + Math.max(0, noise2(x, z)) * 2.2 + 0.3;
+    const original = Math.max(0, -x - 4) * 0.32 + Math.max(0, noise2(x, z)) * 2.2 + 0.3;
+    const rolling = Math.max(0, -x - 4) * 0.23 + (noise2(x * 0.38, z * 0.38) + 1.5) * 0.8 + Math.max(0, noise2(x, z)) * 0.7;
+    const inland = THREE.MathUtils.lerp(original, rolling, THREE.MathUtils.smoothstep(dist, HALF_WIDTH + 5, HALF_WIDTH + 10));
     const flat = THREE.MathUtils.smoothstep(dist, HALF_WIDTH + 1.4, HALF_WIDTH + 7);
     let h = THREE.MathUtils.lerp(roadY - 0.1, roadY + inland, flat);
     const toSea = x - coastX(z);
@@ -549,7 +553,9 @@ export class WorldStage implements Stage {
       // the road keeps solid ground under it where it skirts the cliff; only the
       // viaduct over the inlet crosses open water
       const bed = (1 - THREE.MathUtils.smoothstep(dist, HALF_WIDTH + 2.2, HALF_WIDTH + 5)) * (1 - THREE.MathUtils.smoothstep(coveAt(z), 0.15, 0.4));
-      const drop = THREE.MathUtils.smoothstep(toSea, -1.5, 1.5) * (1 - bed);
+      const freedom = THREE.MathUtils.smoothstep(dist, HALF_WIDTH + 5, HALF_WIDTH + 9);
+      const erosion = freedom * (Math.sin(z * 0.43) * 0.2 + Math.sin(z * 0.91 + 1.4) * 0.1);
+      const drop = THREE.MathUtils.smoothstep(toSea + erosion, -1.5, 1.5) * (1 - bed);
       h = THREE.MathUtils.lerp(h, SEA_LEVEL - 2.5, drop);
     }
     return h;
@@ -571,10 +577,14 @@ export class WorldStage implements Stage {
       const z = pos.getZ(i);
       const h = this.terrainHeight(x, z);
       pos.setY(i, h);
-      const n = noise2(x * 2.3, z * 2.3);
-      c.copy(grass).lerp(olive, 0.35 + 0.35 * n);
+      const n = noise2(x * 0.4, z * 0.4);
+      c.copy(grass).lerp(olive, THREE.MathUtils.clamp(0.3 + 0.22 * n, 0.08, 0.6));
       const toSea = x - coastX(z);
-      if (toSea > -2.2) c.lerp(rock, THREE.MathUtils.smoothstep(toSea, -2.2, -0.2));
+      if (toSea > -3.4) {
+        const strata = 0.5 + 0.5 * Math.sin(h * 5 + z * 0.12);
+        rock.set("#c8b692").lerp(new THREE.Color("#e1d4b6"), strata * 0.35);
+        c.lerp(rock, THREE.MathUtils.smoothstep(toSea, -3.4, -0.3));
+      }
       if (h < SEA_LEVEL + 0.35 && toSea > -1) c.copy(sand);
       colors[i * 3] = c.r;
       colors[i * 3 + 1] = c.g;
@@ -588,7 +598,7 @@ export class WorldStage implements Stage {
       g.fillRect(0, 0, 128, 128);
       const grain = rng(725);
       for (let i = 0; i < 1300; i++) {
-        g.fillStyle = i % 3 ? "rgba(63,70,33,0.09)" : "rgba(255,255,235,0.3)";
+        g.fillStyle = i % 3 ? "rgba(63,70,33,0.045)" : "rgba(255,255,235,0.14)";
         g.fillRect(grain() * 128, grain() * 128, 1, 1 + grain() * 2);
       }
     });
@@ -880,6 +890,9 @@ export class WorldStage implements Stage {
       scene.add(mesh);
       this.disposables.push(geo, material);
     };
+    const planting = arrangeVegetation(pines, trunks, cypress, bushes, selectVillageHouses(houses));
+    pines.splice(0, pines.length, ...planting.pines);trunks.splice(0, trunks.length, ...planting.trunks);
+    cypress.splice(0, cypress.length, ...planting.cypress);bushes.splice(0, bushes.length, ...planting.bushes);
     // Shared geometry, but recognisably different pine and olive silhouettes.
     const olives = pines.filter((_, i) => i % 3 === 0);
     const needlePines = pines.filter((_, i) => i % 3 !== 0);
@@ -947,7 +960,8 @@ export class WorldStage implements Stage {
       }
     });
     this.disposables.push(plaster, tiles);
-    buildCoastalVillage(scene, houses, plaster, tiles, this.look.lights, this.disposables);
+    const visibleHomes = buildCoastalVillage(scene, houses, plaster, tiles, this.look.lights, this.disposables);
+    buildVillageGardens(scene, visibleHomes, (x, z) => this.terrainHeight(x, z), (x, z) => free(x, z, 1.5), this.disposables);
 
     // All boat parts share the existing sailing and rocking transforms.
     this.boatMeshes = createSailboatParts().map(part => {
@@ -1477,23 +1491,11 @@ export class WorldStage implements Stage {
 
   private buildMountainsAndClouds(scene: THREE.Scene) {
     const r = rng(3);
-    const mountains: { m: THREE.Matrix4; c: THREE.Color }[] = [];
-    for (let i = 0; i < 16; i++) {
-      const z = -200 - r() * 80;
-      const x = -130 + i * 16 + (r() - 0.5) * 10;
-      const h = 30 + r() * 38;
-      mountains.push({ m: mat4(x, h / 2 - 4, z, 22 + r() * 18, h, 22 + r() * 18, r() * 3), c: new THREE.Color().setHSL(0.58, 0.18, 0.55 + r() * 0.08) });
+    for (const geometry of [mountainRange(), inlandFoothills()]) {
+      const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 });
+      const mesh = new THREE.Mesh(geometry, material);mesh.name = "landscape-ridge";mesh.receiveShadow = true;
+      scene.add(mesh);this.disposables.push(geometry, material);
     }
-    // closer hills behind the village on the left
-    for (let i = 0; i < 8; i++) {
-      const z = 10 - i * 26;
-      const h = 12 + r() * 14;
-      mountains.push({ m: mat4(-58 - r() * 10, h / 2 - 2, z, 26, h, 26, r() * 3), c: new THREE.Color().setHSL(0.26, 0.3, 0.38 + r() * 0.06) });
-    }
-    const mGeo = distantRidge();
-    const mMat = new THREE.MeshStandardMaterial({ roughness: 1 });
-    const mMesh = instanced(mGeo, mMat, mountains, false);
-    scene.add(mMesh);
 
     const cloudMat = new THREE.MeshStandardMaterial({
       color: this.look.clouds[0],
@@ -1512,10 +1514,10 @@ export class WorldStage implements Stage {
         puffs.push({ m: mat4(cx + (k - 2) * 7 + r() * 3, cy + r() * 3, cz + r() * 4, s * 1.4, s, s) });
       }
     }
-    const cloudMesh = instanced(new THREE.SphereGeometry(1, 10, 7), cloudMat, puffs, false);
+    const cloudMesh = instanced(new THREE.SphereGeometry(1, 16, 10), cloudMat, puffs, false);
     scene.add(cloudMesh);
     this.clouds = cloudMesh;
-    this.disposables.push(mGeo, mMat, cloudMesh.geometry, cloudMat);
+    this.disposables.push(cloudMesh.geometry, cloudMat);
   }
 
   private buildStartAndFinish(scene: THREE.Scene) {
