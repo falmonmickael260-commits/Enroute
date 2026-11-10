@@ -23,6 +23,8 @@ export function Tree({ x, y, s = 1, hue = 0 }: { x: number; y: number; s?: numbe
       <circle cx={9} cy={-23} r={12} fill={greens[0]} />
       <circle cx={-3} cy={-33} r={14} fill={greens[1]} />
       <circle cx={-8} cy={-38} r={7} fill={greens[2]} opacity={0.9} />
+      <path d="M-14 -27 Q-8 -34 0 -30 M1 -39 Q8 -40 12 -34" fill="none" stroke={greens[2]} strokeWidth={2} strokeLinecap="round" opacity={0.55} />
+      <path d="M-9 -15 Q0 -11 10 -17" fill="none" stroke={greens[0]} strokeWidth={3} strokeLinecap="round" />
     </g>
   );
 }
@@ -92,10 +94,17 @@ export function House({
       <rect x={-26} y={-30} width={52} height={30} fill="url(#wallShade)" />
       <path d="M-32 -30 L0 -54 L32 -30 Z" fill={roof} />
       <path d="M0 -54 L32 -30 L16 -30 Z" fill="#000" opacity={0.15} />
+      {/* Tile courses stay within the original roof silhouette. */}
+      <path d="M-24 -36 H24 M-16 -42 H16 M-8 -48 H8" fill="none" stroke="#713c2d" strokeWidth={1} opacity={0.4} />
+      <path d="M-29 -30 H29" stroke="#f0b17e" strokeWidth={1.5} />
       <rect x={14} y={-58} width={7} height={14} fill="#8d4a36" />
       <rect x={-6} y={-16} width={11} height={16} rx={1.5} fill="#6b4a2b" />
       <rect x={-20} y={-23} width={10} height={9} fill="#8fb7d8" stroke="#fff" strokeWidth={1.5} />
       <rect x={11} y={-23} width={10} height={9} fill="#8fb7d8" stroke="#fff" strokeWidth={1.5} />
+      <path d="M-15 -23 V-14 M16 -23 V-14" stroke="#f5edd9" strokeWidth={1} />
+      <path d="M-23 -23 V-14 M-7 -23 V-14 M8 -23 V-14 M24 -23 V-14" stroke="#4d7667" strokeWidth={3} />
+      <path d="M-26 -1 H26" stroke="#b9aa8c" strokeWidth={2} />
+      <circle cx={2} cy={-7} r={0.9} fill="#d3b478" />
     </g>
   );
 }

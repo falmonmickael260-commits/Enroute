@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { vehiclePaint } from "./vehicleFinish";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 
 /**
@@ -10,7 +11,7 @@ const mat = (color: string, opts: THREE.MeshStandardMaterialParameters = {}) =>
   new THREE.MeshStandardMaterial({ color, roughness: 0.55, metalness: 0.05, ...opts });
 
 const shared = {
-  glass: mat("#1c2733", { roughness: 0.15, metalness: 0.3 }),
+  glass: mat("#29475b", { roughness: 0.19, metalness: 0.22 }),
   tyre: mat("#1b1c1f", { roughness: 0.9 }),
   rim: mat("#d7dbe0", { roughness: 0.3, metalness: 0.6 }),
   chrome: mat("#e9edf2", { roughness: 0.2, metalness: 0.8 }),
@@ -39,7 +40,7 @@ export function createCar(color: string): CarModel {
   const body = new THREE.Group();
   root.add(body);
 
-  const paint = mat(color, { roughness: 0.22, metalness: 0.35 });
+  const paint = vehiclePaint(color);
   const trim = mat("#20242b", { roughness: 0.6 });
 
   // lower body with a lower, rounded hood
@@ -221,7 +222,7 @@ function vehicleBase(color: string) {
   const root = new THREE.Group();
   const body = new THREE.Group();
   root.add(body);
-  const paint = mat(color, { roughness: 0.22, metalness: 0.35 });
+  const paint = vehiclePaint(color);
   const brakeLights = new THREE.MeshStandardMaterial({ color: "#b3141b", emissive: "#ff1f2a", emissiveIntensity: 0.3 });
   const mounts = { roof: new THREE.Group(), rear: new THREE.Group(), front: new THREE.Group() };
   body.add(mounts.roof, mounts.rear, mounts.front);

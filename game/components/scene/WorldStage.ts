@@ -589,8 +589,8 @@ export class WorldStage implements Stage {
     const pos = geo.attributes.position as THREE.BufferAttribute;
     const colors = new Float32Array(pos.count * 3);
     const c = new THREE.Color();
-    const grass = new THREE.Color("#7eab47");
-    const olive = new THREE.Color("#a3a257");
+    const grass = new THREE.Color("#71934b");
+    const olive = new THREE.Color("#aaa16b");
     const rock = new THREE.Color("#d2c3a1");
     const sand = new THREE.Color("#ecdcae");
     for (let i = 0; i < pos.count; i++) {
@@ -775,8 +775,9 @@ export class WorldStage implements Stage {
 
   private buildScenery(scene: THREE.Scene) {
     const r = rng(20260929);
+    const detail = rng(731);
     const cypress: { m: THREE.Matrix4; c: THREE.Color }[] = [];
-    const pines: { m: THREE.Matrix4 }[] = [];
+    const pines: { m: THREE.Matrix4; c: THREE.Color }[] = [];
     const trunks: { m: THREE.Matrix4 }[] = [];
     const bushes: { m: THREE.Matrix4; c: THREE.Color }[] = [];
     const walls: { m: THREE.Matrix4; c: THREE.Color }[] = [];
@@ -833,7 +834,8 @@ export class WorldStage implements Stage {
       } else if (kind < 0.55) {
         const h = 2 + r() * 1.2;
         trunks.push({ m: mat4(x, y + h / 2, z, 0.14, h, 0.14) });
-        pines.push({ m: mat4(x, y + h + 0.1, z, 1.9 + r() * 0.8, 0.8, 1.9 + r() * 0.8, r() * 3) });
+        const crown = mat4(x, y + h + 0.1, z, 1.9 + r() * 0.8, 0.8, 1.9 + r() * 0.8, r() * 3);
+        pines.push({ m: crown, c: new THREE.Color().setHSL(0.25 + detail() * 0.05, 0.32, 0.27 + detail() * 0.08) });
       } else if (kind < 0.9) {
         const s = behindStart ? 0.4 + r() * 0.3 : 0.5 + r() * 0.7;
         bushes.push({ m: mat4(x, y + s * 0.4, z, s * 1.2, s * 0.9, s * 1.2), c: new THREE.Color().setHSL(0.24 + r() * 0.06, 0.45, 0.24 + r() * 0.1) });
@@ -856,10 +858,67 @@ export class WorldStage implements Stage {
     };
     add(new THREE.ConeGeometry(0.5, 1, 7), new THREE.MeshStandardMaterial({ roughness: 0.9 }), cypress);
     add(new THREE.CylinderGeometry(1, 1, 1, 6), new THREE.MeshStandardMaterial({ color: "#6b4a2e", roughness: 1 }), trunks);
-    add(new THREE.SphereGeometry(0.6, 9, 6), new THREE.MeshStandardMaterial({ color: "#2f6a2c", roughness: 0.9, flatShading: true }), pines);
+    add(new THREE.SphereGeometry(0.6, 9, 6), new THREE.MeshStandardMaterial({ roughness: 0.95, flatShading: true }), pines);
     add(new THREE.IcosahedronGeometry(0.6, 1), new THREE.MeshStandardMaterial({ roughness: 0.9, flatShading: true }), bushes);
-    add(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ roughness: 0.85 }), walls);
-    add(new THREE.ConeGeometry(0.72, 1, 4), new THREE.MeshStandardMaterial({ roughness: 0.8, flatShading: true }), roofs);
+    // Small shared maps give plaster and terracotta a tactile finish without
+    // loading external assets or adding per-house draw calls on mobile.
+    const plaster = canvasTexture(128, 128, (g) => {
+      g.fillStyle = "#ffffff";
+      g.fillRect(0, 0, 128, 128);
+      const grain = rng(24);
+      for (let i = 0; i < 1800; i++) {
+        g.fillStyle = `rgba(91,74,50,${grain() * 0.07})`;
+        g.fillRect(grain() * 128, grain() * 128, 1, 1);
+      }
+    });
+    const tiles = canvasTexture(128, 128, (g) => {
+      g.fillStyle = "#f6e6d7";
+      g.fillRect(0, 0, 128, 128);
+      for (let row = 0; row < 8; row++) {
+        const y = row * 16;
+        g.fillStyle = "rgba(86,43,25,0.22)";
+        g.fillRect(0, y + 14, 128, 2);
+        for (let col = -1; col < 8; col++) {
+          const x = col * 20 + (row % 2) * 10;
+          g.fillStyle = "rgba(255,255,255,0.24)";
+          g.fillRect(x + 2, y + 2, 3, 12);
+          g.fillStyle = "rgba(86,43,25,0.15)";
+          g.fillRect(x + 18, y, 2, 16);
+        }
+      }
+    });
+    this.disposables.push(plaster, tiles);
+    add(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ map: plaster, roughness: 0.95 }), walls);
+    add(new THREE.ConeGeometry(0.72, 1, 4), new THREE.MeshStandardMaterial({ map: tiles, roughness: 0.92, flatShading: true }), roofs);
+
+    // Facades stay entirely inside each existing building's footprint. The
+    // illuminated panes below remain the original independent night layer.
+    const frames: { m: THREE.Matrix4 }[] = [];
+    const panes: { m: THREE.Matrix4 }[] = [];
+    const shutters: { m: THREE.Matrix4; c: THREE.Color }[] = [];
+    const doors: { m: THREE.Matrix4 }[] = [];
+    for (const hs of houses) {
+      const point = (x: number, y: number, z: number, w: number, h: number, d: number, face = 0) => {
+        const p = new THREE.Vector3(x, y, z).applyAxisAngle(new THREE.Vector3(0, 1, 0), hs.yaw);
+        return mat4(hs.x + p.x, hs.y + p.y, hs.z + p.z, w, h, d, hs.yaw + face);
+      };
+      const shutterColor = new THREE.Color(["#54776c", "#687f91", "#768353"][Math.floor(detail() * 3)]);
+      for (const side of [-1, 1]) {
+        const z = side * (hs.d / 2 + 0.012);
+        for (const x of [-hs.w * 0.22, hs.w * 0.22]) {
+          frames.push({ m: point(x, hs.h * 0.6, z, 0.4, 0.49, 0.035) });
+          panes.push({ m: point(x, hs.h * 0.6, z + side * 0.022, 0.28, 0.36, 0.016) });
+          for (const offset of [-0.25, 0.25]) shutters.push({
+            m: point(x + offset, hs.h * 0.6, z, 0.13, 0.43, 0.04), c: shutterColor,
+          });
+        }
+        doors.push({ m: point(0, 0.38, z, 0.36, 0.76, 0.05) });
+      }
+    }
+    add(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: "#f5e7c9", roughness: 0.95 }), frames, false);
+    add(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: "#344e57", roughness: 0.32 }), panes, false);
+    add(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ roughness: 0.85 }), shutters, false);
+    add(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: "#70533e", roughness: 0.9 }), doors, false);
 
     // lit windows after dark
     if (this.look.lights > 0) {
@@ -875,7 +934,7 @@ export class WorldStage implements Stage {
           [-0.5, -0.15, -Math.PI / 2],
         ] as const) {
           if (lit() > 0.55 * this.look.lights + 0.1) continue;
-          const local = new THREE.Vector3(Math.abs(lx) === 0.5 ? lx * hs.w + Math.sign(lx) * 0.01 : lx * hs.w, hs.h * 0.6, Math.abs(lz) === 0.5 ? lz * hs.d + Math.sign(lz) * 0.01 : lz * hs.d).applyQuaternion(q);
+          const local = new THREE.Vector3(Math.abs(lx) === 0.5 ? lx * hs.w + Math.sign(lx) * 0.06 : lx * hs.w, hs.h * 0.6, Math.abs(lz) === 0.5 ? lz * hs.d + Math.sign(lz) * 0.06 : lz * hs.d).applyQuaternion(q);
           windows.push({
             m: new THREE.Matrix4().compose(
               local.add(new THREE.Vector3(hs.x, hs.y, hs.z)),

@@ -1,6 +1,7 @@
 import * as THREE from "three";
 import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import type { CarModel } from "./models";
+import { lacquer } from "./vehicleFinish";
 import { BUILT_CARS } from "@/game/lib/cars";
 
 /**
@@ -237,7 +238,7 @@ export async function loadCarModel(id: string, color: string, repaint: boolean, 
       const m = mesh.material as THREE.MeshStandardMaterial;
       if (m.name !== spec.paintMaterial) continue;
       if (!painted.has(m)) {
-        const copy = m.clone();
+        const copy = lacquer(m);
         if (repaint) copy.color.set(color);
         // showroom chrome-like paint goes black on the road's light: keep it satin
         copy.metalness = Math.min(copy.metalness, 0.45);
@@ -249,7 +250,7 @@ export async function loadCarModel(id: string, color: string, repaint: boolean, 
   } else {
     // repaint: the body's material gets its own copy of the palette
     const source = bodyMesh ? (bodyMesh.material as THREE.MeshStandardMaterial) : null;
-    const material = source ? source.clone() : null;
+    const material = source ? lacquer(source) : null;
     if (material && source?.map && repaint && bodyMesh) {
       const map = await paintedMap(id, bodyMesh, source.map, color);
       if (map) material.map = map;
