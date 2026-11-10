@@ -159,42 +159,23 @@ function canvasTexture(w: number, h: number, draw: (g: CanvasRenderingContext2D)
 
 const asphaltTexture = () =>
   canvasTexture(256, 512, (g) => {
-    g.fillStyle = "#33363c";
+    // Fresh motorway asphalt: neutral black with fine, low-contrast aggregate.
+    g.fillStyle = "#111315";
     g.fillRect(0, 0, 256, 512);
     const r = rng(7);
-    // resurfaced patches, a shade darker or lighter
-    for (let i = 0; i < 5; i++) {
-      g.fillStyle = r() > 0.5 ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.04)";
-      g.fillRect(20 + r() * 180, r() * 480, 30 + r() * 50, 40 + r() * 90);
+    for (let i = 0; i < 6400; i++) {
+      g.fillStyle = r() > 0.45
+        ? `rgba(180,181,178,${0.015 + r() * 0.025})`
+        : `rgba(0,0,0,${0.04 + r() * 0.04})`;
+      g.fillRect(r() * 256, r() * 512, 0.7, 0.7);
     }
-    // where the tyres run, polished darker
+    // Very restrained wheel tracks; the surface stays visually continuous.
     for (const x of [52, 92, 164, 204]) {
-      const grad = g.createLinearGradient(x - 14, 0, x + 14, 0);
+      const grad = g.createLinearGradient(x - 16, 0, x + 16, 0);
       grad.addColorStop(0, "rgba(0,0,0,0)");
-      grad.addColorStop(0.5, "rgba(0,0,0,0.14)");
+      grad.addColorStop(0.5, "rgba(0,0,0,0.045)");
       grad.addColorStop(1, "rgba(0,0,0,0)");
-      g.fillStyle = grad;
-      g.fillRect(x - 14, 0, 28, 512);
-    }
-    // grain
-    for (let i = 0; i < 4200; i++) {
-      g.fillStyle = `rgba(${r() > 0.5 ? "255,255,255" : "0,0,0"},${0.04 + r() * 0.06})`;
-      g.fillRect(r() * 256, r() * 512, 1.5, 1.5);
-    }
-    // a few tar-sealed cracks
-    g.strokeStyle = "rgba(20,20,24,0.28)";
-    g.lineWidth = 1.2;
-    for (let i = 0; i < 4; i++) {
-      let x = 20 + r() * 216;
-      let y = r() * 512;
-      g.beginPath();
-      g.moveTo(x, y);
-      for (let k = 0; k < 6; k++) {
-        x += (r() - 0.5) * 18;
-        y += 6 + r() * 12;
-        g.lineTo(x, y);
-      }
-      g.stroke();
+      g.fillStyle = grad;g.fillRect(x - 16, 0, 32, 512);
     }
     // edge lines and the dashed centre line
     g.fillStyle = "#f4f4ef";
@@ -673,7 +654,7 @@ export class WorldStage implements Stage {
   private buildRoad(scene: THREE.Scene) {
     const asphalt = asphaltTexture();
     const kerb = kerbTexture();
-    const roadMat = new THREE.MeshStandardMaterial({ map: asphalt, roughness: 0.85 });
+    const roadMat = new THREE.MeshStandardMaterial({ map: asphalt, roughness: 0.96, metalness: 0, envMapIntensity: 0.08 });
     const kerbMat = new THREE.MeshStandardMaterial({ map: kerb, roughness: 0.6 });
     const shoulderMat = new THREE.MeshStandardMaterial({ color: "#d9c79c", roughness: 1 });
     const parts: [THREE.BufferGeometry, THREE.Material][] = [

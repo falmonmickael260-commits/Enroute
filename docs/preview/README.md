@@ -1,5 +1,14 @@
 # Décor de Kilomax — aperçu de travail
 
+## Bitume plus noir
+
+Un enrobé noir mat, inspiré d'une autoroute récemment revêtue : grain très fin, traces de pneus discrètes, reflets gris atténués. Les anciens rectangles de réparation et les fissures ont été retirés. Le tracé, la largeur, les bordures et la disposition des marquages sont conservés.
+
+| Ancienne texture | Nouveau bitume |
+| --- | --- |
+| ![Avant](route-avant.webp) | ![Bitume noir](route-noire.webp) |
+
+
 ## Reliefs et composition du paysage
 
 Les anciennes masses isolées sont remplacées par des crêtes continues, avec des vallées et des collines plus basses. Les falaises présentent des variations plus douces et des nuances de calcaire. Les arbres sont regroupés en bosquets, avec des clairières, des tailles variées et de l'espace autour des maisons. Les troncs restent ancrés sur le relief visible.
