@@ -1,4 +1,6 @@
 import * as THREE from "three";
+import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
+import { createSailboatParts, createSeaMaterial } from "./coastalMarine";
 import { buildCoastalVillage, distantRidge } from "./coastalArchitecture";
 import type { Placement, ScreenPoint, Shot, Stage, StageCar } from "./stage";
 import { branchingTrunk, treeCrown, layeredCypress, sculptedRock, buildWildPlants } from "./coastalNature";
@@ -584,7 +586,7 @@ export class WorldStage implements Stage {
   }
 
   private buildTerrain(scene: THREE.Scene) {
-    const geo = new THREE.PlaneGeometry(150, 250, 110, 190);
+    const geo = new THREE.PlaneGeometry(150, 250, 150, 250);
     geo.rotateX(-Math.PI / 2);
     geo.translate(-5, 0, -60);
     const pos = geo.attributes.position as THREE.BufferAttribute;
@@ -629,7 +631,7 @@ export class WorldStage implements Stage {
   }
 
   private buildSea(scene: THREE.Scene) {
-    const geo = new THREE.PlaneGeometry(400, 400);
+    const geo = new THREE.PlaneGeometry(400, 400, 128, 128);
     geo.rotateX(-Math.PI / 2);
     // ripples drift one way and the sun glints sparkle the other
     const ripples = rippleTexture();
@@ -637,19 +639,9 @@ export class WorldStage implements Stage {
     ripples.repeat.set(37, 41);
     glints.repeat.set(70, 70);
     this.seaMaps = [ripples, glints];
-    const sea = new THREE.Mesh(
-      geo,
-      new THREE.MeshStandardMaterial({
-        color: this.look.sea,
-        map: ripples,
-        emissive: this.look.glints[0],
-        emissiveMap: glints,
-        emissiveIntensity: this.look.glints[1],
-        roughness: 0.12,
-        metalness: 0.25,
-        ...BEHIND,
-      }),
-    );
+    this.water = createSeaMaterial(this.look.sea, ripples, glints, this.look.glints[0], this.look.glints[1]);
+    const sea = new THREE.Mesh(geo, this.water.material);
+    this.disposables.push(this.water.normalMap);
     sea.position.set(120, SEA_LEVEL, -80);
     sea.receiveShadow = true;
     scene.add(sea);
@@ -987,16 +979,15 @@ export class WorldStage implements Stage {
     this.disposables.push(plaster, tiles);
     buildCoastalVillage(scene, houses, plaster, tiles, this.look.lights, this.disposables);
 
-    // boat = hull + sail
-    const hull = new THREE.BoxGeometry(0.6, 0.25, 1.8);
-    const sail = new THREE.ConeGeometry(0.55, 2, 3);
-    sail.translate(0, 1.2, 0);
-    this.boatMeshes = [instanced(hull, new THREE.MeshStandardMaterial({ color: "#ffffff" }), boats, false), instanced(sail, new THREE.MeshStandardMaterial({ color: "#fbfbf6", flatShading: true }), boats, false)];
-    for (const m of this.boatMeshes) {
-      m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-      scene.add(m);
-      this.disposables.push(m.geometry, m.material as THREE.Material);
-    }
+    // All boat parts share the existing sailing and rocking transforms.
+    this.boatMeshes = createSailboatParts().map(part => {
+      const mesh = instanced(part.geometry, part.material, boats, false);
+      if (part.hull) boats.forEach((_, i) => mesh.setColorAt(i, new THREE.Color(["#f2f2e9", "#456b87", "#e8dfcc"][i % 3])));
+      mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      scene.add(mesh);
+      this.disposables.push(part.geometry, part.material);
+      return mesh;
+    });
   }
 
   /** The things that make a road feel driven on: posts, signs, lamps, rocks, flowers. */
@@ -1096,8 +1087,8 @@ export class WorldStage implements Stage {
       scene.add(instanced(geo, material, items, shadows));
       this.disposables.push(geo, material);
     };
-    add(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: "#f2f2ee", roughness: 0.6 }), posts);
-    add(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: "#d11f1f", emissive: "#ff2a1a", emissiveIntensity: 0.35 }), reflectors, false);
+    add(new RoundedBoxGeometry(1, 1, 1, 2, 0.08), new THREE.MeshStandardMaterial({ color: "#f2f2ee", roughness: 0.6 }), posts);
+    add(new RoundedBoxGeometry(1, 1, 1, 2, 0.08), new THREE.MeshStandardMaterial({ color: "#d11f1f", emissive: "#ff2a1a", emissiveIntensity: 0.35 }), reflectors, false);
     const chevronTex = canvasTexture(
       128,
       96,
@@ -1121,11 +1112,11 @@ export class WorldStage implements Stage {
     );
     add(new THREE.PlaneGeometry(1, 1), new THREE.MeshStandardMaterial({ map: chevronTex, roughness: 0.5, side: THREE.DoubleSide }), chevrons);
     this.disposables.push(chevronTex);
-    add(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: "#7d838b", metalness: 0.5, roughness: 0.4 }), chevronPoles);
+    add(new RoundedBoxGeometry(1, 1, 1, 2, 0.08), new THREE.MeshStandardMaterial({ color: "#7d838b", metalness: 0.5, roughness: 0.4 }), chevronPoles);
     const lampMetal = new THREE.MeshStandardMaterial({ color: "#3b4048", metalness: 0.6, roughness: 0.35 });
     add(new THREE.CylinderGeometry(0.5, 0.6, 1, 6), lampMetal, lampPoles);
-    add(new THREE.BoxGeometry(1, 1, 1), lampMetal.clone(), lampArms);
-    add(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: "#fff3c4", emissive: "#ffd98a", emissiveIntensity: 0.6 + this.look.lights * 3 }), lampHeads, false);
+    add(new RoundedBoxGeometry(1, 1, 1, 2, 0.08), lampMetal.clone(), lampArms);
+    add(new RoundedBoxGeometry(1, 1, 1, 2, 0.08), new THREE.MeshStandardMaterial({ color: "#fff3c4", emissive: "#ffd98a", emissiveIntensity: 0.6 + this.look.lights * 3 }), lampHeads, false);
     // after dark, each lamp lays a warm pool of light on the road
     if (this.look.lights > 0) {
       const glow = glowTexture();
@@ -1163,6 +1154,7 @@ export class WorldStage implements Stage {
     buildWildPlants(scene, tufts, this.disposables);
   }
 
+  private water: ReturnType<typeof createSeaMaterial> | null = null;
   private seaMaps: THREE.Texture[] = [];
   private clouds: THREE.InstancedMesh | null = null;
   private boats: { x: number; z: number; yaw: number; radius: number; speed: number; phase: number }[] = [];
@@ -1266,12 +1258,12 @@ export class WorldStage implements Stage {
     const white = new THREE.MeshStandardMaterial({ color: "#f4f1ea", roughness: 0.6 });
     const red = new THREE.MeshStandardMaterial({ color: "#c8302a", roughness: 0.6 });
     const parts: [THREE.BufferGeometry, THREE.Material, number][] = [
-      [new THREE.CylinderGeometry(1.6, 2.1, 1.2, 12), new THREE.MeshStandardMaterial({ color: "#9a8f7c", roughness: 1 }), 0.6],
-      [new THREE.CylinderGeometry(0.9, 1.25, 3, 12), white, 2.7],
-      [new THREE.CylinderGeometry(0.75, 0.9, 2.2, 12), red, 5.3],
-      [new THREE.CylinderGeometry(0.65, 0.75, 2, 12), white, 7.4],
-      [new THREE.CylinderGeometry(1, 1, 0.2, 12), red, 8.5],
-      [new THREE.ConeGeometry(0.75, 0.9, 12), red, 9.75],
+      [new THREE.CylinderGeometry(1.6, 2.1, 1.2, 32), new THREE.MeshStandardMaterial({ color: "#9a8f7c", roughness: 1 }), 0.6],
+      [new THREE.CylinderGeometry(0.9, 1.25, 3, 32), white, 2.7],
+      [new THREE.CylinderGeometry(0.75, 0.9, 2.2, 32), red, 5.3],
+      [new THREE.CylinderGeometry(0.65, 0.75, 2, 32), white, 7.4],
+      [new THREE.CylinderGeometry(1, 1, 0.2, 32), red, 8.5],
+      [new THREE.ConeGeometry(0.75, 0.9, 32), red, 9.75],
     ];
     for (const [geo, material, h] of parts) {
       const m = new THREE.Mesh(geo, material);
@@ -1280,7 +1272,7 @@ export class WorldStage implements Stage {
       g.add(m);
       this.disposables.push(geo, material);
     }
-    const lamp = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.8, 12), new THREE.MeshStandardMaterial({ color: "#fff6c8", emissive: "#ffe9a0", emissiveIntensity: 1.2 }));
+    const lamp = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.8, 32), new THREE.MeshStandardMaterial({ color: "#fff6c8", emissive: "#ffe9a0", emissiveIntensity: 1.2 }));
     lamp.position.y = 9;
     g.add(lamp);
     // after dark the lamp sweeps the sea
@@ -1337,6 +1329,7 @@ export class WorldStage implements Stage {
   private animateWorld(t: number) {
     const s = t / 1000;
     // the sea moves
+    this.water?.update(s);
     if (this.seaMaps.length) {
       this.seaMaps[0].offset.set(s * 0.018, s * 0.011);
       this.seaMaps[1].offset.set(-s * 0.03, s * 0.022);
@@ -1409,7 +1402,7 @@ export class WorldStage implements Stage {
         bird.add(w);
         return w;
       });
-      const body = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, 0.36), mat);
+      const body = new THREE.Mesh(new RoundedBoxGeometry(0.1, 0.08, 0.36, 3, 0.035), mat);
       bird.add(body);
       this.disposables.push(body.geometry);
       scene.add(bird);
@@ -1595,17 +1588,17 @@ export class WorldStage implements Stage {
     const gantry = new THREE.Group();
     const metal = new THREE.MeshStandardMaterial({ color: "#2b2f36", metalness: 0.5, roughness: 0.45 });
     const span = HALF_WIDTH + 0.55;
-    const poleGeo = new THREE.BoxGeometry(0.12, 3.9, 0.12);
+    const poleGeo = new RoundedBoxGeometry(0.12, 3.9, 0.12, 2, 0.035);
     for (const side of [-1, 1]) {
       const pole = new THREE.Mesh(poleGeo, metal);
       pole.position.set(side * span, 1.95, 0);
       pole.castShadow = true;
       gantry.add(pole);
     }
-    const beam = new THREE.Mesh(new THREE.BoxGeometry(span * 2 + 0.12, 0.12, 0.12), metal);
+    const beam = new THREE.Mesh(new RoundedBoxGeometry(span * 2 + 0.12, 0.12, 0.12, 2, 0.035), metal);
     beam.position.y = 3.85;
     gantry.add(beam);
-    const panel = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.42, 0.1), new THREE.MeshStandardMaterial({ color: "#111317", roughness: 0.6 }));
+    const panel = new THREE.Mesh(new RoundedBoxGeometry(2.1, 0.42, 0.1, 2, 0.025), new THREE.MeshStandardMaterial({ color: "#111317", roughness: 0.6 }));
     panel.position.set(0, 3.55, -0.04);
     gantry.add(panel);
     const lampGeo = new THREE.CircleGeometry(0.14, 20);
@@ -1650,7 +1643,7 @@ export class WorldStage implements Stage {
       const { point, right, forward } = this.road.at(this.road.kmToLen(km, target));
       const k = -(HALF_WIDTH + 1.9);
       const g = new THREE.Group();
-      const board = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.8, 0.08), new THREE.MeshStandardMaterial({ map: signTexture(String(km)) }));
+      const board = new THREE.Mesh(new RoundedBoxGeometry(1.6, 0.8, 0.08, 2, 0.02), new THREE.MeshStandardMaterial({ map: signTexture(String(km)) }));
       board.position.y = 1.9;
       board.castShadow = true;
       const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.9, 6), post);
@@ -1669,7 +1662,7 @@ export class WorldStage implements Stage {
       pole.castShadow = true;
       arch.add(pole);
     }
-    const banner = new THREE.Mesh(new THREE.BoxGeometry(HALF_WIDTH * 2 + 1.4, 1.1, 0.1), new THREE.MeshStandardMaterial({ map: signTexture(String(target), true) }));
+    const banner = new THREE.Mesh(new RoundedBoxGeometry(HALF_WIDTH * 2 + 1.4, 1.1, 0.1, 2, 0.025), new THREE.MeshStandardMaterial({ map: signTexture(String(target), true) }));
     banner.position.y = 3.9;
     banner.castShadow = true;
     arch.add(banner);
@@ -1893,7 +1886,7 @@ function ribbonCoast() {
   const positions: number[] = [];
   const index: number[] = [];
   let row = 0;
-  for (let z = 40; z >= -220; z -= 2) {
+  for (let z = 40; z >= -220; z -= 1) {
     const x = coastX(z);
     positions.push(x - 1, 0, z, x + 5, 0, z);
     if (row > 0) {

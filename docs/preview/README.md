@@ -6,13 +6,23 @@ Pins aux troncs ramifiés, oliviers plus hauts et plus clairs, cyprès à plusie
 
 ![Détail des arbres et des buissons](arbres-detail.webp)
 
-## Rochers et littoral
+## Bateaux
 
-Rochers irréguliers avec détails de surface, transition progressive entre l'eau claire et la mer, petites lignes d'écume en mouvement.
+Coques courbes avec pont, cabine arrondie, fenêtres, mât et haubans. Les deux voiles sont des surfaces bombées. Les bateaux gardent leur déplacement et leur balancement.
+
+![Détail du nouveau voilier](bateau-detail.webp)
+
+## Mer, rochers et littoral
+
+La surface de l'eau a une légère houle animée et des reflets plus doux. Les rochers sont arrondis et irréguliers, les reliefs sont plus larges, et le littoral est dessiné avec davantage de points. L'eau claire près de la côte se fond progressivement dans la mer.
 
 ![Détail du littoral](littoral-detail.webp)
 
-Ces deux captures rapprochent le décor pour montrer les détails. Ces cadrages d'inspection ne remplacent pas la caméra de jeu.
+Ces captures rapprochent le décor pour montrer les détails. Ces cadrages d'inspection ne remplacent pas la caméra de jeu.
+
+## Autres éléments du décor
+
+Les volumes principaux des maisons, les poteaux, les panneaux et les lampes ont des arêtes adoucies. Le phare et les rochers utilisent des courbes plus fines. Les petites moulures et fenêtres restent simples pour conserver un modèle léger.
 
 ## Maisons
 

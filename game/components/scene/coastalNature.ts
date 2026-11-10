@@ -85,7 +85,7 @@ export function layeredCypress() {
 }
 
 export function sculptedRock() {
-  const rock = new THREE.IcosahedronGeometry(0.62, 1);
+  const rock = new THREE.SphereGeometry(0.62, 14, 10);
   const p = rock.attributes.position as THREE.BufferAttribute;
   for (let i = 0; i < p.count; i++) {
     const x = p.getX(i), y = p.getY(i), z = p.getZ(i);

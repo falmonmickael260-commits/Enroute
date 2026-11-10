@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
 
 export interface CoastalHouse {
@@ -51,13 +52,15 @@ export function cypressCrown() {
 
 /** Rounded, irregular ridges replace the large seven-sided mountain cones. */
 export function distantRidge() {
-  const ridge = new THREE.SphereGeometry(1, 20, 12);
+  const ridge = new THREE.SphereGeometry(1, 32, 20);
   const position = ridge.attributes.position as THREE.BufferAttribute;
   for (let i = 0; i < position.count; i++) {
     const x = position.getX(i), y = position.getY(i), z = position.getZ(i);
     const fold = 0.9 + Math.sin(x * 5.3 + z * 3.1) * 0.07 + Math.cos(z * 7.1 - x * 2) * 0.05;
     position.setXYZ(i, x * fold, y * 0.5 + (1 - y * y) * Math.sin(x * 4 + z * 5) * 0.035, z * fold);
   }
+  ridge.scale(1.5, 0.75, 1.35);
+  ridge.translate(0, -0.125, 0);
   ridge.computeVertexNormals();
   return ridge;
 }
@@ -72,13 +75,13 @@ export function buildCoastalVillage(
   disposables: { dispose(): void }[],
 ) {
   const batches = new Map<string, { geometry: THREE.BufferGeometry; material: THREE.MeshStandardMaterial; items: Instance[] }>();
-  const box = () => new THREE.BoxGeometry(1, 1, 1);
+  const box = (rounded = false) => rounded ? new RoundedBoxGeometry(1, 1, 1, 2, 0.025) : new THREE.BoxGeometry(1, 1, 1);
   const register = (name: string, geometry: THREE.BufferGeometry, options: THREE.MeshStandardMaterialParameters) =>
     batches.set(name, { geometry, material: new THREE.MeshStandardMaterial({ roughness: 0.9, ...options }), items: [] });
-  register("plaster", box(), { map: plaster });
+  register("plaster", box(true), { map: plaster });
   register("roof", pitchedRoof(), { map: tiles, side: THREE.DoubleSide });
   register("gables", pitchedRoof(true), { map: plaster });
-  register("stone", box(), { color: "#b8aa8d", map: plaster });
+  register("stone", box(true), { color: "#b8aa8d", map: plaster });
   register("eaves", box(), { color: "#e8d7b5" });
   register("timber", box(), { color: "#70513a" });
   register("shutters", box(), {});
