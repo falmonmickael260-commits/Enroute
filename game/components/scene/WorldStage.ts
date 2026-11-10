@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { createDistanceSign, createFinishBanner, decorateStartGantry, createChevronParts, checkerLineTexture, disposeSignGroup } from "./roadFurniture";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { createSailboatParts, createSeaMaterial } from "./coastalMarine";
 import { buildCoastalVillage, distantRidge } from "./coastalArchitecture";
@@ -239,37 +240,6 @@ const kerbTexture = () =>
     g.fillStyle = "#df3b30";
     g.fillRect(0, 0, 16, 32);
   });
-
-function signTexture(text: string, finish = false) {
-  return canvasTexture(
-    256,
-    128,
-    (g) => {
-      if (finish) {
-        for (let x = 0; x < 16; x++)
-          for (let y = 0; y < 8; y++) {
-            g.fillStyle = (x + y) % 2 ? "#111" : "#fff";
-            g.fillRect(x * 16, y * 16, 16, 16);
-          }
-        g.fillStyle = "#fff";
-        g.fillRect(48, 24, 160, 80);
-        g.fillStyle = "#111";
-      } else {
-        g.fillStyle = "#1f3f7a";
-        g.fillRect(0, 0, 256, 128);
-        g.strokeStyle = "#f2f5fa";
-        g.lineWidth = 12;
-        g.strokeRect(6, 6, 244, 116);
-        g.fillStyle = "#fff";
-      }
-      g.font = "bold 76px Arial, sans-serif";
-      g.textAlign = "center";
-      g.textBaseline = "middle";
-      g.fillText(text, 128, 68);
-    },
-    false,
-  );
-}
 
 const skyTexture = ([top, middle, horizon]: readonly [string, string, string]) =>
   canvasTexture(
@@ -1089,30 +1059,11 @@ export class WorldStage implements Stage {
     };
     add(new RoundedBoxGeometry(1, 1, 1, 2, 0.08), new THREE.MeshStandardMaterial({ color: "#f2f2ee", roughness: 0.6 }), posts);
     add(new RoundedBoxGeometry(1, 1, 1, 2, 0.08), new THREE.MeshStandardMaterial({ color: "#d11f1f", emissive: "#ff2a1a", emissiveIntensity: 0.35 }), reflectors, false);
-    const chevronTex = canvasTexture(
-      128,
-      96,
-      (g) => {
-        g.fillStyle = "#d42a20";
-        g.fillRect(0, 0, 128, 96);
-        g.fillStyle = "#ffffff";
-        for (const x0 of [22, 66]) {
-          g.beginPath();
-          g.moveTo(x0, 14);
-          g.lineTo(x0 + 18, 14);
-          g.lineTo(x0 + 46, 48);
-          g.lineTo(x0 + 18, 82);
-          g.lineTo(x0, 82);
-          g.lineTo(x0 + 28, 48);
-          g.closePath();
-          g.fill();
-        }
-      },
-      false,
-    );
-    add(new THREE.PlaneGeometry(1, 1), new THREE.MeshStandardMaterial({ map: chevronTex, roughness: 0.5, side: THREE.DoubleSide }), chevrons);
-    this.disposables.push(chevronTex);
-    add(new RoundedBoxGeometry(1, 1, 1, 2, 0.08), new THREE.MeshStandardMaterial({ color: "#7d838b", metalness: 0.5, roughness: 0.4 }), chevronPoles);
+    for (const part of createChevronParts(this.look.lights)) {
+      add(part.geometry, part.material, chevrons);
+      if (part.material.map) this.disposables.push(part.material.map);
+    }
+    add(new THREE.CylinderGeometry(0.5, 0.5, 1, 12), new THREE.MeshStandardMaterial({ color: "#7d838b", metalness: 0.5, roughness: 0.4 }), chevronPoles);
     const lampMetal = new THREE.MeshStandardMaterial({ color: "#3b4048", metalness: 0.6, roughness: 0.35 });
     add(new THREE.CylinderGeometry(0.5, 0.6, 1, 6), lampMetal, lampPoles);
     add(new RoundedBoxGeometry(1, 1, 1, 2, 0.08), lampMetal.clone(), lampArms);
@@ -1586,6 +1537,7 @@ export class WorldStage implements Stage {
 
     // start gantry: five lamps over the line, lit one pair at a time by the countdown
     const gantry = new THREE.Group();
+    gantry.name = "start-gantry";
     const metal = new THREE.MeshStandardMaterial({ color: "#2b2f36", metalness: 0.5, roughness: 0.45 });
     const span = HALF_WIDTH + 0.55;
     const poleGeo = new RoundedBoxGeometry(0.12, 3.9, 0.12, 2, 0.035);
@@ -1612,6 +1564,8 @@ export class WorldStage implements Stage {
       this.startLamps.push(lamp);
       this.disposables.push(lamp);
     }
+    const gantryDetails = decorateStartGantry(gantry, span);
+    this.disposables.push({ dispose: () => disposeSignGroup(gantryDetails) });
     // a few metres past the line, so it stands over the road ahead of the grid
     // rather than right in front of the camera
     const at = this.road.at(this.road.startLen + 6);
@@ -1629,26 +1583,14 @@ export class WorldStage implements Stage {
   private buildSigns(target: number) {
     if (!this.signs) return;
     this.finishTarget = target;
-    this.signs.traverse((o) => {
-      const m = o as THREE.Mesh;
-      m.geometry?.dispose();
-      const material = m.material as THREE.MeshStandardMaterial | undefined;
-      material?.map?.dispose();
-      material?.dispose();
-    });
+    disposeSignGroup(this.signs);
     this.signs.clear();
     const post = new THREE.MeshStandardMaterial({ color: "#a7adb6", metalness: 0.5, roughness: 0.4 });
     for (let i = 0; i < 5; i++) {
       const km = Math.round((target * i) / 5);
       const { point, right, forward } = this.road.at(this.road.kmToLen(km, target));
       const k = -(HALF_WIDTH + 1.9);
-      const g = new THREE.Group();
-      const board = new THREE.Mesh(new RoundedBoxGeometry(1.6, 0.8, 0.08, 2, 0.02), new THREE.MeshStandardMaterial({ map: signTexture(String(km)) }));
-      board.position.y = 1.9;
-      board.castShadow = true;
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.9, 6), post);
-      pole.position.y = 0.95;
-      g.add(board, pole);
+      const g = createDistanceSign(km, this.look.lights);
       g.position.set(point.x + right.x * k, point.y, point.z + right.z * k);
       g.rotation.y = Math.atan2(forward.x, forward.z) + Math.PI;
       this.signs.add(g);
@@ -1656,19 +1598,19 @@ export class WorldStage implements Stage {
     // finish arch
     const { point, right, forward } = this.road.at(this.road.finishLen);
     const arch = new THREE.Group();
+    arch.name = "finish-gantry";
     for (const side of [-1, 1]) {
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 4.2, 8), post);
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 4.2, 20), post);
       pole.position.set(side * (HALF_WIDTH + 0.6), 2.1, 0);
       pole.castShadow = true;
       arch.add(pole);
     }
-    const banner = new THREE.Mesh(new RoundedBoxGeometry(HALF_WIDTH * 2 + 1.4, 1.1, 0.1, 2, 0.025), new THREE.MeshStandardMaterial({ map: signTexture(String(target), true) }));
+    const banner = createFinishBanner(HALF_WIDTH * 2 + 1.4, target, this.look.lights);
     banner.position.y = 3.9;
-    banner.castShadow = true;
     arch.add(banner);
     const line = new THREE.Mesh(
       new THREE.PlaneGeometry(HALF_WIDTH * 2, 0.6),
-      new THREE.MeshStandardMaterial({ map: signTexture("", true), roughness: 0.7, ...IN_FRONT }),
+      new THREE.MeshStandardMaterial({ map: checkerLineTexture(), roughness: 0.7, ...IN_FRONT }),
     );
     line.rotation.x = -Math.PI / 2;
     line.position.y = 0.06;
@@ -1871,12 +1813,7 @@ export class WorldStage implements Stage {
 
   dispose() {
     this.disposables.forEach((d) => d.dispose());
-    if (this.signs) {
-      this.signs.traverse((o) => {
-        const m = o as THREE.Mesh;
-        m.geometry?.dispose();
-      });
-    }
+    if (this.signs) disposeSignGroup(this.signs);
     void this.scene;
   }
 }

@@ -1,5 +1,20 @@
 # Décor de Kilomax — aperçu de travail
 
+## Panneaux et portiques
+
+Plaques arrondies avec bord métallique, face imprimée distincte, vis, fixations arrière et socle. Les repères de distance portent un nombre dominant et l'unité « km ». Les chevrons conservent leur sens et leur position dans les virages.
+
+| Panneau de distance | Chevrons de virage |
+| --- | --- |
+| ![Distance](panneau-distance.webp) | ![Virage](panneau-virage.webp) |
+
+Les feux de départ ont des bagues et des protections. Le nouveau panneau DÉPART et le bandeau ARRIVÉE partagent un motif à damier. Les cinq feux et leur compte à rebours sont conservés.
+
+| Départ | Arrivée |
+| --- | --- |
+| ![Départ](portique-depart.webp) | ![Arrivée](portique-arrivee.webp) |
+
+
 ## Arbres et végétation
 
 Pins aux troncs ramifiés, oliviers plus hauts et plus clairs, cyprès à plusieurs étages de feuillage. Les feuilles dessinent des contours irréguliers. Les buissons, les herbes et les fleurs ont aussi été retravaillés : les petites boules du bas-côté sont remplacées par des brins et des pétales.
