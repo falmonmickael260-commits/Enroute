@@ -1,6 +1,7 @@
 import * as THREE from "three";
-import { buildCoastalVillage, foliageCrown, cypressCrown, distantRidge } from "./coastalArchitecture";
+import { buildCoastalVillage, distantRidge } from "./coastalArchitecture";
 import type { Placement, ScreenPoint, Shot, Stage, StageCar } from "./stage";
+import { branchingTrunk, treeCrown, layeredCypress, sculptedRock, buildWildPlants } from "./coastalNature";
 import type { AmbianceId } from "@/game/types/game";
 
 /**
@@ -652,14 +653,49 @@ export class WorldStage implements Stage {
     sea.position.set(120, SEA_LEVEL, -80);
     sea.receiveShadow = true;
     scene.add(sea);
+    const waterFade = canvasTexture(128, 4, (g) => {
+      const fade = g.createLinearGradient(0, 0, 128, 0);
+      fade.addColorStop(0, "white"); fade.addColorStop(0.55, "#999999"); fade.addColorStop(1, "black");
+      g.fillStyle = fade; g.fillRect(0, 0, 128, 4);
+    }, false);
+    this.disposables.push(waterFade);
     // lighter shallows along the shore
     const shallow = new THREE.Mesh(
       ribbonCoast(),
-      new THREE.MeshStandardMaterial({ color: this.look.shallows, roughness: 0.2, transparent: true, opacity: 0.8 }),
+      new THREE.MeshStandardMaterial({ color: this.look.shallows, alphaMap: waterFade, roughness: 0.2, transparent: true, opacity: 0.8, depthWrite: false, side: THREE.DoubleSide }),
     );
+    const shallowUvs: number[] = [];
+    const shallowPosition = shallow.geometry.attributes.position;
+    for (let i = 0; i < shallowPosition.count; i++) shallowUvs.push(i % 2, 0.5);
+    shallow.geometry.setAttribute("uv", new THREE.Float32BufferAttribute(shallowUvs, 2));
     shallow.position.y = SEA_LEVEL + 0.02;
     scene.add(shallow);
     this.disposables.push(geo, ripples, glints, sea.material as THREE.Material, shallow.geometry, shallow.material as THREE.Material);
+    const foam = canvasTexture(128, 256, (g) => {
+      g.fillStyle = "#000000"; g.fillRect(0, 0, 128, 256);
+      for (let y = -20; y < 280; y += 32) {
+        g.strokeStyle = "#515151"; g.lineWidth = 5;
+        g.beginPath(); g.moveTo(0, y + 8);
+        g.bezierCurveTo(28, y - 10, 70, y + 30, 110, y + 5); g.stroke();
+        g.strokeStyle = "#ffffff"; g.lineWidth = 1.5; g.stroke();
+      }
+    });
+    foam.repeat.set(1, 30);
+    this.seaMaps.push(foam);
+    const shore = ribbonCoast();
+    const position = shore.attributes.position as THREE.BufferAttribute;
+    const shoreUvs: number[] = [];
+    for (let i = 0; i < position.count; i++) {
+      const z = position.getZ(i);
+      position.setX(i, coastX(z) + (i % 2 ? 3.4 : 0.6));
+      shoreUvs.push(i % 2, (40 - z) / 260);
+    }
+    shore.setAttribute("uv", new THREE.Float32BufferAttribute(shoreUvs, 2));
+    const foamMaterial = new THREE.MeshBasicMaterial({ color: "#f5ffff", alphaMap: foam, transparent: true, opacity: 0.46, depthWrite: false, side: THREE.DoubleSide });
+    const foamMesh = new THREE.Mesh(shore, foamMaterial);
+    foamMesh.position.y = SEA_LEVEL + 0.045;
+    scene.add(foamMesh);
+    this.disposables.push(foam, shore, foamMaterial);
   }
 
   private buildRoad(scene: THREE.Scene) {
@@ -853,12 +889,19 @@ export class WorldStage implements Stage {
       } else if (kind < 0.55) {
         const h = 2 + r() * 1.2;
         trunks.push({ m: mat4(x, y + h / 2, z, 0.14, h, 0.14) });
-        const crown = mat4(x, y + h + 0.1, z, 1.9 + r() * 0.8, 0.8, 1.9 + r() * 0.8, r() * 3);
+        const crown = mat4(x, y + h + 0.1, z, 1.9 + r() * 0.8, 1.45, 1.9 + r() * 0.8, r() * 3);
         pines.push({ m: crown, c: new THREE.Color().setHSL(0.25 + detail() * 0.05, 0.32, 0.27 + detail() * 0.08) });
       } else if (kind < 0.9) {
         const s = behindStart ? 0.4 + r() * 0.3 : 0.5 + r() * 0.7;
         bushes.push({ m: mat4(x, y + s * 0.4, z, s * 1.2, s * 0.9, s * 1.2), c: new THREE.Color().setHSL(0.24 + r() * 0.06, 0.45, 0.24 + r() * 0.1) });
       }
+    }
+
+    for (const [x, z, h, radius] of [[-6.5, 4, 2.6, 2.7], [-7.5, -25, 2.5, 2.6]]) {
+      if (!free(x, z, 4.5) || houses.some(house => Math.hypot(house.x - x, house.z - z) < 3.5)) continue;
+      const y = this.terrainHeight(x, z);
+      trunks.push({ m: mat4(x, y + h / 2, z, 0.15, h, 0.15) });
+      pines.push({ m: mat4(x, y + h + 0.1, z, radius, 1.45, radius), c: new THREE.Color("#b3c58c") });
     }
 
     // sailboats
@@ -875,10 +918,45 @@ export class WorldStage implements Stage {
       scene.add(mesh);
       this.disposables.push(geo, material);
     };
-    add(cypressCrown(), new THREE.MeshStandardMaterial({ roughness: 0.95 }), cypress);
-    add(new THREE.CylinderGeometry(1, 1, 1, 6), new THREE.MeshStandardMaterial({ color: "#6b4a2e", roughness: 1 }), trunks);
-    add(foliageCrown(), new THREE.MeshStandardMaterial({ roughness: 0.95, vertexColors: true }), pines);
-    add(foliageCrown(), new THREE.MeshStandardMaterial({ roughness: 0.95, vertexColors: true }), bushes);
+    // Shared geometry, but recognisably different pine and olive silhouettes.
+    const olives = pines.filter((_, i) => i % 3 === 0);
+    const needlePines = pines.filter((_, i) => i % 3 !== 0);
+    needlePines.forEach(item => item.c.set("#b3c58c"));
+    olives.forEach(item => {
+      item.c.set("#d5dbc5");
+      item.m.multiply(new THREE.Matrix4().makeScale(0.95, 1.5, 0.95));
+    });
+    const bark = canvasTexture(128, 256, (g) => {
+      g.fillStyle = "#b2a08c";
+      g.fillRect(0, 0, 128, 256);
+      const grain = rng(162);
+      for (let i = 0; i < 90; i++) {
+        const x = grain() * 128, y = grain() * 256;
+        g.strokeStyle = `rgba(52,34,22,${0.12 + grain() * 0.25})`;
+        g.lineWidth = 1 + grain() * 2;
+        g.beginPath(); g.moveTo(x, y);
+        g.bezierCurveTo(x - 3, y + 15, x + 3, y + 28, x - 1, y + 48);
+        g.stroke();
+      }
+    });
+    const leaves = canvasTexture(128, 128, (g) => {
+      // Alpha-tested leaf clusters break up the solid plastic silhouette.
+      const leaf = rng(1472);
+      for (let i = 0; i < 380; i++) {
+        const x = leaf() * 128, y = leaf() * 128;
+        g.save(); g.translate(x, y); g.rotate(leaf() * Math.PI);
+        g.fillStyle = ["#fffde8", "#d8dfc6", "#aebf91", "#e9ebd0"][i % 4];
+        g.beginPath(); g.ellipse(0, 0, 3 + leaf() * 4, 1.2 + leaf() * 2, 0, 0, Math.PI * 2); g.fill();
+        g.restore();
+      }
+    }, false);
+    this.disposables.push(bark, leaves);
+    const leafMaterial = () => new THREE.MeshStandardMaterial({ map: leaves, alphaTest: 0.45, alphaToCoverage: true, side: THREE.DoubleSide, roughness: 1, vertexColors: true });
+    add(layeredCypress(), leafMaterial(), cypress);
+    add(branchingTrunk(), new THREE.MeshStandardMaterial({ color: "#88735b", map: bark, bumpMap: bark, bumpScale: 0.04, roughness: 1 }), trunks);
+    add(treeCrown(), leafMaterial(), needlePines);
+    add(treeCrown(true), leafMaterial(), olives);
+    add(treeCrown(true).translate(0, -0.15, 0), leafMaterial(), bushes);
     // Small shared maps give plaster and terracotta a tactile finish without
     // loading external assets or adding per-house draw calls on mobile.
     const plaster = canvasTexture(128, 128, (g) => {
@@ -1006,7 +1084,7 @@ export class WorldStage implements Stage {
       const z = point.z + right.z * k + (r() - 0.5) * 0.4;
       const y = this.terrainHeight(x, z);
       const flower = r() < 0.3;
-      const s = 0.18 + r() * 0.2;
+      const s = 0.35 + r() * 0.25;
       tufts.push({
         m: mat4(x, y + s * 0.5, z, s * 0.9, s, s * 0.9, r() * 6),
         c: flower ? new THREE.Color(flowerColors[Math.floor(r() * flowerColors.length)]) : new THREE.Color().setHSL(0.24 + r() * 0.05, 0.5, 0.3 + r() * 0.1),
@@ -1068,8 +1146,21 @@ export class WorldStage implements Stage {
       add(new THREE.PlaneGeometry(1, 1), pool, pools, false);
       this.disposables.push(glow);
     }
-    add(new THREE.DodecahedronGeometry(0.6, 0), new THREE.MeshStandardMaterial({ roughness: 0.95, flatShading: true }), rocks);
-    add(new THREE.IcosahedronGeometry(0.45, 1), new THREE.MeshStandardMaterial({ roughness: 1 }), tufts, false);
+    const stone = canvasTexture(128, 128, (g) => {
+      g.fillStyle = "#ddd5c2"; g.fillRect(0, 0, 128, 128);
+      const grain = rng(286);
+      for (let i = 0; i < 500; i++) {
+        g.fillStyle = `rgba(84,77,64,${grain() * 0.16})`;
+        g.fillRect(grain() * 128, grain() * 128, 1 + grain() * 3, 1);
+      }
+      g.strokeStyle = "rgba(90,80,60,0.14)";
+      for (let y = 10; y < 128; y += 25) {
+        g.beginPath(); g.moveTo(0, y); g.bezierCurveTo(35, y - 9, 80, y + 13, 128, y - 4); g.stroke();
+      }
+    });
+    this.disposables.push(stone);
+    add(sculptedRock(), new THREE.MeshStandardMaterial({ map: stone, bumpMap: stone, bumpScale: 0.08, roughness: 0.95 }), rocks);
+    buildWildPlants(scene, tufts, this.disposables);
   }
 
   private seaMaps: THREE.Texture[] = [];
@@ -1249,6 +1340,7 @@ export class WorldStage implements Stage {
     if (this.seaMaps.length) {
       this.seaMaps[0].offset.set(s * 0.018, s * 0.011);
       this.seaMaps[1].offset.set(-s * 0.03, s * 0.022);
+      if (this.seaMaps[2]) this.seaMaps[2].offset.y = s * 0.025;
     }
     // the clouds drift
     if (this.clouds) this.clouds.position.x = Math.sin(s * 0.012) * 24;

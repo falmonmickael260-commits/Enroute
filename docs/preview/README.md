@@ -1,21 +1,31 @@
-# Maisons remodélisées et caméra arrière
+# Décor de Kilomax — aperçu de travail
 
-Les maisons ont désormais des toits à deux pentes avec pignons en crépi, une annexe plus basse, une cheminée, des volets à lames, des encadrements et appuis de fenêtres en relief, un auvent et des pots à l'entrée. Les maisons trop proches sont filtrées pour éviter les superpositions.
+## Arbres et végétation
 
-Le paysage utilise des feuillages à plusieurs volumes, des cyprès arrondis, un sol texturé et des reliefs irréguliers.
+Pins aux troncs ramifiés, oliviers plus hauts et plus clairs, cyprès à plusieurs étages de feuillage. Les feuilles dessinent des contours irréguliers. Les buissons, les herbes et les fleurs ont aussi été retravaillés : les petites boules du bas-côté sont remplacées par des brins et des pétales.
 
-La caméra reste derrière les véhicules, y compris pendant les attaques, les raccourcis et l'introduction. Les animations des voitures et le tracé, la largeur et les dimensions de la route sont conservés.
+![Détail des arbres et des buissons](arbres-detail.webp)
 
-## Détail d'une maison
+## Rochers et littoral
 
-Cette capture rapprochée du modèle permet de voir les nouveaux volumes. Ce cadrage d'inspection n'est pas la caméra de jeu.
+Rochers irréguliers avec détails de surface, transition progressive entre l'eau claire et la mer, petites lignes d'écume en mouvement.
 
-![Détail d'une maison du décor](maison-detail.webp)
+![Détail du littoral](littoral-detail.webp)
+
+Ces deux captures rapprochent le décor pour montrer les détails. Ces cadrages d'inspection ne remplacent pas la caméra de jeu.
+
+## Maisons
+
+Toits à deux pentes et pignons en crépi, cheminée, annexe plus basse, volets à lames, appuis de fenêtres en relief, auvent et pots à l'entrée.
+
+![Détail d'une maison](maison-detail.webp)
 
 ## Vue de jeu
 
 ![Vue derrière les voitures](vue-course.webp)
 
-[Voir l'enregistrement du jeu avec la caméra arrière](kilomax-mobile.mp4).
+[Voir l'enregistrement du jeu](kilomax-mobile.mp4).
+
+La caméra de jeu reste derrière les véhicules. Le tracé, la largeur et les dimensions de la route, les voitures et leurs animations sont conservés.
 
 Vidéo enregistrée dans Chromium avec rendu logiciel. Sa fluidité ne mesure pas les performances sur téléphone.
