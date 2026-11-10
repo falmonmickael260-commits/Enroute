@@ -38,3 +38,11 @@ From the Khronos Group glTF Sample Assets
 - `retro.glb` — **"Toy Car"**, licensed **CC0 1.0**. Changes: display cloth
   and cameras removed, glass made opaque, meshes simplified, textures resized
   to 512 px WebP; the paint takes the pilot's colour in game.
+
+## Procedural road vehicles
+
+The current supercar, retro, sedan-sports, hatchback-sports, sedan, suv,
+suv-luxury, van, truck, taxi, police and kilomax models are built in
+`game/components/scene/roadVehicles.ts`. Their garage thumbnails are renders
+of those procedural models. The original GLB assets remain here with their
+original attribution. Race, race-future, kart and tractor still use GLBs.

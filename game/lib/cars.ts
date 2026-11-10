@@ -1,12 +1,8 @@
 import type { PlayerColor } from "@/game/types/game";
 
-/**
- * The vehicles a pilot can drive. The supercar and the retro car are detailed
- * models (Khronos glTF samples), most others come from Kenney's Car Kit (CC0;
- * see public/models/cars/CREDITS.md for both); the moto, scooter, quad and the KILOMAX car
- * are built in code (BUILT_CARS). `repaint` ones take the pilot's colour, the
- * others (taxi, police, kart) keep their livery.
- */
+/** Passenger cars use curved procedural models; special vehicles retain their
+ * original models (provenance: public/models/cars/CREDITS.md). Repaintable cars
+ * take the pilot's colour; taxi, police and kart keep their liveries. */
 export const CARS = [
   { id: "supercar", label: "Supercar", repaint: true },
   { id: "retro", label: "Rétro", repaint: true },
@@ -31,8 +27,12 @@ export const CARS = [
 
 export type CarId = (typeof CARS)[number]["id"];
 
+/** Passenger cars remodelled as curved procedural bodies. Special vehicles keep their own models. */
+export const ROAD_CAR_IDS = ["supercar", "retro", "sedan-sports", "hatchback-sports", "sedan", "suv", "suv-luxury", "van", "truck", "taxi", "police", "kilomax"] as const;
+export type RoadCarId = (typeof ROAD_CAR_IDS)[number];
+
 /** Vehicles modelled in code (game/components/scene/models.ts), no file to load. */
-export const BUILT_CARS: ReadonlySet<string> = new Set(["kilomax", "moto", "scooter", "quad"]);
+export const BUILT_CARS: ReadonlySet<string> = new Set([...ROAD_CAR_IDS, "moto", "scooter", "quad"]);
 
 export const DEFAULT_CAR: CarId = "sedan-sports";
 

@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { createRoadVehicle, isRoadCar } from "./roadVehicles";
 import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import type { CarModel } from "./models";
 import { lacquer } from "./vehicleFinish";
@@ -185,6 +186,7 @@ function localAxis(node: THREE.Object3D, world: THREE.Vector3): "x" | "y" | "z" 
  * car it already shows.
  */
 export async function loadCarModel(id: string, color: string, repaint: boolean, castShadow: boolean): Promise<CarModel | null> {
+  if (isRoadCar(id)) return createRoadVehicle(id, color, repaint);
   const gltf = await loadGltf(id);
   if (!gltf) return null;
   const scene = gltf.scene.clone(true);

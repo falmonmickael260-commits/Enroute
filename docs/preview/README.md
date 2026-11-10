@@ -1,5 +1,23 @@
 # Décor de Kilomax — aperçu de travail
 
+## Voitures remodelées
+
+Douze carrosseries sont reconstruites avec des panneaux courbes, des vitrages inclinés, des passages de roues, des jantes, des rétroviseurs et des feux distincts. Leurs dimensions extérieures restent celles des modèles précédents. Les roues indépendantes, le freinage, les crevaisons et les points de fixation des équipements conservent leur interface d'animation.
+
+Rendus de détail des modèles réellement utilisés dans le jeu :
+
+| Coupé | SUV |
+| --- | --- |
+| ![Coupé](voiture-coupe.webp) | ![SUV](voiture-suv.webp) |
+
+| Rétro | Van |
+| --- | --- |
+| ![Rétro](voiture-retro.webp) | ![Van](voiture-van.webp) |
+
+![Voitures dans la course sur mobile](voitures-en-course.webp)
+
+Les miniatures du garage correspondent aux nouveaux modèles. La caméra de course, la route et les animations de conduite n'ont pas été modifiées par cette passe. Les véhicules spéciaux (motos, kart, formule, proto et tracteur) conservent leur modèle.
+
 ## Bitume plus noir
 
 Un enrobé noir mat, inspiré d'une autoroute récemment revêtue : grain très fin, traces de pneus discrètes, reflets gris atténués. Les anciens rectangles de réparation et les fissures ont été retirés. Le tracé, la largeur, les bordures et la disposition des marquages sont conservés.

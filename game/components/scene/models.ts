@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { createRoadVehicle } from "./roadVehicles";
 import { vehiclePaint } from "./vehicleFinish";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 
@@ -36,117 +37,7 @@ export interface CarModel {
 }
 
 export function createCar(color: string): CarModel {
-  const root = new THREE.Group();
-  const body = new THREE.Group();
-  root.add(body);
-
-  const paint = vehiclePaint(color);
-  const trim = mat("#20242b", { roughness: 0.6 });
-
-  // lower body with a lower, rounded hood
-  const lower = new THREE.Mesh(new RoundedBoxGeometry(0.47, 0.19, 1, 4, 0.08), paint);
-  lower.position.y = 0.17;
-  body.add(lower);
-  const hood = new THREE.Mesh(new RoundedBoxGeometry(0.44, 0.08, 0.34, 3, 0.04), paint);
-  hood.position.set(0, 0.27, 0.29);
-  hood.rotation.x = 0.1;
-  body.add(hood);
-
-  // cabin: paint pillars around dark glass
-  const cabin = new THREE.Mesh(new RoundedBoxGeometry(0.42, 0.18, 0.54, 3, 0.07), paint);
-  cabin.position.set(0, 0.33, -0.08);
-  body.add(cabin);
-  const glassSide = new THREE.Mesh(new RoundedBoxGeometry(0.43, 0.1, 0.44, 2, 0.04), shared.glass);
-  glassSide.position.set(0, 0.35, -0.08);
-  body.add(glassSide);
-  const windshield = new THREE.Mesh(new RoundedBoxGeometry(0.38, 0.12, 0.04, 2, 0.02), shared.glass);
-  windshield.position.set(0, 0.35, 0.19);
-  windshield.rotation.x = -0.55;
-  body.add(windshield);
-  const roof = new THREE.Mesh(new RoundedBoxGeometry(0.38, 0.045, 0.42, 3, 0.02), paint);
-  roof.position.set(0, 0.43, -0.1);
-  body.add(roof);
-  // racing stripe
-  const stripe = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.005, 0.4), mat("#ffffff", { roughness: 0.3 }));
-  stripe.position.set(0, 0.455, -0.1);
-  body.add(stripe);
-  const hoodStripe = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.005, 0.3), stripe.material);
-  hoodStripe.position.set(0, 0.315, 0.3);
-  hoodStripe.rotation.x = 0.1;
-  body.add(hoodStripe);
-
-  // spoiler
-  const spoiler = new THREE.Mesh(new RoundedBoxGeometry(0.4, 0.025, 0.08, 2, 0.01), trim);
-  spoiler.position.set(0, 0.47, -0.3);
-  body.add(spoiler);
-
-  // side mirrors
-  for (const x of [-0.24, 0.24]) {
-    const mirror = new THREE.Mesh(new RoundedBoxGeometry(0.05, 0.035, 0.05, 1, 0.01), paint);
-    mirror.position.set(x, 0.33, 0.14);
-    body.add(mirror);
-  }
-
-  // wheel arches
-  for (const [x, z] of [[-0.225, 0.31], [0.225, 0.31], [-0.225, -0.31], [0.225, -0.31]]) {
-    const arch = new THREE.Mesh(new RoundedBoxGeometry(0.06, 0.1, 0.26, 2, 0.03), trim);
-    arch.position.set(x, 0.2, z);
-    body.add(arch);
-  }
-
-  // bumpers, grille, plate and lights
-  const front = new THREE.Mesh(new RoundedBoxGeometry(0.46, 0.07, 0.06, 2, 0.02), trim);
-  front.position.set(0, 0.1, 0.5);
-  body.add(front);
-  const rear = front.clone();
-  rear.position.z = -0.5;
-  body.add(rear);
-  const grille = new THREE.Mesh(new THREE.BoxGeometry(0.2, 0.05, 0.02), trim);
-  grille.position.set(0, 0.19, 0.505);
-  body.add(grille);
-  const plate = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.035, 0.01), shared.white);
-  plate.position.set(0, 0.17, -0.51);
-  body.add(plate);
-  for (const x of [-0.16, 0.16]) {
-    const hl = new THREE.Mesh(new RoundedBoxGeometry(0.11, 0.05, 0.03, 1, 0.012), shared.headlight);
-    hl.position.set(x, 0.21, 0.495);
-    body.add(hl);
-  }
-  const brakeLights = new THREE.MeshStandardMaterial({ color: "#b3141b", emissive: "#ff1f2a", emissiveIntensity: 0.3 });
-  for (const x of [-0.17, 0.17]) {
-    const tl = new THREE.Mesh(new RoundedBoxGeometry(0.11, 0.05, 0.03, 1, 0.012), brakeLights);
-    tl.position.set(x, 0.22, -0.495);
-    body.add(tl);
-  }
-
-  const wheels: THREE.Mesh[] = [];
-  const tyreGeo = new THREE.CylinderGeometry(0.105, 0.105, 0.085, 16);
-  tyreGeo.rotateZ(Math.PI / 2);
-  const rimGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.09, 10);
-  rimGeo.rotateZ(Math.PI / 2);
-  const hubGeo = new THREE.BoxGeometry(0.092, 0.1, 0.02);
-  for (const [x, z] of [
-    [-0.22, 0.31],
-    [0.22, 0.31],
-    [-0.22, -0.31],
-    [0.22, -0.31],
-  ]) {
-    const wheel = new THREE.Mesh(tyreGeo, shared.tyre);
-    wheel.add(new THREE.Mesh(rimGeo, shared.rim));
-    // a spoke bar so the spin reads
-    wheel.add(new THREE.Mesh(hubGeo, shared.dark));
-    wheel.position.set(x, 0.105, z);
-    root.add(wheel);
-    wheels.push(wheel);
-  }
-
-  const mounts = { roof: new THREE.Group(), rear: new THREE.Group(), front: new THREE.Group() };
-  mounts.roof.position.set(0, 0.46, -0.1);
-  mounts.rear.position.set(0, 0.22, -0.53);
-  mounts.front.position.set(0, 0.14, 0.53);
-  body.add(mounts.roof, mounts.rear, mounts.front);
-
-  return { root, body, wheels, brakeLights, paint, mounts, exhaust: new THREE.Vector3(0.12, 0.09, -0.54) };
+  return createRoadVehicle("kilomax", color);
 }
 
 // ---------------------------------------------------------------- two-wheelers and quad
