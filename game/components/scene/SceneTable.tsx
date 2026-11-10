@@ -53,7 +53,6 @@ export function SceneTable({
   const currentEvent = useAnimationQueue(state.animationQueue, consumeAnimation);
   const { enabled: soundOn, toggle: toggleSound, play } = useSound();
   const [handRef, handBox] = useElementSize<HTMLDivElement>();
-  const [overview, setOverview] = useState(false);
 
   useRaceAudio(state, currentEvent, { simulate: false });
 
@@ -106,19 +105,6 @@ export function SceneTable({
     return () => clearTimeout(t);
   }, [introPending, worldReady, endIntro]);
   const winner = over ? state.players.find((p) => p.id === state.winnerId) : undefined;
-  const overviewButton =
-    !scene && !over ? (
-      <button
-        onClick={() => setOverview((v) => !v)}
-        className="flex items-center gap-1.5 rounded-full border-2 border-white/40 bg-[#0e1522]/80 px-3 py-1.5 font-hud text-xs font-bold text-white shadow-[0_6px_16px_rgba(0,0,0,0.4)] backdrop-blur-md active:scale-95 sm:text-sm"
-      >
-        <span className="text-sm leading-none" aria-label={overview ? "Vue normale" : "Vue d'ensemble"}>
-          {overview ? "🚗" : "🗺️"}
-        </span>
-        {/* narrow phones: the icon alone, so the bigger draw pile keeps its room */}
-        <span className="hidden min-[400px]:inline">{overview ? "Vue normale" : "Vue d'ensemble"}</span>
-      </button>
-    ) : null;
   // while a cinematic plays, the interface steps aside
   const cinema = introPending || (!!winner && !scene && !victoryReady);
   // from 4 pilots on (or on a phone held sideways), each one fits on a single
@@ -135,7 +121,7 @@ export function SceneTable({
       ) : null}
 
       {/* the 3D world fills the screen; the picture keeps its portrait proportions */}
-      {!scene ? <WorldBoard state={state} event={currentEvent} bottomInset={handBox.height} overview={overview} intro={intro} onReady={onWorldReady} /> : null}
+      {!scene ? <WorldBoard state={state} event={currentEvent} bottomInset={handBox.height} intro={intro} onReady={onWorldReady} /> : null}
       <div className={clsx("absolute inset-0 mx-auto", scene && "max-w-[min(100vw,calc(100dvh*0.78))]")}>
         {scene ? <SceneBoard state={state} event={currentEvent} def={scene} bottomInset={handBox.height} /> : null}
 
@@ -216,8 +202,6 @@ export function SceneTable({
                   </p>
                 </div>
               ) : null}
-              {/* phone held sideways: the overview switch lives up here, off the cars */}
-              {short ? overviewButton : null}
               {headerExtra}
             </div>
           </div>
@@ -236,7 +220,7 @@ export function SceneTable({
           {notice ? <div className="pointer-events-none relative z-[55] mb-1 flex justify-center px-3">{notice}</div> : null}
           <div ref={handRef} className="pb-[env(safe-area-inset-bottom)]">
             <SceneHand
-              middle={short ? null : overviewButton}
+              middle={null}
               player={handOwner}
               state={state}
               isMyTurn={isMyTurn}

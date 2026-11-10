@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { buildCoastalVillage, foliageCrown, cypressCrown, distantRidge } from "./coastalArchitecture";
 import type { Placement, ScreenPoint, Shot, Stage, StageCar } from "./stage";
 import type { AmbianceId } from "@/game/types/game";
 
@@ -8,9 +9,9 @@ import type { AmbianceId } from "@/game/types/game";
  * past a village of cream houses with terracotta roofs, cypresses and pines,
  * with mountains in the haze. Units: 1 = one car length.
  *
- * The camera is a racing-game director: it sits behind the pack looking down
- * the road, chases a car while it drives, swings round a car that gets hit,
- * and circles the finish line at the end.
+ * The camera stays behind the active vehicle, looking down the road.
+ * Intro, attacks, shortcuts and the finish retain their animated effects
+ * without changing to overhead or frontal views.
  */
 
 // ---------------------------------------------------------------- the road
@@ -500,13 +501,12 @@ export class WorldStage implements Stage {
   private camPos = new THREE.Vector3(0, 6, 36);
   private camLook = new THREE.Vector3(0, 0, 0);
   private placed = false;
+  private cameraFocus: string | null = null;
   private shotSince = 0;
   /** Scratch camera to test a framing before using it. */
   private readonly probe = new THREE.PerspectiveCamera();
   /** Which side of the car the current close-up films (picked on its first frame). */
-  private shotSide = 0;
   /** The driving style the chase cam last framed (an overtake gets its own angle). */
-  private followStyle: string | undefined;
   /** Camera shake: when it started and how hard. */
   private shake = { at: 0, amp: 0 };
   private baseFov = 50;
@@ -544,8 +544,8 @@ export class WorldStage implements Stage {
     sc.bottom = -28;
     sc.near = 1;
     sc.far = 140;
-    this.sun.shadow.bias = -0.0008;
-    this.sun.shadow.normalBias = 0.04;
+    this.sun.shadow.bias = -0.0015;
+    this.sun.shadow.normalBias = 0.08;
     scene.add(this.sun, this.sun.target);
 
     this.bridges = this.findBridges();
@@ -610,7 +610,18 @@ export class WorldStage implements Stage {
     geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
     geo.computeVertexNormals();
     // drawn a hair behind what lies on it, so the road never flickers through the grass
-    const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, ...BEHIND }));
+    const ground = canvasTexture(128, 128, (g) => {
+      g.fillStyle = "#eeeadd";
+      g.fillRect(0, 0, 128, 128);
+      const grain = rng(725);
+      for (let i = 0; i < 1300; i++) {
+        g.fillStyle = i % 3 ? "rgba(63,70,33,0.09)" : "rgba(255,255,235,0.3)";
+        g.fillRect(grain() * 128, grain() * 128, 1, 1 + grain() * 2);
+      }
+    });
+    ground.repeat.set(45, 75);
+    this.disposables.push(ground);
+    const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: ground, vertexColors: true, roughness: 0.95, ...BEHIND }));
     mesh.receiveShadow = true;
     scene.add(mesh);
     this.disposables.push(geo, mesh.material as THREE.Material);
@@ -780,8 +791,6 @@ export class WorldStage implements Stage {
     const pines: { m: THREE.Matrix4; c: THREE.Color }[] = [];
     const trunks: { m: THREE.Matrix4 }[] = [];
     const bushes: { m: THREE.Matrix4; c: THREE.Color }[] = [];
-    const walls: { m: THREE.Matrix4; c: THREE.Color }[] = [];
-    const roofs: { m: THREE.Matrix4; c: THREE.Color }[] = [];
     const boats: { m: THREE.Matrix4 }[] = [];
     const houses: { x: number; y: number; z: number; w: number; h: number; d: number; yaw: number }[] = [];
 
@@ -799,7 +808,7 @@ export class WorldStage implements Stage {
       { x: -10, z: 4, n: 7, spread: 6 },
     ];
     for (const v of villages) {
-      for (let i = 0; i < v.n * 3 && walls.length < 70; i++) {
+      for (let i = 0; i < v.n * 3 && houses.length < 70; i++) {
         const x = v.x + (r() - 0.5) * 2 * v.spread;
         const z = v.z + (r() - 0.5) * 2 * v.spread;
         if (!free(x, z, 3.2)) continue;
@@ -808,11 +817,21 @@ export class WorldStage implements Stage {
         const d = 1.4 + r() * 1.2;
         const h = 1.3 + (r() < 0.4 ? 1.1 : 0) + r() * 0.4;
         const yaw = r() * Math.PI;
-        walls.push({ m: mat4(x, y + h / 2, z, w, h, d, yaw), c: new THREE.Color().setHSL(0.09 + r() * 0.03, 0.45 + r() * 0.2, 0.8 + r() * 0.08) });
+        r(); r(); // preserve the original facade-colour random draws
         houses.push({ x, y, z, w, h, d, yaw });
-        roofs.push({ m: mat4(x, y + h + 0.42, z, w * 0.78, 0.85, d * 0.78, yaw + Math.PI / 4), c: new THREE.Color().setHSL(0.04 + r() * 0.02, 0.6, 0.45 + r() * 0.1) });
+        r(); r(); // keep the original placement random stream
         if (r() < 0.5) bushes.push({ m: mat4(x + w * 0.7, y + 0.35, z + 0.4, 0.7, 0.6, 0.7), c: new THREE.Color("#d9468f") });
       }
+    }
+
+    // A few villas along the first stretch make the new architecture visible
+    // from the driving view. They use the same clearance test as the villages.
+    for (const [x, z, w, h, d, yaw] of [
+      [-4.5, -1, 3.4, 2.1, 2.7, 0.08],
+      [0, -13, 3.2, 2.4, 2.6, -0.12],
+      [-7.5, -28, 3.3, 1.7, 2.7, 0.15],
+    ]) {
+      if (free(x, z, 3.6)) houses.unshift({ x, y: this.terrainHeight(x, z), z, w, h, d, yaw });
     }
 
     // cypresses, umbrella pines and olive bushes everywhere else
@@ -856,10 +875,10 @@ export class WorldStage implements Stage {
       scene.add(mesh);
       this.disposables.push(geo, material);
     };
-    add(new THREE.ConeGeometry(0.5, 1, 7), new THREE.MeshStandardMaterial({ roughness: 0.9 }), cypress);
+    add(cypressCrown(), new THREE.MeshStandardMaterial({ roughness: 0.95 }), cypress);
     add(new THREE.CylinderGeometry(1, 1, 1, 6), new THREE.MeshStandardMaterial({ color: "#6b4a2e", roughness: 1 }), trunks);
-    add(new THREE.SphereGeometry(0.6, 9, 6), new THREE.MeshStandardMaterial({ roughness: 0.95, flatShading: true }), pines);
-    add(new THREE.IcosahedronGeometry(0.6, 1), new THREE.MeshStandardMaterial({ roughness: 0.9, flatShading: true }), bushes);
+    add(foliageCrown(), new THREE.MeshStandardMaterial({ roughness: 0.95, vertexColors: true }), pines);
+    add(foliageCrown(), new THREE.MeshStandardMaterial({ roughness: 0.95, vertexColors: true }), bushes);
     // Small shared maps give plaster and terracotta a tactile finish without
     // loading external assets or adding per-house draw calls on mobile.
     const plaster = canvasTexture(128, 128, (g) => {
@@ -888,64 +907,7 @@ export class WorldStage implements Stage {
       }
     });
     this.disposables.push(plaster, tiles);
-    add(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ map: plaster, roughness: 0.95 }), walls);
-    add(new THREE.ConeGeometry(0.72, 1, 4), new THREE.MeshStandardMaterial({ map: tiles, roughness: 0.92, flatShading: true }), roofs);
-
-    // Facades stay entirely inside each existing building's footprint. The
-    // illuminated panes below remain the original independent night layer.
-    const frames: { m: THREE.Matrix4 }[] = [];
-    const panes: { m: THREE.Matrix4 }[] = [];
-    const shutters: { m: THREE.Matrix4; c: THREE.Color }[] = [];
-    const doors: { m: THREE.Matrix4 }[] = [];
-    for (const hs of houses) {
-      const point = (x: number, y: number, z: number, w: number, h: number, d: number, face = 0) => {
-        const p = new THREE.Vector3(x, y, z).applyAxisAngle(new THREE.Vector3(0, 1, 0), hs.yaw);
-        return mat4(hs.x + p.x, hs.y + p.y, hs.z + p.z, w, h, d, hs.yaw + face);
-      };
-      const shutterColor = new THREE.Color(["#54776c", "#687f91", "#768353"][Math.floor(detail() * 3)]);
-      for (const side of [-1, 1]) {
-        const z = side * (hs.d / 2 + 0.012);
-        for (const x of [-hs.w * 0.22, hs.w * 0.22]) {
-          frames.push({ m: point(x, hs.h * 0.6, z, 0.4, 0.49, 0.035) });
-          panes.push({ m: point(x, hs.h * 0.6, z + side * 0.022, 0.28, 0.36, 0.016) });
-          for (const offset of [-0.25, 0.25]) shutters.push({
-            m: point(x + offset, hs.h * 0.6, z, 0.13, 0.43, 0.04), c: shutterColor,
-          });
-        }
-        doors.push({ m: point(0, 0.38, z, 0.36, 0.76, 0.05) });
-      }
-    }
-    add(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: "#f5e7c9", roughness: 0.95 }), frames, false);
-    add(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: "#344e57", roughness: 0.32 }), panes, false);
-    add(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ roughness: 0.85 }), shutters, false);
-    add(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: "#70533e", roughness: 0.9 }), doors, false);
-
-    // lit windows after dark
-    if (this.look.lights > 0) {
-      const lit = rng(808);
-      const windows: { m: THREE.Matrix4 }[] = [];
-      for (const hs of houses) {
-        const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, hs.yaw, 0));
-        for (const [lx, lz, face] of [
-          [-0.22, 0.5, 0],
-          [0.22, 0.5, 0],
-          [-0.22, -0.5, Math.PI],
-          [0.5, 0.15, Math.PI / 2],
-          [-0.5, -0.15, -Math.PI / 2],
-        ] as const) {
-          if (lit() > 0.55 * this.look.lights + 0.1) continue;
-          const local = new THREE.Vector3(Math.abs(lx) === 0.5 ? lx * hs.w + Math.sign(lx) * 0.06 : lx * hs.w, hs.h * 0.6, Math.abs(lz) === 0.5 ? lz * hs.d + Math.sign(lz) * 0.06 : lz * hs.d).applyQuaternion(q);
-          windows.push({
-            m: new THREE.Matrix4().compose(
-              local.add(new THREE.Vector3(hs.x, hs.y, hs.z)),
-              new THREE.Quaternion().setFromEuler(new THREE.Euler(0, hs.yaw + face, 0)),
-              new THREE.Vector3(0.28, 0.36, 1),
-            ),
-          });
-        }
-      }
-      add(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: "#ffcf73", side: THREE.DoubleSide }), windows, false);
-    }
+    buildCoastalVillage(scene, houses, plaster, tiles, this.look.lights, this.disposables);
 
     // boat = hull + sail
     const hull = new THREE.BoxGeometry(0.6, 0.25, 1.8);
@@ -1107,7 +1069,7 @@ export class WorldStage implements Stage {
       this.disposables.push(glow);
     }
     add(new THREE.DodecahedronGeometry(0.6, 0), new THREE.MeshStandardMaterial({ roughness: 0.95, flatShading: true }), rocks);
-    add(new THREE.ConeGeometry(0.5, 1, 5), new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true }), tufts, false);
+    add(new THREE.IcosahedronGeometry(0.45, 1), new THREE.MeshStandardMaterial({ roughness: 1 }), tufts, false);
   }
 
   private seaMaps: THREE.Texture[] = [];
@@ -1492,8 +1454,8 @@ export class WorldStage implements Stage {
       const h = 12 + r() * 14;
       mountains.push({ m: mat4(-58 - r() * 10, h / 2 - 2, z, 26, h, 26, r() * 3), c: new THREE.Color().setHSL(0.26, 0.3, 0.38 + r() * 0.06) });
     }
-    const mGeo = new THREE.ConeGeometry(1, 1, 7);
-    const mMat = new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true });
+    const mGeo = distantRidge();
+    const mMat = new THREE.MeshStandardMaterial({ roughness: 1 });
     const mMesh = instanced(mGeo, mMat, mountains, false);
     scene.add(mMesh);
 
@@ -1732,7 +1694,6 @@ export class WorldStage implements Stage {
       this.shotSince = performance.now();
       // a new race opens: the lamps go dark again for the countdown
       if (shot.kind === "intro") this.startGreen = false;
-      this.shotSide = 0;
       // cut in on an attack, and cut back out of it rather than drifting through the scenery
       if (
         shot.kind === "intro" ||
@@ -1747,53 +1708,7 @@ export class WorldStage implements Stage {
         this.shake = { at: this.shotSince + (shot.hazard === "barrage" ? 650 : 60), amp: shot.hazard === "barrage" ? 0.1 : 0.16 };
       }
     }
-    if (shot.kind !== "follow") this.followStyle = undefined;
     this.shot = shot;
-  }
-
-  /** Close-ups for each attack, framed in the car's own axes. */
-  private hazardShot(car: StageCar, hazard: string, cars: StageCar[], wantPos: THREE.Vector3, wantLook: THREE.Vector3) {
-    const fwd = new THREE.Vector3(Math.sin(car.yaw), 0, Math.cos(car.yaw));
-    const side = new THREE.Vector3(Math.cos(car.yaw), 0, -Math.sin(car.yaw));
-    // film from the side with no other car in the way
-    if (!this.shotSide) {
-      const clearance = (s: number) => {
-        const probe = car.position.clone().addScaledVector(side, s * 1.6);
-        return Math.min(99, ...cars.filter((c) => c.id !== car.id).map((c) => c.position.distanceTo(probe)));
-      };
-      this.shotSide = clearance(1) >= clearance(-1) ? 1 : -1;
-    }
-    const k = this.shotSide;
-    const e = (performance.now() - this.shotSince) / 1000;
-    const at = (f: number, s: number, up: number) => car.position.clone().addScaledVector(fwd, f).addScaledVector(side, s * k).add(new THREE.Vector3(0, up, 0));
-    switch (hazard) {
-      case "collision":
-        // low, in front, pushing in on the impact
-        wantPos.copy(at(4.4 - Math.min(e, 1.5) * 0.6, 2.4, 1.05));
-        wantLook.copy(at(0, 0, 0.3));
-        return 7;
-      case "crevaison":
-        // down at the wheel
-        wantPos.copy(at(1.7, 1.75, 0.4));
-        wantLook.copy(at(0.3, 0.3, 0.12));
-        return 7;
-      case "radar":
-        // from behind the speed camera: the flash goes off right at us
-        wantPos.copy(at(1.8 + e * 0.15, 2.6, 1.5));
-        wantLook.copy(at(0, 0, 0.35));
-        return 7;
-      case "barrage":
-        // in front, low: the barrier drops between us and the car
-        wantPos.copy(at(4.8, 0.7, 1.7));
-        wantLook.copy(at(0.6, 0, 0.45));
-        return 7;
-      case "panne":
-      default:
-        // profile, the car coughing to a stop
-        wantPos.copy(at(0.3 + e * 0.25, 3.8, 1.5));
-        wantLook.copy(at(0.2, 0, 0.3));
-        return 5;
-    }
   }
 
   frame(dt: number, t: number, cars: StageCar[], target: number) {
@@ -1804,99 +1719,33 @@ export class WorldStage implements Stage {
     const wantLook = new THREE.Vector3();
     const byId = new Map(cars.map((c) => [c.id, c]));
     const shot = this.shot;
-    let stiffness = 2.2;
-
+    let stiffness = 3;
     let kick = 0;
-    if (shot.kind === "follow" && byId.has(shot.id)) {
-      const car = byId.get(shot.id)!;
-      const fwd = new THREE.Vector3(Math.sin(car.yaw), 0, Math.cos(car.yaw));
-      const side = new THREE.Vector3(Math.cos(car.yaw), 0, -Math.sin(car.yaw));
-      // a new kind of move gets its own angle, with a cut
-      if (car.style && car.style !== this.followStyle && ["overtake", "turbo", "shortcut"].includes(car.style)) this.placed = false;
-      if (car.style) this.followStyle = car.style;
-      const style = this.followStyle;
-      if (style === "overtake") {
-        // tracking shot alongside, low, as it pulls out and past the others
-        const left = this.road.at(this.road.kmToLen(car.km, target)).right.clone().negate();
-        wantPos.copy(car.position).addScaledVector(left, 4.6).addScaledVector(fwd, -0.4).add(new THREE.Vector3(0, 1.6, 0));
-        wantLook.copy(car.position).addScaledVector(fwd, 1.9).add(new THREE.Vector3(0, 0.25, 0));
-        stiffness = 9;
-      } else if (style === "turbo") {
-        // tucked in low behind it, the lens widening with the speed
-        wantPos.copy(car.position).addScaledVector(fwd, -4.2).add(new THREE.Vector3(0, 1.35, 0));
-        wantLook.copy(car.position).addScaledVector(fwd, 7).add(new THREE.Vector3(0, 0.4, 0));
-        stiffness = 10;
-        kick = car.style === "turbo" ? 1 : 0;
-      } else if (style === "shortcut") {
-        // crane shot: high above, watching it cut across
-        wantPos.copy(car.position).addScaledVector(fwd, -3).addScaledVector(side, 2).add(new THREE.Vector3(0, 10, 0));
-        wantLook.copy(car.position).addScaledVector(fwd, 3);
-        stiffness = 4;
-      } else {
-        // chase cam: behind and above the car, looking down the road ahead
-        wantPos.copy(car.position).addScaledVector(fwd, -10).add(new THREE.Vector3(0, 5.2, 0));
-        wantLook.copy(car.position).addScaledVector(fwd, 12);
-        wantLook.y = wantPos.y - 22 * Math.tan(THREE.MathUtils.degToRad(17));
-        stiffness = 4;
-      }
-    } else if (shot.kind === "car" && shot.hazard && byId.has(shot.id)) {
-      stiffness = this.hazardShot(byId.get(shot.id)!, shot.hazard, cars, wantPos, wantLook);
-    } else if (shot.kind === "car" && byId.has(shot.id)) {
-      // three-quarter view on a car something happens to
-      const car = byId.get(shot.id)!;
-      const fwd = new THREE.Vector3(Math.sin(car.yaw), 0, Math.cos(car.yaw));
-      const side = new THREE.Vector3(fwd.z, 0, -fwd.x);
-      const lean = this.road.at(this.road.kmToLen(car.km, target)).point.x > 4 ? -1 : 1;
-      wantPos.copy(car.position).addScaledVector(fwd, 6.5).addScaledVector(side, 6.5 * lean).add(new THREE.Vector3(0, 5.5, 0));
-      wantLook.copy(car.position).setY(car.position.y + 0.4);
-      stiffness = 3;
-    } else if (shot.kind === "overview") {
-      // the whole road from start to finish, seen from high above the coast
-      const a = this.road.at(this.road.startLen).point;
-      const b = this.road.at(this.road.finishLen).point;
-      // a little closer to the start: the cars begin there and the finish reads far off
-      const centre = a.clone().lerp(b, 0.44);
-      const length = a.distanceTo(b) + 60;
-      const vHalf = THREE.MathUtils.degToRad(this.camera.fov / 2);
-      const visible = Math.max(1, this.height - (this.virtualHeight - this.height));
-      const hHalf = Math.atan(Math.tan(vHalf) * (this.width / visible));
-      const pitch = THREE.MathUtils.degToRad(62);
-      const dist = Math.max((length * Math.sin(pitch)) / 2 / Math.tan(vHalf), 22 / Math.tan(hHalf));
-      wantPos.set(centre.x + 4, centre.y + Math.sin(pitch) * dist, centre.z + Math.cos(pitch) * dist);
-      wantLook.copy(centre);
-      stiffness = 2.4;
-    } else if (shot.kind === "intro") {
-      // over the sea with the whole coast in view, then a long swoop down to the grid
-      const e = (performance.now() - this.shotSince) / 1000;
+    // Keep every event behind the vehicle, including shortcut, hazards and the
+    // introduction. Their effects still animate; the camera never flies overhead.
+    const focus = shot.kind === "follow" || shot.kind === "car"
+      ? byId.get(shot.id)
+      : shot.kind === "finish" && shot.winnerId ? byId.get(shot.winnerId) : undefined;
+    const lead = focus ?? cars.find(c => c.active) ?? cars[0];
+    const focusId = lead?.id ?? null;
+    if (focusId !== this.cameraFocus) {
+      this.cameraFocus = focusId;
+      this.placed = false;
+    }
+    if (lead && shot.kind === "pack") {
       const pack = this.packShot(cars, target);
-      const a0 = new THREE.Vector3(46, 21, -98);
-      const a1 = new THREE.Vector3(32, 12, 6);
-      const l0 = new THREE.Vector3(4, 0, -64);
-      const l1 = new THREE.Vector3(2, 0, -22);
-      if (e < 3) {
-        const k = THREE.MathUtils.smoothstep(e, 0, 3);
-        wantPos.lerpVectors(a0, a1, k);
-        wantLook.lerpVectors(l0, l1, k);
-      } else {
-        const k = THREE.MathUtils.smootherstep(e, 3, 6.2);
-        wantPos.lerpVectors(a1, pack.pos, k);
-        wantLook.lerpVectors(l1, pack.look, k);
-      }
-      stiffness = 60;
-    } else if (shot.kind === "finish" && shot.winnerId && byId.has(shot.winnerId) && performance.now() - this.shotSince < 2900) {
-      // trackside, low, just past the line: the winner comes at us and crosses
-      const car = byId.get(shot.winnerId)!;
-      // (on the sea side, behind the rail: the crowd and the arch fill the background)
-      const f = this.road.at(this.road.finishLen);
-      wantPos.copy(f.point).addScaledVector(f.right, HALF_WIDTH + 2.2).addScaledVector(f.forward, 4.5).setY(f.point.y + 0.95);
-      wantLook.copy(car.position).setY(car.position.y + 0.35);
-      stiffness = 9;
-    } else if (shot.kind === "finish") {
-      const f = this.road.at(this.road.finishLen);
-      const a = performance.now() / 4200;
-      wantPos.set(f.point.x + Math.sin(a) * 11, f.point.y + 5.5, f.point.z + Math.cos(a) * 11);
-      wantLook.copy(f.point).setY(f.point.y + 1.2);
-      stiffness = 2;
+      wantPos.copy(pack.pos);
+      wantLook.copy(pack.look);
+    } else if (lead) {
+      const forward = new THREE.Vector3(Math.sin(lead.yaw), 0, Math.cos(lead.yaw));
+      const turbo = shot.kind === "follow" && lead.style === "turbo";
+      const back = turbo ? 5.2 : 10;
+      const height = turbo ? 1.6 : 5.2;
+      wantPos.copy(lead.position).addScaledVector(forward, -back).add(new THREE.Vector3(0, height, 0));
+      wantLook.copy(lead.position).addScaledVector(forward, 12);
+      wantLook.y = wantPos.y - (back + 12) * Math.tan(THREE.MathUtils.degToRad(17));
+      stiffness = shot.kind === "follow" ? 6 : 3;
+      kick = turbo ? 1 : 0;
     } else {
       const pack = this.packShot(cars, target);
       wantPos.copy(pack.pos);
