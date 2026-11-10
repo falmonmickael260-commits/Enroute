@@ -1,13 +1,21 @@
-# Aperçu de la première retouche graphique
+# Maisons remodélisées et caméra arrière
 
-Captures du jeu existant au format mobile 412 × 915. Cette première passe garde les modèles et le style actuels : crépi, tuiles, volets et fenêtres des maisons, nuances du paysage et finition satinée des véhicules.
+Les maisons ont désormais des toits à deux pentes avec pignons en crépi, une annexe plus basse, une cheminée, des volets à lames, des encadrements et appuis de fenêtres en relief, un auvent et des pots à l'entrée. Les maisons trop proches sont filtrées pour éviter les superpositions.
 
-Le tracé, la largeur de la route, les vues, l'échelle des véhicules et les animations restent ceux du jeu actuel.
+Le paysage utilise des feuillages à plusieurs volumes, des cyprès arrondis, un sol texturé et des reliefs irréguliers.
 
-| Vue course | Vue d'ensemble |
-| --- | --- |
-| ![Vue course](vue-course.webp) | ![Vue d'ensemble](vue-ensemble.webp) |
+La caméra reste derrière les véhicules, y compris pendant les attaques, les raccourcis et l'introduction. Les animations des voitures et le tracé, la largeur et les dimensions de la route sont conservés.
 
-[Voir la vidéo de 20 secondes](kilomax-mobile.mp4).
+## Détail d'une maison
 
-La vidéo est un enregistrement de la version de travail du jeu, réalisé dans Chromium avec rendu logiciel. Sa fluidité ne mesure pas les performances sur téléphone.
+Cette capture rapprochée du modèle permet de voir les nouveaux volumes. Ce cadrage d'inspection n'est pas la caméra de jeu.
+
+![Détail d'une maison du décor](maison-detail.webp)
+
+## Vue de jeu
+
+![Vue derrière les voitures](vue-course.webp)
+
+[Voir l'enregistrement du jeu avec la caméra arrière](kilomax-mobile.mp4).
+
+Vidéo enregistrée dans Chromium avec rendu logiciel. Sa fluidité ne mesure pas les performances sur téléphone.
