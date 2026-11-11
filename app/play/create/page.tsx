@@ -113,13 +113,13 @@ export default function CreateGamePage() {
         <section>
           <SectionLabel icon={<MapIcon />}>Circuit</SectionLabel>
           <p className="mb-3 text-xs text-white/65">Le décor est choisi pour cet appareil.</p>
-          <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
             {RACE_MAPS.map(map => (
               <button key={map.id} onClick={() => setRaceMap(map.id)} aria-pressed={raceMap === map.id} aria-label={map.label} className="menu-option relative overflow-hidden text-left">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={map.image} alt="" className="aspect-[1.6/1] w-full object-cover" />
-                <span className="block px-3 pt-2 font-menu text-base font-bold">{map.label}</span>
-                <span className="block px-3 pb-3 text-xs text-white/70">{map.hint}</span>
+                <span className="block px-2 pt-2 font-menu text-sm font-bold sm:px-3 sm:text-base">{map.label}</span>
+                <span className="block px-2 pb-3 text-[0.65rem] text-white/70 sm:px-3 sm:text-xs">{map.hint}</span>
               </button>
             ))}
           </div>

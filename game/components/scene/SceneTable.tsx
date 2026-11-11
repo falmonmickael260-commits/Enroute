@@ -260,7 +260,7 @@ export function SceneTable({
           </motion.div>
         ) : null}
       </AnimatePresence>
-      {intro ? <IntroCinematic title="KILOMAX" subtitle={`${raceMap === 'city' ? 'Grand Boulevard' : "Corniche d’Azur"} · ${state.target} km`} onDone={endIntro} /> : null}
+      {intro ? <IntroCinematic title="KILOMAX" subtitle={`${raceMap === 'christmas' ? 'Village de Noël' : raceMap === 'city' ? 'Grand Boulevard' : "Corniche d’Azur"} · ${state.target} km`} onDone={endIntro} /> : null}
       {winner && !scene && !victoryReady ? <FinishCinematic name={winner.name} color={CAR_PAINT[winner.color]} /> : null}
       {isMyTurn ? (
         <TargetPicker pending={controls.pendingTarget} state={state} onPick={controls.resolveTarget} onCancel={controls.cancelTarget} />

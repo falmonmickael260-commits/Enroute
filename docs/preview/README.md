@@ -1,5 +1,9 @@
 # Kilomax — décor, voitures et finition de la course
 
+## Troisième map : Village de Noël
+
+[Découvrir la map de Noël](map-noel.md) : chalets, sapins décorés et neige qui tombe, avec le parcours et les animations du jeu.
+
 ## Deuxième map : Grand Boulevard
 
 [Découvrir la ville et ses aperçus](map-ville.md). Le circuit se choisit avant la partie, en conservant la map côtière et toute la dynamique de conduite.

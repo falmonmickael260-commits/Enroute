@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { createChristmasWorld } from "./christmasWorld";
 import { createUrbanWorld } from "./urbanWorld";
 import type { RaceMap } from "@/game/lib/store/raceMapStore";
 import { Sky } from "three/examples/jsm/objects/Sky.js";
@@ -478,6 +479,7 @@ export class WorldStage implements Stage {
   private finishTarget = 1000;
   private signs: THREE.Group | null = null;
   private scene: THREE.Scene | null = null;
+  private winter: ReturnType<typeof createChristmasWorld> | null = null;
   private city: ReturnType<typeof createUrbanWorld> | null = null;
 
   init(renderer: THREE.WebGLRenderer, scene: THREE.Scene) {
@@ -511,6 +513,15 @@ export class WorldStage implements Stage {
     this.sun.shadow.radius = 2;
     scene.add(this.sun, this.sun.target);
 
+    if (this.raceMap === "christmas") {
+      this.buildRoad(scene);
+      this.winter = createChristmasWorld(scene, this.road, this.look.lights);
+      this.disposables.push(this.winter);
+      this.buildStartAndFinish(scene);
+      this.buildCelebration(scene);
+      this.buildSky(scene);
+      return;
+    }
     if (this.raceMap === "city") {
       this.buildRoad(scene);
       this.city = createUrbanWorld(scene, this.road, this.look.lights);
@@ -704,7 +715,7 @@ export class WorldStage implements Stage {
     }
     this.disposables.push(asphalt, kerb, roadMat, kerbMat, shoulderMat, skirtMat);
 
-    if (this.raceMap === "city") return;
+    if (this.raceMap !== "coast") return;
 
     // guard rail on the sea side
     const railGeo = railBand(this.road, HALF_WIDTH + 0.95, 0.32, 0.5);
@@ -1810,6 +1821,7 @@ export class WorldStage implements Stage {
     this.sun.position.copy(p).add(this.sunOffset);
     if (this.sky) this.sky.position.copy(this.camera.position);
     this.updateHeadlights(cars);
+    this.winter?.update(t / 1000, this.camera);
     this.airShow?.update(t / 1000);
     this.sun.target.updateMatrixWorld();
   }
