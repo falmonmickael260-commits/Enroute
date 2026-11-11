@@ -6,21 +6,19 @@ Cette passe travaille l'ensemble du décor avec une palette de bord de mer, des 
 
 ### L'avion pendant la course
 
-Un avion à hélice accompagne la course avec une banderole « REVANCHE GAME ». Hélice, léger roulis et tissu sont animés. Son trajet d'accompagnement reste dans la partie gauche du cadre pour garder le texte visible pendant les changements de joueur et de champ de vision. Le modèle est éclairé et ses pièces se masquent correctement entre elles ; la banderole reste lisible sur les ambiances jour, crépuscule et nuit.
+L'avion publicitaire suit une boucle au large, parallèle au littoral, sans suivre la caméra. Son altitude et sa taille sont définies dans le décor. Il peut sortir du champ et revenir lors d'un autre passage, comme les avions à banderole sur les plages en été. Le texte « REVANCHE GAME » se lit des deux côtés de la toile.
 
-![Avion et banderole réellement utilisés dans le jeu](avion-revanche-game.webp)
+L'ancien placement forcé devant la caméra et la remise à zéro de la profondeur sont retirés. L'avion respecte les masquages et la perspective du paysage.
+
+![Passage publicitaire au-dessus de la mer](survol-mer.webp)
+
+[Voir le passage au large — 8 secondes](survol-mer.mp4) · [Partie avec l'interface du jeu](kilomax-mobile.mp4)
+
+Cette vue fixe depuis le littoral sert à inspecter le vol. La caméra de conduite reste derrière les voitures.
 
 ### Vue du jeu sur mobile
 
-| Avant cette passe | Finition globale |
-| --- | --- |
-| ![Avant](finition-avant.webp) | ![Après](finition-mobile.webp) |
-
-[Visite du circuit — 20 secondes, sans interface](kilomax-visite.mp4) · [Partie enregistrée — 30 secondes, avec interface](kilomax-mobile.mp4)
-
-La visite est rendue image par image à 24 images par seconde avec les modèles, les matières, les animations du décor et la caméra arrière du moteur. Elle parcourt le circuit jusqu'à l'arrivée et montre aussi le champ de vision du turbo. C'est un aperçu visuel du décor, distinct de l'enregistrement de la partie et d'une mesure de performances sur téléphone.
-
-![Après les actions de jeu](finition-en-course.webp)
+![Vue de jeu sans avion collé à l'écran](finition-mobile.webp)
 
 ### Ce qui change dans l'ensemble du décor
 
@@ -36,15 +34,11 @@ La visite est rendue image par image à 24 images par seconde avec les modèles,
 
 ![Balcons, végétation et détails des villas](finition-villas.webp)
 
-| Crépuscule | Nuit |
-| --- | --- |
-| ![Crépuscule](finition-crepuscule.webp) | ![Nuit](finition-nuit.webp) |
-
-Les vues rapprochées et d'ensemble inspectent le moteur du jeu sans son interface ; elles ne remplacent pas la caméra de conduite. Le rendu reste stylisé. Les captures Chromium utilisent le rendu logiciel et ne mesurent pas la fluidité sur téléphone.
+Le rendu reste stylisé. Les captures du navigateur utilisent le rendu logiciel et ne mesurent pas les performances sur téléphone.
 
 ### Vérifications de cette passe
 
-Compilation de production, TypeScript et ESLint ciblé. Contrôles des 12 gabarits de voitures, des roues et des couleurs ; 1 272 points de sol inchangés près de la route ; espacement et ancrage des arbres ; géométries et animations de la foule ; géométries des voiliers et paramètres de l'eau. La banderole a été vérifiée sur 72 combinaisons de taille d'écran, de champ de vision, d'orientation et de temps. Les trois ambiances sont rendues sans erreur JavaScript ou de shader dans le navigateur. La partie de production vérifie 200 km, 100 km puis turbo, avec des distances finales de 300 km et 100 km et sans erreur JavaScript.
+Compilation de production, TypeScript et ESLint ciblé. Contrôles des 12 gabarits de voitures, des roues et des couleurs ; 1 272 points de sol inchangés près de la route ; espacement et ancrage des arbres ; géométries et animations de la foule ; géométries des voiliers et paramètres de l'eau. La correction du vol est contrôlée sur 1 121 positions couvrant deux boucles : l'ensemble de l'avion et de sa banderole garde plus de 11 unités de marge par rapport au rivage. Le cap suit la direction de déplacement et la boucle se referme sans saut. La caméra ne détermine plus le vol. Les contrôles de compilation et de rendu sont actualisés. Les tests de partie de la passe précédente vérifient 200 km, 100 km puis turbo, sans modification des règles par cette correction.
 
 ## Foule et personnages au bord de la route
 

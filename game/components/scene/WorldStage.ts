@@ -521,7 +521,7 @@ export class WorldStage implements Stage {
     this.buildCelebration(scene);
     this.buildLighthouse(scene);
     this.buildSky(scene);
-    this.airShow = createAirShow(scene);this.disposables.push(this.airShow);
+    this.airShow = createAirShow(scene,coastX);this.disposables.push(this.airShow);
     this.wakes = createBoatWakes(scene,this.boats,SEA_LEVEL);this.disposables.push(this.wakes);
   }
 
@@ -1795,7 +1795,7 @@ export class WorldStage implements Stage {
     this.sun.position.copy(p).add(this.sunOffset);
     if (this.sky) this.sky.position.copy(this.camera.position);
     this.updateHeadlights(cars);
-    this.airShow?.update(t / 1000, this.camera);
+    this.airShow?.update(t / 1000);
     this.sun.target.updateMatrixWorld();
   }
 
