@@ -32,7 +32,8 @@ function panelTexture(value: string, kind: "distance" | "finish" | "start") {
   const w = kind === "distance" ? 512 : kind === "finish" ? 1024 : 768;
   const h = kind === "distance" ? 256 : 208;
   return texture(w, h, g => {
-    g.fillStyle = kind === "distance" ? "#173f68" : "#152631"; g.fillRect(0, 0, w, h);
+    const paint=g.createLinearGradient(0,0,0,h);paint.addColorStop(0,kind==='distance'?'#24557c':'#263f4d');paint.addColorStop(1,kind==='distance'?'#12324f':'#13242f');g.fillStyle=paint;g.fillRect(0,0,w,h);
+    g.strokeStyle='rgba(255,255,245,.15)';g.lineWidth=2;g.beginPath();g.roundRect(19,19,w-38,h-38,14);g.stroke();
     g.strokeStyle = "#f2f1df"; g.lineWidth = 8; g.beginPath();g.roundRect(10, 10, w - 20, h - 20, 20);g.stroke();
     if (kind !== "distance") {
       const size = 16;
@@ -52,7 +53,7 @@ function panelTexture(value: string, kind: "distance" | "finish" | "start") {
 
 function metal() { return new THREE.MeshStandardMaterial({ color: "#b2bcc0", roughness: 0.46, metalness: 0.65 }); }
 function enamel(map: THREE.Texture, lights: number) {
-  return new THREE.MeshStandardMaterial({ map, emissive: "white", emissiveMap: map, emissiveIntensity: 0.04 + lights * 0.2, roughness: 0.55, metalness: 0.04, side: THREE.DoubleSide });
+  return new THREE.MeshStandardMaterial({ map, emissive: "white", emissiveMap: map, emissiveIntensity: 0.04 + lights * 0.2, roughness: 0.44, metalness: 0.05, side: THREE.DoubleSide });
 }
 function mesh(group: THREE.Group, geometry: THREE.BufferGeometry, material: THREE.Material, x: number, y: number, z: number) {
   const m = new THREE.Mesh(geometry, material); m.position.set(x, y, z);m.castShadow = true;group.add(m);return m;

@@ -88,18 +88,22 @@ export function buildCoastalVillage(
   const box = (rounded = false) => rounded ? new RoundedBoxGeometry(1, 1, 1, 2, 0.025) : new THREE.BoxGeometry(1, 1, 1);
   const register = (name: string, geometry: THREE.BufferGeometry, options: THREE.MeshStandardMaterialParameters) =>
     batches.set(name, { geometry, material: new THREE.MeshStandardMaterial({ roughness: 0.9, ...options }), items: [] });
-  register("plaster", box(true), { map: plaster });
-  register("roof", pitchedRoof(), { map: tiles, side: THREE.DoubleSide });
+  register("plaster", box(true), { map: plaster, bumpMap:plaster, bumpScale:.012 });
+  register("roof", pitchedRoof(), { map: tiles, bumpMap:tiles, bumpScale:.014, side: THREE.DoubleSide });
   register("gables", pitchedRoof(true), { map: plaster });
   register("stone", box(true), { color: "#b8aa8d", map: plaster });
   register("eaves", box(), { color: "#e8d7b5" });
   register("timber", box(), { color: "#70513a" });
   register("shutters", box(), {});
-  register("glass", box(), { color: "#334f55", roughness: 0.3 });
+  register("glass", box(), { color: "#2d4853", metalness:.15, roughness:.22 });
   register("litGlass", box(), { color: "#ffe4aa", emissive: "#ffb75b", emissiveIntensity: lights * 1.5 });
   register("plants", foliageCrown(), { vertexColors: true });
   register("pot", new THREE.CylinderGeometry(0.45, 0.32, 1, 8), { color: "#a15c40" });
 
+  register("iron", box(true), { color:'#4b5659',metalness:.55,roughness:.45 });
+  register("fabric", box(true), { roughness:1 });
+  register("drain", new THREE.CylinderGeometry(.5,.5,1,8), {color:'#807c6e',metalness:.25,roughness:.7});
+  register("porchLamp", new THREE.SphereGeometry(.5,8,6), {color:'#ffe4b0',emissive:'#ffbf72',emissiveIntensity:lights*1.7,roughness:.4});
   const placed = selectVillageHouses(houses);
   for (const [index, hs] of placed.entries()) {
     const i = index + 1;
@@ -129,6 +133,8 @@ export function buildCoastalVillage(
     add("gables", wingX, wingH, -d * 0.12, hs.w * 0.38, hs.w * 0.28, d * 0.68, wall);
     add("plaster", cx - w * 0.22, h + w * 0.32, -d * 0.24, 0.2, 0.62, 0.23, wall);
     add("stone", cx - w * 0.22, h + w * 0.32 + 0.32, -d * 0.24, 0.28, 0.07, 0.3);
+    // Downpipes and small exterior lamps ground the villas in a lived-in setting.
+    for(const side of [-1,1])add('drain',cx+side*(w/2+.045),h*.49,-d*.45,.035,h*.96,.035);
     // Recessed dark panes sit behind projecting sills, frames and louvred shutters.
     const levels = h > 2 ? [0.65, h * 0.78] : [h * 0.63];
     for (const face of [-1, 1]) {
@@ -148,12 +154,31 @@ export function buildCoastalVillage(
       const z = face * (d / 2 + 0.05);
       add("timber", cx, 0.38, z, 0.3, 0.76, 0.045);
       add("eaves", cx, 0.79, z, 0.4, 0.06, 0.1);
+      add('iron',cx+.25,1.02,z+face*.035,.085,.11,.08);
+      add('porchLamp',cx+.25,1.01,z+face*.09,.065,.08,.065);
+      if(h>2 && index%3!==1){
+        const floor=h*.78-.29,front=z+face*.46;
+        add('stone',cx,floor,z+face*.22,w*.77,.065,.54);
+        add('iron',cx,floor+.30,front,w*.77,.026,.026);
+        add('iron',cx,floor+.08,front,w*.77,.022,.022);
+        for(let bar=-3;bar<=3;bar++)add('iron',cx+bar*w*.11,floor+.18,front,.018,.29,.018);
+        for(const side of [-1,1]){
+          add('iron',cx+side*w*.37,floor+.30,z+face*.22,.022,.026,.47);
+          add('pot',cx+side*w*.28,floor+.10,front-face*.08,.15,.15,.15);
+          add('plants',cx+side*w*.28,floor+.22,front-face*.08,.24,.24,.23,'#6b8150');
+        }
+      }
       // Small entrance canopy and pots: recognisable from the rear chase camera.
       add("roof", cx, 0.86, z + face * 0.12, 0.6, 0.2, 0.45, roof);
       for (const side of [-1, 1]) {
         add("pot", cx + side * 0.4, 0.16, z + face * 0.1, 0.24, 0.28, 0.24);
         add("plants", cx + side * 0.4, 0.36, z + face * 0.1, 0.32, 0.35, 0.32, "#687d43");
       }
+    }
+    if(index%3===0){
+      const awning=['#c5b188','#5c7f79','#b87561'][Math.floor(index/3)%3];
+      add('fabric',wingX,wingH+.09,-d*.12+hs.d*.30,hs.w*.34,.04,.40,awning);
+      add('fabric',wingX,wingH+.035,-d*.12+hs.d*.30+.19,hs.w*.34,.10,.026,awning);
     }
     // Side windows make the buildings read from bends as well as straight roads.
     for (const side of [-1, 1]) for (const z of [-d * 0.23, d * 0.23]) {

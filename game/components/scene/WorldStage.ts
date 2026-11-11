@@ -1,4 +1,7 @@
 import * as THREE from "three";
+import { Sky } from "three/examples/jsm/objects/Sky.js";
+import { finishTexture, createBoatWakes } from "./coastalFinish";
+import { createAirShow } from "./airShow";
 import { createRoadsideCrowd, placeSpectators } from "./roadsideCrowd";
 import { createDistanceSign, createFinishBanner, decorateStartGantry, createChevronParts, checkerLineTexture, disposeSignGroup } from "./roadFurniture";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
@@ -6,7 +9,7 @@ import { createSailboatParts, createSeaMaterial } from "./coastalMarine";
 import { buildCoastalVillage, selectVillageHouses } from "./coastalArchitecture";
 import type { Placement, ScreenPoint, Shot, Stage, StageCar } from "./stage";
 import { branchingTrunk, treeCrown, layeredCypress, sculptedRock, buildWildPlants } from "./coastalNature";
-import { arrangeVegetation, mountainRange, inlandFoothills, buildVillageGardens } from "./coastalLandscape";
+import { arrangeVegetation, mountainRange, inlandFoothills, buildVillageGardens, buildGroveBackdrop, groveDensity } from "./coastalLandscape";
 import type { AmbianceId } from "@/game/types/game";
 
 /**
@@ -366,8 +369,8 @@ const LOOKS: Record<AmbianceId, Look> = {
   jour: {
     sky: ["#2f86dc", "#8cc6ee", "#dceff8"],
     fog: ["#cfe6f2", 70, 320],
-    hemi: ["#dcecff", "#73805d", 1.05],
-    sun: ["#ffe7c4", 1.9, [-26, 40, 18]],
+    hemi: ["#dcecff", "#6c7660", 1.18],
+    sun: ["#fff0d8", 1.72, [-26, 40, 18]],
     exposure: 0.95,
     env: 0.35,
     sea: "#16a2c9",
@@ -518,6 +521,8 @@ export class WorldStage implements Stage {
     this.buildCelebration(scene);
     this.buildLighthouse(scene);
     this.buildSky(scene);
+    this.airShow = createAirShow(scene);this.disposables.push(this.airShow);
+    this.wakes = createBoatWakes(scene,this.boats,SEA_LEVEL);this.disposables.push(this.wakes);
   }
 
   // ------------------------------------------------------------ world building
@@ -551,7 +556,8 @@ export class WorldStage implements Stage {
     const colors = new Float32Array(pos.count * 3);
     const c = new THREE.Color();
     const grass = new THREE.Color("#71934b");
-    const olive = new THREE.Color("#aaa16b");
+    const olive = new THREE.Color("#a49b6c");
+    const groveShade = new THREE.Color("#57714b");
     const rock = new THREE.Color("#d2c3a1");
     const sand = new THREE.Color("#ecdcae");
     for (let i = 0; i < pos.count; i++) {
@@ -561,6 +567,7 @@ export class WorldStage implements Stage {
       pos.setY(i, h);
       const n = noise2(x * 0.4, z * 0.4);
       c.copy(grass).lerp(olive, THREE.MathUtils.clamp(0.3 + 0.22 * n, 0.08, 0.6));
+      c.lerp(groveShade,groveDensity(x,z)*.18);
       const toSea = x - coastX(z);
       if (toSea > -3.4) {
         const strata = 0.5 + 0.5 * Math.sin(h * 5 + z * 0.12);
@@ -646,6 +653,7 @@ export class WorldStage implements Stage {
     }
     shore.setAttribute("uv", new THREE.Float32BufferAttribute(shoreUvs, 2));
     const foamMaterial = new THREE.MeshBasicMaterial({ color: "#f5ffff", alphaMap: foam, transparent: true, opacity: 0.46, depthWrite: false, side: THREE.DoubleSide });
+    this.shoreFoam=foamMaterial;
     const foamMesh = new THREE.Mesh(shore, foamMaterial);
     foamMesh.position.y = SEA_LEVEL + 0.045;
     scene.add(foamMesh);
@@ -657,7 +665,10 @@ export class WorldStage implements Stage {
     const kerb = kerbTexture();
     const roadMat = new THREE.MeshStandardMaterial({ map: asphalt, roughness: 0.96, metalness: 0, envMapIntensity: 0.08 });
     const kerbMat = new THREE.MeshStandardMaterial({ map: kerb, roughness: 0.6 });
-    const shoulderMat = new THREE.MeshStandardMaterial({ color: "#d9c79c", roughness: 1 });
+    const aggregate = finishTexture('grain'), gravel = finishTexture('gravel');
+    aggregate.repeat.set(2,16);gravel.repeat.set(1,4);roadMat.bumpMap=aggregate;roadMat.bumpScale=.0025;
+    this.disposables.push(aggregate,gravel);
+    const shoulderMat = new THREE.MeshStandardMaterial({ color: "#c9c1ac", map: gravel, bumpMap: gravel, bumpScale:.008, roughness: 1 });
     const parts: [THREE.BufferGeometry, THREE.Material][] = [
       [ribbon(this.road, -HALF_WIDTH, HALF_WIDTH, 0.03, 10), roadMat],
       [ribbon(this.road, HALF_WIDTH, HALF_WIDTH + 0.28, 0.05, 1.6), kerbMat],
@@ -683,7 +694,7 @@ export class WorldStage implements Stage {
 
     // guard rail on the sea side
     const railGeo = railBand(this.road, HALF_WIDTH + 0.95, 0.32, 0.5);
-    const rail = new THREE.Mesh(railGeo, new THREE.MeshStandardMaterial({ color: "#c9ced6", metalness: 0.7, roughness: 0.3, side: THREE.DoubleSide }));
+    const rail = new THREE.Mesh(railGeo, new THREE.MeshStandardMaterial({ color: "#b6c1c6", metalness: 0.62, roughness: 0.43, side: THREE.DoubleSide }));
     rail.castShadow = true;
     scene.add(rail);
     const posts: { m: THREE.Matrix4 }[] = [];
@@ -707,7 +718,10 @@ export class WorldStage implements Stage {
         c: new THREE.Color().setHSL(0.1, 0.25, 0.7 + r() * 0.08),
       });
     }
-    const wallMesh = instanced(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ roughness: 0.95 }), walls);
+    const masonry = finishTexture('stone');this.disposables.push(masonry);
+    const wallMesh = instanced(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ map:masonry, bumpMap:masonry, bumpScale:.016, roughness: 0.95 }), walls);
+    const capMesh = instanced(new RoundedBoxGeometry(1,1,1,1,.04),new THREE.MeshStandardMaterial({color:'#c6bca5',map:masonry,roughness:.94}),walls.map(w=>({m:w.m.clone().multiply(new THREE.Matrix4().makeTranslation(0,.56,0)).multiply(new THREE.Matrix4().makeScale(1.15,.11,1.04))})));
+    scene.add(capMesh);this.disposables.push(capMesh.geometry,capMesh.material as THREE.Material);
     scene.add(wallMesh);
     this.disposables.push(wallMesh.geometry, wallMesh.material as THREE.Material);
   }
@@ -908,7 +922,22 @@ export class WorldStage implements Stage {
       }
     }, false);
     this.disposables.push(bark, leaves);
-    const leafMaterial = () => new THREE.MeshStandardMaterial({ map: leaves, alphaTest: 0.45, alphaToCoverage: true, side: THREE.DoubleSide, roughness: 1, vertexColors: true });
+    const leafMaterial = () => {
+      const material = new THREE.MeshStandardMaterial({ map: leaves, alphaTest: .45, alphaToCoverage: true, side: THREE.DoubleSide, roughness: 1, vertexColors: true });
+      material.onBeforeCompile = shader => {
+        shader.uniforms.uCoastalWind = this.windTime;
+        shader.vertexShader = `uniform float uCoastalWind;\n${shader.vertexShader}`;
+        shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+          vec4 foliageCentre = vec4(position,1.0);
+          #ifdef USE_INSTANCING
+            foliageCentre = instanceMatrix * foliageCentre;
+          #endif
+          float breeze = uCoastalWind * 1.35 + foliageCentre.x * .31 + foliageCentre.z * .27;
+          transformed.x += sin(breeze) * .012 * max(0.0,position.y);
+          transformed.z += cos(breeze * .81) * .009 * max(0.0,position.y);
+        `);
+      };material.customProgramCacheKey=()=> 'coastal-foliage-breeze-v1';return material;
+    };
     add(layeredCypress(), leafMaterial(), cypress);
     add(branchingTrunk(), new THREE.MeshStandardMaterial({ color: "#88735b", map: bark, bumpMap: bark, bumpScale: 0.04, roughness: 1 }), trunks);
     add(treeCrown(), leafMaterial(), needlePines);
@@ -947,6 +976,7 @@ export class WorldStage implements Stage {
       ...visibleHomes.map(h => ({ x: h.x, z: h.z, radius: Math.hypot(h.w, h.d) * .5 + .45 })),
       ...[...trunks,...cypress].map(item => { const p = new THREE.Vector3().setFromMatrixPosition(item.m); return { x:p.x, z:p.z, radius:.5 }; }),
     ];
+    buildGroveBackdrop(scene,(x,z)=>this.terrainHeight(x,z),(x,z)=>this.road.nearest(x,z).dist>11 && x<coastX(z)-6,visibleHomes,this.disposables,leaves);
     buildVillageGardens(scene, visibleHomes, (x, z) => this.terrainHeight(x, z), (x, z) => free(x, z, 1.5), this.disposables);
 
     // All boat parts share the existing sailing and rocking transforms.
@@ -974,6 +1004,11 @@ export class WorldStage implements Stage {
     const rocks: { m: THREE.Matrix4; c: THREE.Color }[] = [];
     const tufts: { m: THREE.Matrix4; c: THREE.Color }[] = [];
     const start = this.road.startLen - 6;
+
+    const studs:{m:THREE.Matrix4}[]=[];
+    for(let l=Math.ceil(this.road.startLen/5)*5+.35;l<this.road.finishLen;l+=5){const {point,forward}=this.road.at(l);studs.push({m:mat4(point.x,point.y+.052,point.z,.065,.022,.075,yawAt(forward))});}
+    const studMesh=instanced(new RoundedBoxGeometry(1,1,1,1,.12),new THREE.MeshStandardMaterial({color:'#ddd7ad',emissive:'#a89e6a',emissiveIntensity:this.look.lights*.3,roughness:.4}),studs,false);
+    scene.add(studMesh);this.disposables.push(studMesh.geometry,studMesh.material as THREE.Material);
 
     // white edge posts with a red reflector on the hill side, as on French country roads
     for (let l = start; l < this.road.total; l += 6) {
@@ -1105,11 +1140,15 @@ export class WorldStage implements Stage {
     buildWildPlants(scene, tufts, this.disposables);
   }
 
+  private shoreFoam: THREE.MeshBasicMaterial | null = null;
   private water: ReturnType<typeof createSeaMaterial> | null = null;
   private seaMaps: THREE.Texture[] = [];
   private clouds: THREE.InstancedMesh | null = null;
   private boats: { x: number; z: number; yaw: number; radius: number; speed: number; phase: number }[] = [];
   private boatMeshes: THREE.InstancedMesh[] = [];
+  private windTime = { value:0 };
+  private wakes: ReturnType<typeof createBoatWakes> | null = null;
+  private airShow: ReturnType<typeof createAirShow> | null = null;
   private spectators: ReturnType<typeof createRoadsideCrowd> | null = null;
   private spectatorObstacles: { x: number; z: number; radius: number }[] = [];
   private pennants: { base: THREE.Matrix4; phase: number }[] = [];
@@ -1249,8 +1288,10 @@ export class WorldStage implements Stage {
     });
   }
 
-  private animateWorld(t: number) {
+  private animateWorld(t: number, cars: readonly StageCar[] = []) {
     const s = t / 1000;
+    this.windTime.value = s;this.wakes?.update(s);
+    if(this.shoreFoam)this.shoreFoam.opacity=.38+Math.sin(s*.7)*.07;
     // the sea moves
     this.water?.update(s);
     if (this.seaMaps.length) {
@@ -1275,7 +1316,7 @@ export class WorldStage implements Stage {
     });
     for (const mesh of this.boatMeshes) mesh.instanceMatrix.needsUpdate = true;
     // Independent spectators applaud, take photos and wave to passing cars.
-    this.spectators?.update(s);
+    this.spectators?.update(s,cars);
     // bunting flutters in the breeze
     if (this.pennantMesh) {
       const sway = new THREE.Matrix4();
@@ -1343,8 +1384,14 @@ export class WorldStage implements Stage {
   /** Stars, and the low sun or the moon where the light comes from. */
   private buildSky(scene: THREE.Scene) {
     const look = this.look;
-    if (!look.stars && !look.disc) return;
     const sky = new THREE.Group();
+    if(look.lights===0){
+      const atmosphere=new Sky();atmosphere.name='daylight-atmosphere';atmosphere.scale.setScalar(450);
+      const uniforms=atmosphere.material.uniforms;uniforms.turbidity.value=2.2;uniforms.rayleigh.value=2.2;uniforms.mieCoefficient.value=.002;uniforms.mieDirectionalG.value=.82;uniforms.sunPosition.value.copy(this.sunOffset).normalize();
+      uniforms.cloudCoverage.value=.18;uniforms.cloudDensity.value=.22;uniforms.time=this.windTime;
+      atmosphere.material.fragmentShader=atmosphere.material.fragmentShader.replace('gl_FragColor = vec4( texColor, 1.0 );','gl_FragColor = vec4( texColor * vec3(.24,.29,.36), 1.0 );');
+      atmosphere.renderOrder=5;sky.add(atmosphere);this.disposables.push(atmosphere.geometry,atmosphere.material);
+    }
     if (look.stars) {
       const r = rng(99);
       const pos: number[] = [];
@@ -1372,7 +1419,7 @@ export class WorldStage implements Stage {
       sky.add(halo, disc);
       this.disposables.push(glow, disc.material, halo.material);
     }
-    sky.renderOrder = -1;
+    sky.renderOrder = 5;
     scene.add(sky);
     this.sky = sky;
   }
@@ -1440,13 +1487,8 @@ export class WorldStage implements Stage {
       scene.add(mesh);this.disposables.push(geometry, material);
     }
 
-    const cloudMat = new THREE.MeshStandardMaterial({
-      color: this.look.clouds[0],
-      roughness: 1,
-      emissive: this.look.clouds[0],
-      emissiveIntensity: this.look.clouds[1],
-      fog: false,
-    });
+    const cloudMap = finishTexture('cloud');this.disposables.push(cloudMap);
+    const cloudMat = new THREE.MeshBasicMaterial({ map:cloudMap, color:this.look.clouds[0], transparent:true, opacity:this.look.stars ? .32 : .8, depthWrite:false, fog:false, side:THREE.DoubleSide });
     const puffs: { m: THREE.Matrix4 }[] = [];
     for (let i = 0; i < 9; i++) {
       const cx = -120 + r() * 260;
@@ -1457,7 +1499,7 @@ export class WorldStage implements Stage {
         puffs.push({ m: mat4(cx + (k - 2) * 7 + r() * 3, cy + r() * 3, cz + r() * 4, s * 1.4, s, s) });
       }
     }
-    const cloudMesh = instanced(new THREE.SphereGeometry(1, 16, 10), cloudMat, puffs, false);
+    const cloudMesh = instanced(new THREE.PlaneGeometry(2.6,1.5), cloudMat, puffs, false);
     scene.add(cloudMesh);
     this.clouds = cloudMesh;
     this.disposables.push(cloudMesh.geometry, cloudMat);
@@ -1685,7 +1727,7 @@ export class WorldStage implements Stage {
 
   frame(dt: number, t: number, cars: StageCar[], target: number) {
     this.flyGulls(t);
-    this.animateWorld(t);
+    this.animateWorld(t,cars);
     this.lightStart();
     const wantPos = new THREE.Vector3();
     const wantLook = new THREE.Vector3();
@@ -1753,6 +1795,7 @@ export class WorldStage implements Stage {
     this.sun.position.copy(p).add(this.sunOffset);
     if (this.sky) this.sky.position.copy(this.camera.position);
     this.updateHeadlights(cars);
+    this.airShow?.update(t / 1000, this.camera);
     this.sun.target.updateMatrixWorld();
   }
 

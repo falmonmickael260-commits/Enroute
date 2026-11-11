@@ -93,11 +93,14 @@ export function createRoadsideCrowd(scene: THREE.Scene, spots: SpectatorSpot[]) 
   const limb=(m:THREE.InstancedMesh,i:number,from:THREE.Vector3,to:THREE.Vector3,radius:number)=>{
     delta.subVectors(to,from);const length=delta.length();local.compose(v.copy(from).add(to).multiplyScalar(.5),q.setFromUnitVectors(up,delta.normalize()),scale.set(radius,length*.58,radius));m.setMatrixAt(i,result.multiplyMatrices(root,local));
   };
-  function update(time:number){
+  function update(time:number,cars:readonly {position:{x:number;z:number}}[] = []){
     people.forEach((p,i)=>{
+      let nearest=Infinity,turn=0;
+      for(const car of cars){const distance=Math.hypot(car.position.x-p.x,car.position.z-p.z);if(distance<nearest){nearest=distance;const angle=Math.atan2(car.position.x-p.x,car.position.z-p.z)-p.yaw;turn=Math.atan2(Math.sin(angle),Math.cos(angle));}}
+      const attention=Math.max(0,1-nearest/12),yaw=p.yaw+THREE.MathUtils.clamp(turn,-.6,.6)*attention*.5;
       const sway=Math.sin(time*1.3+p.phase)*.035,cheer=p.pose===0?Math.max(0,Math.sin(time*3+p.phase))*.023:0;
-      local.compose(v.set(p.x,p.y,p.z),q.setFromEuler(e.set(0,p.yaw,0)),scale.set(p.height*p.width,p.height,p.height));shadows.setMatrixAt(i,local);
-      root.compose(v.set(p.x,p.y+cheer,p.z),q.setFromEuler(e.set(0,p.yaw,sway)),scale.set(p.height*p.width,p.height,p.height));
+      local.compose(v.set(p.x,p.y,p.z),q.setFromEuler(e.set(0,yaw,0)),scale.set(p.height*p.width,p.height,p.height));shadows.setMatrixAt(i,local);
+      root.compose(v.set(p.x,p.y+cheer,p.z),q.setFromEuler(e.set(0,yaw,sway)),scale.set(p.height*p.width,p.height,p.height));
       for(const m of [torso,legs,shoes,head,hair,faces])m.setMatrixAt(i,root);
       if(p.skirt)skirts.setMatrixAt(i,root);else skirts.setMatrixAt(i,hidden);
       if(p.hat)hats.setMatrixAt(i,root);else hats.setMatrixAt(i,hidden);

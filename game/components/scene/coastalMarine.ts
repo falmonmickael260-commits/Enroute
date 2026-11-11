@@ -85,10 +85,11 @@ export function createSailboatParts(): BoatPart[] {
 
 function seaNormals() {
   const size = 128, data = new Uint8Array(size * size * 4), n = new THREE.Vector3();
+  const waves=Array.from({length:12},(_,i)=>({x:1+(i*5)%9,z:(i%2?-1:1)*(1+(i*3)%7),phase:i*2.399,amplitude:.055/(1+i*.38)}));
   for (let y = 0; y < size; y++) for (let x = 0; x < size; x++) {
     const u = x / size * Math.PI * 2, v = y / size * Math.PI * 2;
-    const dx = 0.28 * Math.cos(u * 2 + v) + 0.13 * Math.cos(u * 5 - v * 3);
-    const dz = 0.14 * Math.cos(u * 2 + v) - 0.08 * Math.cos(u * 5 - v * 3);
+    let dx=0,dz=0;
+    for(const wave of waves){const slope=Math.cos(u*wave.x+v*wave.z+wave.phase)*wave.amplitude;dx+=slope*wave.x;dz+=slope*wave.z;}
     n.set(-dx, -dz, 1).normalize(); const i = (y * size + x) * 4;
     data[i] = (n.x * 0.5 + 0.5) * 255; data[i + 1] = (n.y * 0.5 + 0.5) * 255; data[i + 2] = (n.z * 0.5 + 0.5) * 255; data[i + 3] = 255;
   }
@@ -103,21 +104,27 @@ export function createSeaMaterial(color: string, ripple: THREE.Texture, glint: T
   const normalMap = seaNormals(), time = { value: 0 };
   const material = new THREE.MeshPhysicalMaterial({
     color, map: ripple, normalMap, normalScale: new THREE.Vector2(0.45, 0.45),
-    roughness: 0.25, metalness: 0.08, clearcoat: 0.6, clearcoatRoughness: 0.2, ior: 1.333,
-    emissive: glintColor, emissiveMap: glint, emissiveIntensity: glintStrength * 0.12,
+    roughness: 0.29, metalness: 0.02, clearcoat: 0.6, clearcoatRoughness: 0.2, ior: 1.333,
+    emissive: glintColor, emissiveMap: glint, emissiveIntensity: glintStrength * 0.055,
     polygonOffset: true, polygonOffsetFactor: 2, polygonOffsetUnits: 4,
   });
   material.onBeforeCompile = shader => {
     shader.uniforms.uSeaTime = time;
-    shader.vertexShader = `uniform float uSeaTime;\n${shader.vertexShader}`;
+    shader.vertexShader = `uniform float uSeaTime; varying vec3 vCoastalWater;\n${shader.vertexShader}`;
+    shader.fragmentShader = `varying vec3 vCoastalWater;\n${shader.fragmentShader}`;
     shader.vertexShader = shader.vertexShader.replace("#include <beginnormal_vertex>", `#include <beginnormal_vertex>
       float phaseA = position.x * 0.45 + position.z * 0.31 + uSeaTime * 0.65;
       float phaseB = position.x * -0.28 + position.z * 0.61 - uSeaTime * 0.48;
-      objectNormal = normalize(vec3(-0.01575 * cos(phaseA) + 0.0042 * cos(phaseB), 1.0, -0.01085 * cos(phaseA) - 0.00915 * cos(phaseB)));
+      objectNormal = normalize(vec3(-0.02475 * cos(phaseA) + 0.007 * cos(phaseB), 1.0, -0.01705 * cos(phaseA) - 0.01525 * cos(phaseB)));
     `).replace("#include <begin_vertex>", `#include <begin_vertex>
-      transformed.y += 0.035 * sin(phaseA) + 0.015 * sin(phaseB);
+      transformed.y += 0.055 * sin(phaseA) + 0.025 * sin(phaseB);
+      vCoastalWater = (modelMatrix * vec4(transformed,1.0)).xyz;
+    `);
+    shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>', `#include <color_fragment>
+      float offshore = smoothstep(8.0,80.0,vCoastalWater.x - 12.5 - sin(vCoastalWater.z * .077) * 2.6);
+      diffuseColor.rgb *= mix(vec3(1.08,1.06,1.0),vec3(.58,.82,.96),offshore);
     `);
   };
-  material.customProgramCacheKey = () => "kilomax-coastal-water-v1";
+  material.customProgramCacheKey = () => "kilomax-coastal-water-v2";
   return { material, normalMap, update(seconds: number) { time.value = seconds; normalMap.offset.set(seconds * 0.008, -seconds * 0.005); } };
 }

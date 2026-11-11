@@ -1,5 +1,5 @@
 import * as THREE from "three";
-import { treeCrown } from "./coastalNature";
+import { treeCrown, branchingTrunk } from "./coastalNature";
 import type { CoastalHouse } from "./coastalArchitecture";
 
 type Plant = { m: THREE.Matrix4; c: THREE.Color };
@@ -132,4 +132,24 @@ export function buildVillageGardens(scene: THREE.Scene, homes: CoastalHouse[], g
   disposables.push(stoneGeo, stoneMat, foliage, leafMat);
   if (stones.length) { const m = new THREE.InstancedMesh(stoneGeo, stoneMat, stones.length);stones.forEach((p, i) => m.setMatrixAt(i, p));m.receiveShadow = true;scene.add(m); }
   if (hedges.length) { const m = new THREE.InstancedMesh(foliage, leafMat, hedges.length);hedges.forEach((p, i) => {m.setMatrixAt(i, p.matrix);m.setColorAt(i, p.color)});m.castShadow = m.receiveShadow = true;scene.add(m); }
+}
+
+/** Low-detail olive groves add a middle distance without loading dense near-tree geometry. */
+export function buildGroveBackdrop(scene:THREE.Scene,ground:(x:number,z:number)=>number,clear:(x:number,z:number)=>boolean,homes:CoastalHouse[],disposables:{dispose():void}[],leafMap:THREE.Texture|null=null){
+  const crowns:THREE.Matrix4[]=[],trunks:THREE.Matrix4[]=[],positions:{x:number;z:number}[]=[],colors:THREE.Color[]=[];
+  const q=new THREE.Quaternion(),p=new THREE.Vector3(),scale=new THREE.Vector3();
+  for(let i=0;i<1100&&positions.length<72;i++){
+    const x=-70+hash(i,71)*58,z=-150+hash(i,91)*165;
+    if(groveDensity(x,z)<.26||!clear(x,z)||homes.some(h=>Math.hypot(x-h.x,z-h.z)<Math.hypot(h.w,h.d)*.5+2.3)||positions.some(p=>Math.hypot(x-p.x,z-p.z)<3.8))continue;
+    const y=Math.max(ground(x,z),foothillHeight(x,z)),size=.72+hash(i,44)*.48,rotation=hash(i,12)*Math.PI*2;
+    positions.push({x,z});q.setFromAxisAngle(THREE.Object3D.DEFAULT_UP,rotation);
+    trunks.push(new THREE.Matrix4().compose(p.set(x,y+.7*size,z),q,scale.set(.15*size,1.4*size,.15*size)));
+    crowns.push(new THREE.Matrix4().compose(p.set(x,y+1.55*size,z),q,scale.set(1.15*size,.8*size,1.02*size)));
+    colors.push(new THREE.Color().setHSL(.23+hash(i,32)*.025,.22,.34+hash(i,13)*.08));
+  }
+  const geometry=treeCrown(true);geometry.scale(1.6,1.5,1.6);const foliage=new THREE.InstancedMesh(geometry,new THREE.MeshStandardMaterial({map:leafMap,alphaTest:.4,side:THREE.DoubleSide,vertexColors:true,roughness:1}),crowns.length);
+  const wood=new THREE.InstancedMesh(branchingTrunk(),new THREE.MeshStandardMaterial({color:'#7f7259',roughness:1}),trunks.length);
+  foliage.name='distant-olive-groves';wood.name='distant-olive-trunks';crowns.forEach((m,i)=>{foliage.setMatrixAt(i,m);foliage.setColorAt(i,colors[i]);wood.setMatrixAt(i,trunks[i]);});
+  foliage.receiveShadow=wood.receiveShadow=true;scene.add(foliage,wood);disposables.push(geometry,foliage.material as THREE.Material,wood.geometry,wood.material as THREE.Material);
+  return positions;
 }

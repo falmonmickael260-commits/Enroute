@@ -172,6 +172,12 @@ export function createRoadVehicle(id: RoadCarId, color: string, repaint = true):
   // Rear screen and windscreen are inset inside wide painted pillars.
   add(panel([[-W*.299,glassBase,rear*L+L*.004],[W*.299,glassBase,rear*L+L*.004],[W*.222,glassTop,roofRear*L-L*.020],[-W*.222,glassTop,roofRear*L-L*.020]]),glass);
   add(panel([[W*.30,glassBase,front*L-L*.004],[-W*.30,glassBase,front*L-L*.004],[-W*.219,glassTop,roofFront*L+L*.020],[W*.219,glassTop,roofFront*L+L*.020]]),glass);
+  const highBrake=add(box(W*.16,H*.012,L*.005),brakeLights,0,glassTop-H*.014,roofRear*L-L*.023);
+  highBrake.rotation.x=Math.atan2((roofRear-rear)*L,peak-base);
+  for(let line=0;line<3;line++){
+    const t=.25+line*.17,y=THREE.MathUtils.lerp(glassBase,glassTop,t),z=THREE.MathUtils.lerp(rear*L+L*.004,roofRear*L-L*.020,t)-L*.003;
+    add(box(W*(.52-t*.12),H*.0018,L*.001),trim,0,y,z);
+  }
   // Glazing follows the side of the trapezoid. Keep a B pillar on four-door bodies.
   for(const side of [-1,1]){
     const sidePane=(z0:number,z1:number,t0:number,t1:number)=>add(panel([

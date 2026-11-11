@@ -1,4 +1,50 @@
-# Décor de Kilomax — aperçu de travail
+# Kilomax — décor, voitures et finition de la course
+
+## Finition globale et avion REVANCHE GAME
+
+Cette passe travaille l'ensemble du décor avec une palette de bord de mer, des matières plus fines et des animations discrètes. Le tracé, la largeur de route, les gabarits des voitures et la vue arrière de conduite sont conservés.
+
+### L'avion pendant la course
+
+Un avion à hélice accompagne la course avec une banderole « REVANCHE GAME ». Hélice, léger roulis et tissu sont animés. Son trajet d'accompagnement reste dans la partie gauche du cadre pour garder le texte visible pendant les changements de joueur et de champ de vision. Le modèle est éclairé et ses pièces se masquent correctement entre elles ; la banderole reste lisible sur les ambiances jour, crépuscule et nuit.
+
+![Avion et banderole réellement utilisés dans le jeu](avion-revanche-game.webp)
+
+### Vue du jeu sur mobile
+
+| Avant cette passe | Finition globale |
+| --- | --- |
+| ![Avant](finition-avant.webp) | ![Après](finition-mobile.webp) |
+
+[Visite du circuit — 20 secondes, sans interface](kilomax-visite.mp4) · [Partie enregistrée — 30 secondes, avec interface](kilomax-mobile.mp4)
+
+La visite est rendue image par image à 24 images par seconde avec les modèles, les matières, les animations du décor et la caméra arrière du moteur. Elle parcourt le circuit jusqu'à l'arrivée et montre aussi le champ de vision du turbo. C'est un aperçu visuel du décor, distinct de l'enregistrement de la partie et d'une mesure de performances sur téléphone.
+
+![Après les actions de jeu](finition-en-course.webp)
+
+### Ce qui change dans l'ensemble du décor
+
+- Mer : vaguelettes moins régulières, dégradé vers le large, reflets atténués, écume qui varie doucement et sillages en V attachés aux voiliers.
+- Ciel et végétation : ciel atmosphérique de jour, bancs de nuages doux, feuillages qui bougent dans une brise et oliviers au second plan.
+- Route : bitume noir conservé avec un relief de grain très fin, accotements minéraux, petits plots réfléchissants dans les intervalles du marquage, glissières moins brillantes et murets en pierre avec chaperons.
+- Maisons : enduit et tuiles en relief discret, balcons et garde-corps, pots, stores, descentes de gouttière et lampes de porche éclairées à la tombée du jour.
+- Panneaux : émail en dégradé discret et bordure intérieure, en conservant les indications et les positions.
+- Voitures : feux de freinage en hauteur et lignes de dégivrage sur les lunettes arrière, sans changer les dimensions ni les interfaces d'animation.
+- Personnages : les spectateurs se tournent légèrement vers les voitures proches en conservant leurs poses et leurs gestes décalés.
+
+![Littoral, villages et végétation](finition-littoral.webp)
+
+![Balcons, végétation et détails des villas](finition-villas.webp)
+
+| Crépuscule | Nuit |
+| --- | --- |
+| ![Crépuscule](finition-crepuscule.webp) | ![Nuit](finition-nuit.webp) |
+
+Les vues rapprochées et d'ensemble inspectent le moteur du jeu sans son interface ; elles ne remplacent pas la caméra de conduite. Le rendu reste stylisé. Les captures Chromium utilisent le rendu logiciel et ne mesurent pas la fluidité sur téléphone.
+
+### Vérifications de cette passe
+
+Compilation de production, TypeScript et ESLint ciblé. Contrôles des 12 gabarits de voitures, des roues et des couleurs ; 1 272 points de sol inchangés près de la route ; espacement et ancrage des arbres ; géométries et animations de la foule ; géométries des voiliers et paramètres de l'eau. La banderole a été vérifiée sur 72 combinaisons de taille d'écran, de champ de vision, d'orientation et de temps. Les trois ambiances sont rendues sans erreur JavaScript ou de shader dans le navigateur. La partie de production vérifie 200 km, 100 km puis turbo, avec des distances finales de 300 km et 100 km et sans erreur JavaScript.
 
 ## Foule et personnages au bord de la route
 
