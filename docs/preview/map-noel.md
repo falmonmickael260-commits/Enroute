@@ -14,6 +14,10 @@ Cette capture utilise les voitures et la vue arrière du jeu. Les images sont ca
 ![Chalets et sapins](noel-village.webp)
 ![Fenêtres et décorations de nuit](noel-nuit.webp)
 
+## Vue mobile
+
+![La map de Noël dans une partie mobile](noel-mobile.webp)
+
 ## Une neige qui tombe
 
 1 000 flocons descendent doucement dans l’espace 3D, avec un léger déplacement latéral. Le volume de neige se renouvelle autour de la caméra ; les flocons restent placés dans le monde et respectent la profondeur du décor. Ils ne sont pas une image superposée à l’écran. Leur position dépend du temps, sans cumul dépendant du nombre d’images par seconde.
