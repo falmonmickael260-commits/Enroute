@@ -1,4 +1,6 @@
 import * as THREE from "three";
+import { createUrbanWorld } from "./urbanWorld";
+import type { RaceMap } from "@/game/lib/store/raceMapStore";
 import { Sky } from "three/examples/jsm/objects/Sky.js";
 import { finishTexture, createBoatWakes } from "./coastalFinish";
 import { createAirShow } from "./airShow";
@@ -443,7 +445,7 @@ export class WorldStage implements Stage {
   private sky: THREE.Group | null = null;
   private headlightParts: { beam: THREE.MeshBasicMaterial; lamp: THREE.SpriteMaterial; beamGeo: THREE.PlaneGeometry } | null = null;
 
-  constructor(ambiance: AmbianceId = "jour") {
+  constructor(ambiance: AmbianceId = "jour", private readonly raceMap: RaceMap = "coast") {
     this.look = LOOKS[ambiance] ?? LOOKS.jour;
     this.sunOffset = new THREE.Vector3(...this.look.sun[2]);
     this.sunToWorld = new THREE.Matrix4().lookAt(this.sunOffset, new THREE.Vector3(), new THREE.Vector3(0, 1, 0));
@@ -476,6 +478,7 @@ export class WorldStage implements Stage {
   private finishTarget = 1000;
   private signs: THREE.Group | null = null;
   private scene: THREE.Scene | null = null;
+  private city: ReturnType<typeof createUrbanWorld> | null = null;
 
   init(renderer: THREE.WebGLRenderer, scene: THREE.Scene) {
     this.scene = scene;
@@ -508,6 +511,15 @@ export class WorldStage implements Stage {
     this.sun.shadow.radius = 2;
     scene.add(this.sun, this.sun.target);
 
+    if (this.raceMap === "city") {
+      this.buildRoad(scene);
+      this.city = createUrbanWorld(scene, this.road, this.look.lights);
+      this.disposables.push(this.city);
+      this.buildStartAndFinish(scene);
+      this.buildCelebration(scene);
+      this.buildSky(scene);
+      return;
+    }
     this.bridges = this.findBridges();
     this.buildTerrain(scene);
     this.buildSea(scene);
@@ -664,7 +676,7 @@ export class WorldStage implements Stage {
     const asphalt = asphaltTexture();
     const kerb = kerbTexture();
     const roadMat = new THREE.MeshStandardMaterial({ map: asphalt, roughness: 0.96, metalness: 0, envMapIntensity: 0.08 });
-    const kerbMat = new THREE.MeshStandardMaterial({ map: kerb, roughness: 0.6 });
+    const kerbMat = new THREE.MeshStandardMaterial({ map: this.raceMap === "city" ? null : kerb, color: this.raceMap === "city" ? "#d5d2c9" : "#ffffff", roughness: this.raceMap === "city" ? 0.8 : 0.6 });
     const aggregate = finishTexture('grain'), gravel = finishTexture('gravel');
     aggregate.repeat.set(2,16);gravel.repeat.set(1,4);roadMat.bumpMap=aggregate;roadMat.bumpScale=.0025;
     this.disposables.push(aggregate,gravel);
@@ -691,6 +703,8 @@ export class WorldStage implements Stage {
       this.disposables.push(skirt.geometry);
     }
     this.disposables.push(asphalt, kerb, roadMat, kerbMat, shoulderMat, skirtMat);
+
+    if (this.raceMap === "city") return;
 
     // guard rail on the sea side
     const railGeo = railBand(this.road, HALF_WIDTH + 0.95, 0.32, 0.5);
@@ -1290,6 +1304,7 @@ export class WorldStage implements Stage {
 
   private animateWorld(t: number, cars: readonly StageCar[] = []) {
     const s = t / 1000;
+    this.city?.update(s,cars);
     this.windTime.value = s;this.wakes?.update(s);
     if(this.shoreFoam)this.shoreFoam.opacity=.38+Math.sin(s*.7)*.07;
     // the sea moves

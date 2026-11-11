@@ -1,5 +1,6 @@
 "use client";
 
+import { RACE_MAPS, setRaceMap, useRaceMap } from "@/game/lib/store/raceMapStore";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSetupStore, PLAYER_COLORS } from "@/game/lib/store/setupStore";
@@ -53,6 +54,7 @@ export default function CreateGamePage() {
   const [target, setTarget] = useState(1000);
   const [mode, setMode] = useState<Mode>("online");
   const boardView = useBoardView();
+  const raceMap = useRaceMap();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const platformUsername = peekPlatformUsername(getIncomingPlatformToken());
@@ -106,6 +108,22 @@ export default function CreateGamePage() {
           ))}
         </div>
       </section>
+
+      {boardView === "3d" ? (
+        <section>
+          <SectionLabel icon={<MapIcon />}>Circuit</SectionLabel>
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
+            {RACE_MAPS.map(map => (
+              <button key={map.id} onClick={() => setRaceMap(map.id)} aria-pressed={raceMap === map.id} aria-label={map.label} className="menu-option relative overflow-hidden text-left">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={map.image} alt="" className="aspect-[1.6/1] w-full object-cover" />
+                <span className="block px-3 pt-2 font-menu text-base font-bold">{map.label}</span>
+                <span className="block px-3 pb-3 text-xs text-white/70">{map.hint}</span>
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
 
       {mode === "local" ? (
         <section>

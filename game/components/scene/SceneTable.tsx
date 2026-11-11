@@ -1,5 +1,6 @@
 "use client";
 
+import { useRaceMap } from "@/game/lib/store/raceMapStore";
 import { useCallback, useEffect, useState } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import clsx from "clsx";
@@ -50,6 +51,7 @@ export function SceneTable({
   scene?: SceneDef;
   showViewToggle?: boolean;
 }) {
+  const raceMap = useRaceMap();
   const currentEvent = useAnimationQueue(state.animationQueue, consumeAnimation);
   const { enabled: soundOn, toggle: toggleSound, play } = useSound();
   const [handRef, handBox] = useElementSize<HTMLDivElement>();
@@ -258,7 +260,7 @@ export function SceneTable({
           </motion.div>
         ) : null}
       </AnimatePresence>
-      {intro ? <IntroCinematic title="KILOMAX" subtitle={`Corniche d'Azur · ${state.target} km`} onDone={endIntro} /> : null}
+      {intro ? <IntroCinematic title="KILOMAX" subtitle={`${raceMap === 'city' ? 'Grand Boulevard' : "Corniche d’Azur"} · ${state.target} km`} onDone={endIntro} /> : null}
       {winner && !scene && !victoryReady ? <FinishCinematic name={winner.name} color={CAR_PAINT[winner.color]} /> : null}
       {isMyTurn ? (
         <TargetPicker pending={controls.pendingTarget} state={state} onPick={controls.resolveTarget} onCancel={controls.cancelTarget} />

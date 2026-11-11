@@ -1,5 +1,6 @@
 "use client";
 
+import { useRaceMap } from "@/game/lib/store/raceMapStore";
 import { useEffect, useRef, useState } from "react";
 import type { AnimationEvent, GameState } from "@/game/types/game";
 import { useElementSize } from "@/game/hooks/useElementSize";
@@ -39,6 +40,7 @@ export function WorldBoard({
   /** The world is on screen (first frame drawn). */
   onReady?: () => void;
 }) {
+  const map = useRaceMap();
   const [boxRef, box] = useElementSize<HTMLDivElement>();
   const [canvas, setCanvas] = useState<HTMLCanvasElement | null>(null);
   const [ready, setReady] = useState(false);
@@ -50,7 +52,7 @@ export function WorldBoard({
 
   useEffect(() => {
     if (!canvas) return;
-    const renderer = new SceneRenderer(canvas, new WorldStage(stateRef.current.ambiance));
+    const renderer = new SceneRenderer(canvas, new WorldStage(stateRef.current.ambiance, map));
     rendererRef.current = renderer;
     let shown = false;
     renderer.onFrame = (positions: Map<string, CarScreenPos>) => {
@@ -92,14 +94,14 @@ export function WorldBoard({
       renderer.dispose();
       rendererRef.current = null;
     };
-  }, [canvas]);
+  }, [canvas, map]);
 
   useEffect(() => {
     if (!box.width || !box.height) return;
     widthRef.current = box.width;
     const dpr = Math.min(window.devicePixelRatio || 1, 1.75);
     rendererRef.current?.resize(box.width, box.height, dpr, bottomInset);
-  }, [box.width, box.height, bottomInset, canvas]);
+  }, [box.width, box.height, bottomInset, canvas, map]);
 
   useEffect(() => {
     const prev = stateRef.current;
