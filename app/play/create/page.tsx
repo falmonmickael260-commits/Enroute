@@ -112,6 +112,7 @@ export default function CreateGamePage() {
       {boardView === "3d" ? (
         <section>
           <SectionLabel icon={<MapIcon />}>Circuit</SectionLabel>
+          <p className="mb-3 text-xs text-white/65">Le décor est choisi pour cet appareil.</p>
           <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
             {RACE_MAPS.map(map => (
               <button key={map.id} onClick={() => setRaceMap(map.id)} aria-pressed={raceMap === map.id} aria-label={map.label} className="menu-option relative overflow-hidden text-left">
