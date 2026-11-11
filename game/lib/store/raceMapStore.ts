@@ -2,10 +2,11 @@
 
 import { useSyncExternalStore } from "react";
 
-export type RaceMap = "coast" | "city";
+export type RaceMap = "coast" | "city" | "christmas";
 export const RACE_MAPS = [
   { id: "coast", label: "Corniche d’Azur", hint: "Mer, falaises et villages", image: "/images/menu/map-coast.webp" },
   { id: "city", label: "Grand Boulevard", hint: "Immeubles, commerces et terrasses", image: "/images/menu/map-city.webp" },
+  { id: "christmas", label: "Village de Noël", hint: "Chalets, sapins et neige qui tombe", image: "/images/menu/map-christmas.webp" },
 ] as const;
 // Like the board view, the scenery is a visual preference of this device.
 const KEY = "kilomax:race-map";
@@ -14,7 +15,7 @@ let current: RaceMap = "coast", hydrated = false;
 export function getRaceMap(): RaceMap {
   if (!hydrated && typeof window !== "undefined") {
     hydrated = true;
-    try { if (localStorage.getItem(KEY) === "city") current = "city"; } catch { /* Private browsing. */ }
+    try { const stored = localStorage.getItem(KEY); if (stored === "city" || stored === "christmas") current = stored; } catch { /* Private browsing. */ }
   }
   return current;
 }

@@ -22,7 +22,7 @@ const DISTANCES = [700, 1000, 1500];
 export default function Scene3DPage({ searchParams }: { searchParams: Promise<{ n?: string; demo?: string; km?: string; map?: string }> }) {
   const params = use(searchParams);
   const router = useRouter();
-  useEffect(() => { if (params.map === "city" || params.map === "coast") setRaceMap(params.map); }, [params.map]);
+  useEffect(() => { if (params.map === "city" || params.map === "coast" || params.map === "christmas") setRaceMap(params.map); }, [params.map]);
   const n = Math.max(2, Math.min(MAX_PLAYERS, Number(params.n) || 2));
   const demo = params.demo === "1";
   const target = DISTANCES.includes(Number(params.km)) ? Number(params.km) : 1000;
