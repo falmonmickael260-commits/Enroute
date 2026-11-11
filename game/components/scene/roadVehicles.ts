@@ -25,46 +25,31 @@ export const ROAD_PROFILES: Record<RoadCarId, Profile> = {
 export const isRoadCar = (id: string): id is RoadCarId => (ROAD_CAR_IDS as readonly string[]).includes(id);
 
 interface Section { z: number; width: number; bottom: number; top: number }
-/** Smooth longitudinal panels, with proper wheel openings in the lower silhouette. */
-function loft(sections: Section[], cabin = false) {
+/** Bevelled body sections: flat bonnet/deck and doors with a narrow shoulder. */
+function loft(sections: Section[]) {
   const positions: number[] = [], uv: number[] = [], indices: number[] = [];
-  const sides = 24;
-  sections.forEach((s, row) => {
-    for (let j = 0; j < sides; j++) {
-      const a = j / sides * Math.PI * 2, c = Math.cos(a), n = Math.sin(a);
-      const x = Math.sign(c) * Math.pow(Math.abs(c), cabin ? 0.65 : 0.45) * s.width;
-      const y = cabin ? s.bottom + Math.pow(Math.max(0, n), 0.8) * (s.top - s.bottom) : (s.bottom + s.top) / 2 + Math.sign(n) * Math.pow(Math.abs(n), 0.7) * (s.top - s.bottom) / 2;
-      positions.push(x, y, s.z);uv.push(j / sides, row / (sections.length - 1));
-      if (row < sections.length - 1) {
-        const p = row * sides + j, next = row * sides + (j + 1) % sides;
-        indices.push(p, next, p + sides, next, next + sides, p + sides);
-      }
-    }
+  // Counter-clockwise from the right sill; the broad panels stay almost planar.
+  const ring = [[1,.12],[1,.73],[.97,.89],[.88,.98],[.65,1],[0,1.012],[-.65,1],[-.88,.98],[-.97,.89],[-1,.73],[-1,.12],[-.9,0],[.9,0]];
+  const sides = ring.length;
+  sections.forEach((section,row)=>{
+    ring.forEach(([x,y],j)=>{
+      positions.push(x*section.width,section.bottom+y*(section.top-section.bottom),section.z);
+      uv.push(j/sides,row/(sections.length-1));
+      if(row<sections.length-1){const a=row*sides+j,b=row*sides+(j+1)%sides;indices.push(a,b,a+sides,b,b+sides,a+sides);}
+    });
   });
-  for (const [row, front] of [[0, false], [sections.length - 1, true]] as const) {
-    const s = sections[row], centre = positions.length / 3;
-    positions.push(0, (s.bottom + s.top) / 2, s.z);uv.push(0.5, 0.5);
-    for (let j = 0; j < sides; j++) {
-      const a = row * sides + j, b = row * sides + (j + 1) % sides;
-      indices.push(...(front ? [centre, a, b] : [centre, b, a]));
-    }
+  for(const row of [0,sections.length-1]){
+    const section=sections[row],centre=positions.length/3;
+    positions.push(0,(section.bottom+section.top)/2,section.z);uv.push(.5,.5);
+    for(let j=0;j<sides;j++){const a=row*sides+j,b=row*sides+(j+1)%sides;indices.push(...(row===0?[centre,b,a]:[centre,a,b]));}
   }
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setAttribute("uv", new THREE.Float32BufferAttribute(uv, 2));
-  geometry.setIndex(indices);geometry.computeVertexNormals();return geometry;
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(positions,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(indices);g.computeVertexNormals();return g;
 }
 
-/** Painted roof follows the curved glazing surface instead of sitting on a box. */
-function roofSkin(sections: Section[], lift: number) {
-  const points:number[]=[],uv:number[]=[],indices:number[]=[],n=12;
-  sections.forEach((s,row)=>{for(let i=0;i<=n;i++){
-    const a=Math.PI/4+i/n*Math.PI/2,c=Math.cos(a);
-    points.push(Math.sign(c)*Math.pow(Math.abs(c),.65)*s.width,s.bottom+Math.pow(Math.sin(a),.8)*(s.top-s.bottom)+lift,s.z);
-    uv.push(i/n,row/(sections.length-1));
-    if(row<sections.length-1&&i<n){const p=row*(n+1)+i;indices.push(p,p+1,p+n+1,p+1,p+n+2,p+n+1)}
-  }});
-  const g=new THREE.BufferGeometry();g.setAttribute("position",new THREE.Float32BufferAttribute(points,3));g.setAttribute("uv",new THREE.Float32BufferAttribute(uv,2));g.setIndex(indices);g.computeVertexNormals();return g;
+/** A panel is one surface, allowing separate rear, windscreen and side glazing. */
+function panel(corners: number[][]) {
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(corners.flat(),3));
+  g.setAttribute('uv',new THREE.Float32BufferAttribute([0,0,1,0,1,1,0,1],2));g.setIndex([0,1,2,0,2,3]);g.computeVertexNormals();return g;
 }
 
 function rod(a: THREE.Vector3, b: THREE.Vector3, radius: number) {
@@ -129,26 +114,26 @@ export function createRoadVehicle(id: RoadCarId, color: string, repaint = true):
   const profile = ROAD_PROFILES[id], [W, H, L] = profile.size, style = profile.style;
   const root = new THREE.Group(), body = new THREE.Group();root.name = `vehicle-${id}`;root.add(body);
   const livery = !repaint && id === "taxi" ? "#f2c32c" : !repaint && id === "police" ? "#e5e9eb" : color;
-  const paint = vehiclePaint(livery);paint.name = "vehicle-paint";
+  const paint = vehiclePaint(livery);paint.name = "vehicle-paint";paint.roughness = .42;paint.clearcoat = .38;
   const trim = new THREE.MeshStandardMaterial({ color: "#1e2429", roughness: 0.76, name: "vehicle-trim" });
-  const glass = new THREE.MeshPhysicalMaterial({ color: "#263d48", metalness: 0.12, roughness: 0.16, clearcoat: 0.6, name: "vehicle-glass" });
+  const glass = new THREE.MeshPhysicalMaterial({ color: "#263d48", metalness: 0.12, roughness: 0.20, clearcoat: 0.4, side: THREE.DoubleSide, name: "vehicle-glass" });
   const alloy = new THREE.MeshStandardMaterial({ color: "#bdc4c9", metalness: 0.7, roughness: 0.28, name: "vehicle-alloy" });
   const tyre = new THREE.MeshStandardMaterial({ color: "#151719", roughness: 0.92 });
   const disc = new THREE.MeshStandardMaterial({ color: "#596167", metalness: 0.6, roughness: 0.5 });
-  const headlight = new THREE.MeshStandardMaterial({ color: "#edf5f6", emissive: "#e0f1ff", emissiveIntensity: 0.8, roughness: 0.2, name: "vehicle-headlights" });
-  const brakeLights = new THREE.MeshStandardMaterial({ color: "#a91e25", emissive: "#ff2525", emissiveIntensity: 0.3, roughness: 0.3, name: "vehicle-tail-lights" });
+  const headlight = new THREE.MeshStandardMaterial({ color: "#edf5f6", emissive: "#e0f1ff", emissiveIntensity: 0.12, roughness: 0.2, name: "vehicle-headlights" });
+  const brakeLights = new THREE.MeshStandardMaterial({ color: "#a91e25", emissive: "#ff2525", emissiveIntensity: 0.08, roughness: 0.3, name: "vehicle-tail-lights" });
   const roofRatio = id === "taxi" || id === "police" ? 0.84 : 0.98;
-  const R = Math.min(H * 0.27, L * 0.108), tyreWidth = W * 0.105, axle = L * (style === "van" ? 0.3 : 0.315);
+  const R = Math.min(H * 0.255, L * 0.103), tyreWidth = W * 0.115, axle = L * (style === "van" ? 0.3 : 0.315);
   const add = (g: THREE.BufferGeometry, m: THREE.Material, x = 0, y = 0, z = 0, rx = 0) => {const mesh = new THREE.Mesh(g, m);mesh.position.set(x, y, z);mesh.rotation.x = rx;body.add(mesh);return mesh;};
   const box = (w: number, h: number, d: number, r = 0.01) => new RoundedBoxGeometry(w, h, d, 2, Math.min(r, w * 0.45, h * 0.45, d * 0.45));
-  const belt = H * (style === "coupe" ? 0.49 : 0.53);
+  const belt = H * (style === "coupe" ? 0.64 : 0.61);
   const sections: Section[] = [];
   for (let i = 0; i <= 64; i++) {
     const u = i / 64, z = (u - 0.5) * L;
-    const well = Math.max(...[-axle, axle].map(at => Math.abs(z - at) < R * 1.1 ? R + Math.sqrt((R * 1.1) ** 2 - (z - at) ** 2) : 0));
+    const well = Math.max(...[-axle, axle].map(at => Math.abs(z - at) < R * 1.055 ? R + Math.sqrt((R * 1.055) ** 2 - (z - at) ** 2) : 0));
     const bottom = Math.max(H * 0.17, well);
-    const taper = 0.76 + 0.24 * Math.pow(Math.sin(u * Math.PI), 0.35);
-    const top = Math.max(bottom + H * 0.045, belt - H * 0.035 * Math.pow(Math.abs(u - 0.5) * 2, 4));
+    const taper = 0.94 + 0.06 * Math.sin(u * Math.PI);
+    const top = Math.max(bottom + H * 0.018, belt - H * 0.045 * Math.pow(Math.abs(u - 0.5) * 2, 6));
     sections.push({ z, width: W * 0.43 * taper, bottom, top });
   }
   add(loft(sections), paint);
@@ -160,52 +145,72 @@ export function createRoadVehicle(id: RoadCarId, color: string, repaint = true):
   const roofRear = style === "pickup" ? -0.015 : long ? -0.3 : -0.17;
   const roofFront = style === "van" ? 0.26 : style === "retro" ? 0.1 : 0.07;
   const base = belt - H * 0.025, peak = H * roofRatio;
+  // Painted structure underneath individual glass panes, with visible C/A pillars.
   const cabin = [
-    {z:rear*L,width:W*.32,bottom:base,top:base+H*.025},
-    {z:(rear*.45+roofRear*.55)*L,width:W*.34,bottom:base,top:base+(peak-base)*.78},
-    {z:roofRear*L,width:W*.33,bottom:base,top:peak-H*.012},
-    {z:(roofRear+roofFront)*L*.5,width:W*.33,bottom:base,top:peak},
-    {z:roofFront*L,width:W*.32,bottom:base,top:peak-H*.012},
-    {z:(roofFront*.45+front*.55)*L,width:W*.35,bottom:base,top:base+(peak-base)*.5},
-    {z:front*L,width:W*.36,bottom:base,top:base+H*.01},
+    {z:rear*L,width:W*.355,bottom:base,top:base+H*.018},
+    {z:roofRear*L,width:W*.288,bottom:base,top:peak-H*.012},
+    {z:(roofRear+roofFront)*L*.5,width:W*.29,bottom:base,top:peak},
+    {z:roofFront*L,width:W*.285,bottom:base,top:peak-H*.012},
+    {z:front*L,width:W*.355,bottom:base,top:base+H*.015},
   ];
-  add(loft(cabin, true), style === "van" ? paint : glass);
-  add(roofSkin(cabin.slice(2,5),H*.003),paint);
-  // Slender pillars and real panel gaps replace the old blocks of flat glass.
-  for (const side of [-1, 1]) {
-    for (const [z, end] of [[roofRear * L, rear * L], [roofFront * L, front * L]]) {
-      add(rod(new THREE.Vector3(side * W * 0.35, base, end), new THREE.Vector3(side * W * 0.26, base + (peak - base) * 0.76, z), W * 0.012), paint);
-    }
-    if (style !== "coupe") add(rod(new THREE.Vector3(side * W * .35, base, -L*.025),new THREE.Vector3(side * W * .26,base+(peak-base)*.76,-L*.025),W*.012),trim);
-    add(rod(new THREE.Vector3(side*W*.34,H*.58,L*.13),new THREE.Vector3(side*W*.43,H*.61,L*.13),W*.013),trim);
-    add(box(W*.09,H*.065,L*.08),paint,side*W*.455,H*.61,L*.13);
-    add(box(W*.016,H*.025,L*.095),alloy,side*W*.424,H*.47,-L*.045);
-    add(box(W*.009,H*.21,L*.003),trim,side*W*.424,H*.32,-L*.12);
-    if (style === "van") add(box(W*.012,H*.23,L*.22),glass,side*W*.345,H*.73,L*.15);
+  // Side silhouette extruded through a trapezoidal cabin section.
+  const cabinRing = (section: Section) => [
+    [-W*.355,base,section.z],[W*.355,base,section.z],
+    [section.width*.84,section.top-H*.035,section.z],[section.width*.79,section.top-H*.012,section.z],
+    [-section.width*.79,section.top-H*.012,section.z],[-section.width*.84,section.top-H*.035,section.z],
+  ];
+  const cabinPositions=cabin.flatMap(section=>cabinRing(section).flat()),cabinIndices:number[]=[];
+  for(let row=0;row<cabin.length-1;row++)for(let j=0;j<6;j++){
+    const a=row*6+j,b=row*6+(j+1)%6;cabinIndices.push(a,b,a+6,b,b+6,a+6);
   }
-  if (style === "van") {
-    const windshield = new THREE.PlaneGeometry(W*.58,H*.31);
-    add(windshield,glass,0,H*.72,L*.345,-0.43);
+  const cabinGeometry=new THREE.BufferGeometry();cabinGeometry.setAttribute('position',new THREE.Float32BufferAttribute(cabinPositions,3));
+  cabinGeometry.setAttribute('uv',new THREE.Float32BufferAttribute(cabin.flatMap(()=>[0,0,1,0,1,.8,.9,1,.1,1,0,.8]),2));
+  cabinGeometry.setIndex(cabinIndices);cabinGeometry.computeVertexNormals();
+  // Each panel has distinct normals; no inflated smoothing around the glazing.
+  const crispCabin=cabinGeometry.toNonIndexed();crispCabin.computeVertexNormals();cabinGeometry.dispose();add(crispCabin,paint);
+  const glassBase=base+H*.035,glassTop=peak-H*.043;
+  // Rear screen and windscreen are inset inside wide painted pillars.
+  add(panel([[-W*.299,glassBase,rear*L+L*.004],[W*.299,glassBase,rear*L+L*.004],[W*.222,glassTop,roofRear*L-L*.020],[-W*.222,glassTop,roofRear*L-L*.020]]),glass);
+  add(panel([[W*.30,glassBase,front*L-L*.004],[-W*.30,glassBase,front*L-L*.004],[-W*.219,glassTop,roofFront*L+L*.020],[W*.219,glassTop,roofFront*L+L*.020]]),glass);
+  // Glazing follows the side of the trapezoid. Keep a B pillar on four-door bodies.
+  for(const side of [-1,1]){
+    const sidePane=(z0:number,z1:number,t0:number,t1:number)=>add(panel([
+      [side*W*.349,glassBase,z0*L],[side*W*.349,glassBase,z1*L],
+      [side*W*.259,glassTop,t1*L],[side*W*.259,glassTop,t0*L],
+    ]),glass);
+    if(style==='pickup')sidePane(rear+.018,front-.035,roofRear+.012,roofFront-.025);
+    else if(style==='coupe'||style==='retro')sidePane(rear+.035,front-.035,roofRear+.025,roofFront-.025);
+    else {sidePane(rear+.04,-.036,roofRear+.026,-.036);sidePane(-.012,front-.035,-.012,roofFront-.025);}
+    add(rod(new THREE.Vector3(side*W*.34,H*.59,L*.13),new THREE.Vector3(side*W*.435,H*.60,L*.13),W*.009),trim);
+    add(box(W*.075,H*.043,L*.067),paint,side*W*.455,H*.60,L*.13);
+    add(box(W*.008,H*.013,L*.07),alloy,side*W*.431,H*.5,-L*.055);
+    add(box(W*.004,H*.20,L*.002),trim,side*W*.431,H*.35,-L*.12);
+    if(style!=='coupe'&&style!=='retro')add(box(W*.004,H*.20,L*.002),trim,side*W*.431,H*.35,L*.10);
   }
   if (style === "pickup") {
     add(box(W*.68,H*.018,L*.32),trim,0,belt+H*.02,-L*.3);
     for (const side of [-1,1]) add(box(W*.065,H*.12,L*.36),paint,side*W*.37,belt+H*.06,-L*.3);
     add(box(W*.8,H*.1,L*.035),paint,0,belt+H*.05,-L*.465);
   }
-  add(box(W*.65,H*.115,L*.025),trim,0,H*.29,-L*.485);
-  add(box(W*.65,H*.1,L*.022),trim,0,H*.26,L*.486);
-  add(box(W*.46,H*.08,L*.008),trim,0,H*.37,L*.496);
+  add(box(W*.79,H*.12,L*.025),paint,0,H*.28,-L*.485);
+  add(box(W*.70,H*.045,L*.018),trim,0,H*.235,-L*.502);
+  add(box(W*.79,H*.10,L*.023),paint,0,H*.27,L*.486);
+  add(box(W*.43,H*.065,L*.012),trim,0,H*.32,L*.504);
   for(const side of [-1,1]) {
-    if(style === "retro") {
-      const lamp=new THREE.CylinderGeometry(H*.075,H*.075,L*.012,24);lamp.rotateX(Math.PI/2);add(lamp,headlight,side*W*.28,H*.43,L*.492);
-    } else add(box(W*.22,H*.06,L*.014),headlight,side*W*.22,H*.43,L*.505);
-    add(box(W*.20,H*.055,L*.008),brakeLights,side*W*.22,H*.43,-L*.505);
-    add(box(W*.12,H*.018,L*.008),brakeLights,side*W*.24,H*.37,-L*.505);
-    const pipe=new THREE.TorusGeometry(L*.015,L*.003,6,16);add(pipe,alloy,side*W*.25,H*.21,-L*.495);
+    if(style === 'retro') {
+      const lamp=new THREE.CylinderGeometry(H*.058,H*.058,L*.012,24);lamp.rotateX(Math.PI/2);add(lamp,headlight,side*W*.28,H*.465,L*.505);
+    } else add(box(W*.235,H*.045,L*.014),headlight,side*W*.275,H*.465,L*.505);
+    add(box(W*.25,H*.075,L*.014),trim,side*W*.275,H*.505,-L*.501);
+    add(box(W*.22,H*.043,L*.016),brakeLights,side*W*.275,H*.513,-L*.51);
+    add(box(W*.055,H*.014,L*.017),headlight,side*W*.21,H*.489,-L*.511);
+    add(box(W*.095,H*.013,L*.01),brakeLights,side*W*.30,H*.27,-L*.513);
+    const pipe=new THREE.TorusGeometry(L*.012,L*.0025,6,16);add(pipe,alloy,side*W*.26,H*.21,-L*.505);
   }
-  for (let i=-2;i<=2;i++) add(box(W*.013,H*.09,L*.06),trim,i*W*.09,H*.2,-L*.46);
-  const plate=plateMaterial("KILOMAX");const rearPlate=add(new THREE.PlaneGeometry(W*.28,H*.085),plate,0,H*.34,-L*.501);rearPlate.rotation.y=Math.PI;
-  if (style === "retro") {add(box(W*.65,H*.045,L*.025),alloy,0,H*.3,-L*.486);add(box(W*.65,H*.045,L*.025),alloy,0,H*.3,L*.486);}
+  const plate=plateMaterial('KM-260-MX');const rearPlate=add(new THREE.PlaneGeometry(W*.27,H*.062),plate,0,H*.34,-L*.509);rearPlate.rotation.y=Math.PI;
+  // Subtle tailgate seam and badge; rear face remains readable from the game camera.
+  add(box(W*.55,H*.004,L*.003),trim,0,(belt-H*.055),-L*.505);
+  add(box(W*.035,H*.016,L*.004),alloy,0,H*.485,-L*.505);
+  if(style==='retro') {add(box(W*.78,H*.028,L*.02),alloy,0,H*.30,-L*.505);add(box(W*.78,H*.028,L*.02),alloy,0,H*.30,L*.505);}
   if(id === "taxi") {
     add(box(W*.38,H*.09,L*.13),headlight,0,H*.945,-L*.03);
     const taxiPlate=plateMaterial("TAXI");add(new THREE.PlaneGeometry(W*.34,H*.075),taxiPlate,0,H*.945,L*.036);

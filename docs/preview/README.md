@@ -1,22 +1,22 @@
 # Décor de Kilomax — aperçu de travail
 
-## Voitures remodelées
+## Voitures inspirées des modèles de série
 
-Douze carrosseries sont reconstruites avec des panneaux courbes, des vitrages inclinés, des passages de roues, des jantes, des rétroviseurs et des feux distincts. Leurs dimensions extérieures restent celles des modèles précédents. Les roues indépendantes, le freinage, les crevaisons et les points de fixation des équipements conservent leur interface d'animation.
+Les carrosseries ont maintenant un capot et un coffre plus plats, des flancs avec une ligne d'épaule et des passages de roues moins bombés. L'habitacle est peint, avec des montants visibles, une lunette arrière, un pare-brise et des vitres latérales distinctes. Les blocs de feux, les pare-chocs, les plaques et les rétroviseurs sont plus discrets. Les matériaux présentent des reflets atténués. Ces modèles restent stylisés pour le jeu mobile ; ce ne sont pas des reproductions de marques automobiles.
 
-Rendus de détail des modèles réellement utilisés dans le jeu :
-
-| Coupé | SUV |
+| Version précédente | Nouvelle carrosserie |
 | --- | --- |
-| ![Coupé](voiture-coupe.webp) | ![SUV](voiture-suv.webp) |
+| ![Avant](voiture-coupe-ancienne.webp) | ![Nouveau coupé](voiture-coupe.webp) |
 
-| Rétro | Van |
-| --- | --- |
-| ![Rétro](voiture-retro.webp) | ![Van](voiture-van.webp) |
+Rendus des modèles réellement utilisés dans le jeu :
+
+| SUV | Van | Rétro |
+| --- | --- | --- |
+| ![SUV](voiture-suv.webp) | ![Van](voiture-van.webp) | ![Rétro](voiture-retro.webp) |
 
 ![Voitures dans la course sur mobile](voitures-en-course.webp)
 
-Les miniatures du garage correspondent aux nouveaux modèles. La caméra de course, la route et les animations de conduite n'ont pas été modifiées par cette passe. Les véhicules spéciaux (motos, kart, formule, proto et tracteur) conservent leur modèle.
+Les 12 gabarits extérieurs restent identiques aux modèles précédents. Les quatre roues, les feux de freinage et les fixations des équipements conservent leur interface d'animation. Les miniatures du garage correspondent aux nouvelles formes. La caméra de course, la route et la logique de conduite n'ont pas changé. Les véhicules spéciaux (motos, kart, formule, proto et tracteur) conservent leur modèle.
 
 ## Bitume plus noir
 
@@ -41,7 +41,7 @@ De petits chemins de pierres et des haies relient les maisons au terrain. La lum
 
 ![Village, chemins et plantations](village-jardins.webp)
 
-Le sol à proximité de la route conserve son profil d'origine. La route, les voitures et la caméra arrière sont conservées.
+Le sol à proximité de la route conserve son profil d'origine. La route et la caméra arrière sont conservées.
 
 
 ## Panneaux et portiques
