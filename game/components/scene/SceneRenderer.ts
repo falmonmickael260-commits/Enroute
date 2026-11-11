@@ -1,4 +1,6 @@
 import * as THREE from "three";
+import { createCardEffects } from "./cardEffects";
+import { driveProgress, boostEnvelope, punctureAmount, collisionPose, overtakePose, smooth, type MotionStyle } from "./cardAnimation";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import type { DefenseType, HazardType } from "@/game/types/game";
 import type { Stage, Shot, StageCar } from "./stage";
@@ -7,7 +9,6 @@ import {
   createBadge,
   createBarrier,
   createBeacon,
-  createBeam,
   createBlobShadow,
   createBullBar,
   createCar,
@@ -58,11 +59,11 @@ export interface CarScreenPos {
 }
 
 /** What the next move looks like, from the card that caused it. */
-export type MoveStyle = "drive" | "fast" | "turbo" | "shortcut" | "overtake" | "sprint";
+export type MoveStyle = MotionStyle;
 
 export type SceneCue =
   | { kind: "move"; style: MoveStyle }
-  | { kind: "repair" }
+  | { kind: "repair"; cause?: HazardType }
   | { kind: "shield" }
   | { kind: "gps" };
 
@@ -88,11 +89,6 @@ function slotsFor(count: number): { lateral: number; along: number }[] {
 }
 
 const easeInOut = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
-const easeOutBack = (t: number) => {
-  const c1 = 1.9;
-  const c3 = c1 + 1;
-  return 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
-};
 const clamp01 = (t: number) => Math.max(0, Math.min(1, t));
 /** Vehicles modelled in code, by id (the others are loaded from their file). */
 const BUILT: Record<string, (color: string) => CarModel> = { kilomax: createCar, moto: createMoto, scooter: createScooter, quad: createQuad };
@@ -100,10 +96,12 @@ const UNIT_SCALE = new THREE.Vector3(1, 1, 1);
 /** A wheel's own size, as its model made it (the Kenney cars shrink theirs). */
 const restScale = (wheel: THREE.Object3D): THREE.Vector3 => (wheel.userData.rest as THREE.Vector3 | undefined) ?? UNIT_SCALE;
 const pulse = (t: number) => Math.sin(clamp01(t) * Math.PI);
+const flatWheel = (wheels: THREE.Mesh[]) => wheels.find(w=>/rear|back/i.test(w.name)) ?? wheels.reduce<THREE.Mesh|undefined>((best,w)=>!best||w.position.z<best.position.z?w:best,undefined);
 
 interface Particle {
   sprite: THREE.Sprite;
   age: number;
+  born: number;
   life: number;
   vel: THREE.Vector3;
   grow: number;
@@ -120,6 +118,7 @@ interface Prop {
   born: number;
   /** Set when the hazard was cleared: the prop plays its exit then goes. */
   leaving: number | null;
+  recoveryFrom?: number;
   update: (prop: Prop, now: number, car: CarEntity) => boolean | void;
 }
 
@@ -135,7 +134,7 @@ interface CarEntity {
   model: CarModel;
   ring: THREE.Mesh;
   flame: THREE.Group;
-  beam: THREE.Mesh;
+  effects: ReturnType<typeof createCardEffects>;
   km: number;
   fromKm: number;
   toKm: number;
@@ -152,7 +151,6 @@ interface CarEntity {
   equipment: Map<DefenseType, Equipment>;
   lastPuff: number;
   bubbleAt: number;
-  beamAt: number;
   active: boolean;
   scale: number;
   /** Which car model is shown (or on its way). */
@@ -170,6 +168,7 @@ export class SceneRenderer {
   private target = 1000;
   private raf = 0;
   private last = 0;
+  private frameTime = 0;
   private disposed = false;
   private fireworksUntil = 0;
   private lastFirework = 0;
@@ -225,18 +224,23 @@ export class SceneRenderer {
     const car = this.cars.get(playerId);
     if (!car) return;
     if (cue.kind === "move") car.pendingStyle = cue.style;
-    else if (cue.kind === "repair") this.burst(car.model.root, "#8dffbe", 16, 0.7);
-    else if (cue.kind === "shield") car.bubbleAt = now;
-    else if (cue.kind === "gps") car.beamAt = now;
+    else if (cue.kind === "repair") {
+      const wheel=flatWheel(car.model.wheels),at=wheel?car.frame.worldToLocal(wheel.getWorldPosition(new THREE.Vector3())):undefined;
+      car.effects.repair(now,cue.cause,at);
+    }
+    else if (cue.kind === "shield") {car.bubbleAt = now;car.effects.shield(now);}
+    else if (cue.kind === "gps") {car.effects.gps(now);}
   }
 
   /** Back to the start grid (new game). */
   reset() {
     for (const car of this.cars.values()) {
+      car.effects.dispose();
       this.scene.remove(car.frame);
       for (const prop of car.props.values()) if (prop.world) this.scene.remove(prop.world);
     }
     this.cars.clear();
+    for(const p of this.particles){this.scene.remove(p.sprite);p.sprite.material.dispose();}this.particles.length=0;
     this.fireworksUntil = 0;
     this.winnerId = null;
   }
@@ -288,7 +292,7 @@ export class SceneRenderer {
         car.style = car.pendingStyle ?? (dist >= target * 0.15 ? "fast" : "drive");
         car.pendingStyle = null;
         const base = Math.min(2600, 950 + (dist / Math.max(1, target)) * 5200);
-        car.moveDur = car.style === "turbo" ? base * 0.8 : car.style === "overtake" ? Math.max(1900, base) : car.style === "sprint" ? base * 1.15 : base;
+        car.moveDur = car.style === "turbo" ? Math.max(1400,base * 0.8) : car.style === "overtake" ? Math.max(3200, base) : car.style === "sprint" ? base * 1.15 : base;
       }
       car.active = p.active;
       this.syncHazards(car, p, now);
@@ -297,7 +301,8 @@ export class SceneRenderer {
 
     for (const [id, car] of this.cars) {
       if (!seen.has(id)) {
-        this.scene.remove(car.frame);
+        car.effects.dispose();
+      this.scene.remove(car.frame);
         for (const prop of car.props.values()) if (prop.world) this.scene.remove(prop.world);
         this.cars.delete(id);
       }
@@ -312,8 +317,7 @@ export class SceneRenderer {
     flame.position.copy(model.exhaust);
     flame.visible = false;
     model.body.add(flame);
-    const beam = createBeam();
-    frame.add(ring, model.root, beam);
+    frame.add(ring, model.root);
     if (this.stage.castShadows) {
       model.root.traverse((o) => {
         if ((o as THREE.Mesh).isMesh) o.castShadow = true;
@@ -326,7 +330,7 @@ export class SceneRenderer {
       model,
       ring,
       flame,
-      beam,
+      effects: createCardEffects(frame),
       km: p.km,
       fromKm: p.km,
       toKm: p.km,
@@ -342,7 +346,6 @@ export class SceneRenderer {
       equipment: new Map(),
       lastPuff: 0,
       bubbleAt: -1e9,
-      beamAt: -1e9,
       active: p.active,
       scale: 1,
       carId: "kilomax",
@@ -429,7 +432,7 @@ export class SceneRenderer {
     if (p.hazard) wanted.add(p.hazard);
     if (p.limited) wanted.add("radar");
     for (const [kind, prop] of car.props) {
-      if (!wanted.has(kind) && prop.leaving === null) prop.leaving = now;
+      if (!wanted.has(kind) && prop.leaving === null) {prop.leaving=now;if(kind==="crevaison")prop.recoveryFrom=punctureAmount(now-prop.born);}
     }
     for (const kind of wanted) {
       const existing = car.props.get(kind);
@@ -460,16 +463,15 @@ export class SceneRenderer {
       root.add(barrier);
       prop.update = (pr, t) => {
         const a = clamp01((t - pr.born) / 700);
-        const fall = 1 - easeOutBack(a);
-        barrier.position.y = Math.max(0, fall) * 2.2;
-        barrier.rotation.z = (1 - a) * 0.25 * Math.sin(a * 12);
+        const arrival=smooth(a);
+        barrier.position.x=side*(1-arrival)*1.1;barrier.position.y=.025*Math.sin(Math.PI*a);
+        barrier.rotation.y=side*(1-arrival)*.35;
         beacon.emissiveIntensity = 0.3 + (Math.sin(t / 110) > 0 ? 1.8 : 0);
-        if (a === 1 && t - pr.born < 760) this.burst(barrier, "#e8dcc4", 7, 0.5);
+
         if (pr.leaving !== null) {
           const b = clamp01((t - pr.leaving) / 650);
-          barrier.position.y = easeInOut(b) * 1.6;
-          barrier.scale.setScalar(1.35 * (1 - easeInOut(b)) + 0.001);
-          if (b < 0.2) this.burst(barrier, "#9dffc4", 2, 0.5);
+          barrier.position.x=side*smooth(b)*1.6;barrier.rotation.y=side*smooth(b)*Math.PI*.45;
+          barrier.scale.setScalar(1.35*(1-smooth((b-.55)/.45))+.001);
           return b >= 1;
         }
       };
@@ -492,18 +494,18 @@ export class SceneRenderer {
       root.add(plate);
       prop.update = (pr, t) => {
         const a = clamp01((t - pr.born) / 600);
-        radar.scale.set(1.7, 1.7 * easeOutBack(a), 1.7);
-        const f = clamp01((t - pr.born - 650) / 350);
-        const strobe = f > 0 && f < 1 ? Math.sin(f * Math.PI) : 0;
-        flash.intensity = strobe * 6;
+        radar.scale.set(1.7, 1.7 * smooth(a), 1.7);
+        const age=t-pr.born-500;
+        const strobe=Math.max(pulse(age/110)*(age>=0&&age<=110?1:0),pulse((age-190)/110)*(age>=190&&age<=300?1:0));
+        flash.intensity = strobe * 3.2;
         (flashSprite.material as THREE.SpriteMaterial).opacity = strobe;
-        flashSprite.scale.setScalar(0.4 + strobe * 3.2);
+        flashSprite.scale.setScalar(0.18 + strobe * 1.05);
         const pa = clamp01((t - pr.born - 750) / 450);
-        plate.scale.setScalar(0.46 * easeOutBack(pa) + 0.025 * Math.sin(t / 240));
+        plate.scale.setScalar(0.36 * smooth(pa));
         if (pr.leaving !== null) {
           const b = clamp01((t - pr.leaving) / 600);
           radar.scale.set(1.7, 1.7 * (1 - easeInOut(b)) + 0.001, 1.7);
-          plate.scale.setScalar(0.46 * (1 - easeInOut(b)) + 0.001);
+          plate.scale.setScalar(0.36 * (1 - smooth(b)) + 0.001);
           return b >= 1;
         }
       };
@@ -516,45 +518,51 @@ export class SceneRenderer {
       root.add(badge);
       prop.update = (pr, t, c) => {
         const a = clamp01((t - pr.born) / 500);
-        nails.scale.setScalar(1.5 * easeOutBack(a) + 0.001);
-        badge.scale.setScalar(0.44 * easeOutBack(clamp01((t - pr.born - 700) / 400)) + 0.025 * Math.sin(t / 180));
+        nails.scale.setScalar(1.05 * smooth(a) + 0.001);
+        badge.scale.setScalar(0.30 * smooth((t-pr.born-650)/450));
         // the flat tyre is squashed from the wheel's own size (car files size their
         // wheels), flat side down, and the car leans over onto it
         // (a car modelled in one piece has no wheel to squash: it only leans)
-        const wheel = c.model.wheels[0] as THREE.Object3D | undefined;
+        const wheel = flatWheel(c.model.wheels);
         const rest = wheel ? restScale(wheel) : UNIT_SCALE;
         const lean = wheel ? Math.sign(wheel.position.x) || 1 : 1;
-        let k = easeInOut(clamp01((t - pr.born - 250) / 450));
+        let k = punctureAmount(t-pr.born);
+        if(wheel&&!wheel.userData.suspensionRest)wheel.userData.suspensionRest=wheel.position.clone();
         if (pr.leaving !== null) {
-          const b = clamp01((t - pr.leaving) / 700);
-          k = 1 - easeInOut(b);
-          nails.scale.setScalar(1.5 * (1 - b) + 0.001);
-          badge.scale.setScalar(0.44 * (1 - b) + 0.001);
+          const b = clamp01((t - pr.leaving) / 950);
+          k = (pr.recoveryFrom??1)*punctureAmount(t-pr.born,t-pr.leaving);
+          nails.scale.setScalar(1.05 * (1 - smooth(b)) + 0.001);
+          badge.scale.setScalar(0.30 * (1 - smooth(b)) + 0.001);
           if (b >= 1) {
             c.model.body.rotation.z = 0;
             c.model.body.position.y = 0;
             wheel?.scale.copy(rest);
+            if(wheel){wheel.position.copy(wheel.userData.suspensionRest as THREE.Vector3);for(const child of wheel.children)if(child.userData.tyreRestScale)child.scale.copy(child.userData.tyreRestScale as THREE.Vector3);}
             return true;
           }
         }
-        c.model.body.rotation.z = -0.2 * k * lean;
-        c.model.body.position.y = -0.03 * k;
+        c.model.body.rotation.z = -0.045 * k * lean;
+        c.model.body.position.y = -0.018 * k;
         if (!wheel) return;
         // flat side down: back to its resting angle, squashed along its vertical axis
         const axle = (wheel.userData.axle as "x" | "y" | "z" | undefined) ?? "x";
         const up = (wheel.userData.up as "x" | "y" | "z" | undefined) ?? "y";
         wheel.rotation[axle] = 0;
         wheel.scale.copy(rest);
-        wheel.scale[up] *= 1 - 0.55 * k;
-        for (const ax of ["x", "y", "z"] as const) if (ax !== up && ax !== axle) wheel.scale[ax] *= 1 - 0.1 * k;
-        if (t - pr.born > 250 && t - pr.born < 700 && t - c.lastPuff > 60) {
+        const tyreFactor=1-.28*k;wheel.scale[up] *= tyreFactor;
+        const neutral=wheel.userData.suspensionRest as THREE.Vector3;wheel.position.copy(neutral);wheel.position.y=neutral.y*tyreFactor;
+        for (const ax of ["x", "y", "z"] as const) if (ax !== up && ax !== axle) wheel.scale[ax] *= 1 + 0.03 * k;
+        // Rubber compresses and bulges; compensate the alloy/disc children so the rim stays round.
+        for(const child of wheel.children){child.userData.tyreRestScale??=child.scale.clone();child.scale.copy(child.userData.tyreRestScale as THREE.Vector3);for(const ax of ["x","y","z"] as const)child.scale[ax]/=wheel.scale[ax]/rest[ax];}
+        if (t - pr.born > 250 && t - pr.born < 700 && t - c.lastPuff > 140) {
           c.lastPuff = t;
           // the air escapes at that wheel
           const at = c.model.root.worldToLocal(wheel.getWorldPosition(new THREE.Vector3()));
-          this.emit(c.model.root, at.setY(0.1), "#ffffff", 0.9, 700, 1.2);
+          this.emit(c.model.root, at.setY(0.1), "#dce3df", 0.38, 450, 0.45);
         }
       };
     } else if (kind === "collision") {
+      car.effects.impact(now);
       const tri = createTriangle();
       tri.position.set(0.1, 0, -1.05);
       tri.scale.setScalar(2);
@@ -563,28 +571,26 @@ export class SceneRenderer {
       badge.position.set(0.62 * side, 0.75, 0);
       root.add(badge);
       prop.update = (pr, t, c) => {
-        const a = clamp01((t - pr.born) / 650);
-        let k = easeOutBack(a);
-        tri.scale.setScalar(2 * easeOutBack(clamp01((t - pr.born - 500) / 400)) + 0.001);
-        badge.scale.setScalar(0.42 * easeOutBack(clamp01((t - pr.born - 300) / 400)) + 0.03 * Math.sin(t / 160));
-        if (t - c.lastPuff > 110 && pr.leaving === null) {
+        tri.scale.setScalar(1.5 * smooth((t-pr.born-450)/450) + 0.001);
+        badge.scale.setScalar(0.30 * smooth((t-pr.born-400)/450));
+        if (t - c.lastPuff > 500 && pr.leaving === null) {
           c.lastPuff = t;
-          this.emit(c.model.root, new THREE.Vector3((Math.random() - 0.5) * 0.2, 0.35, 0.35), "#55565c", 0.8, 1500, 1.6);
+          this.emit(c.model.root, new THREE.Vector3((Math.random() - 0.5) * 0.2, 0.35, 0.35), "#697078", 0.35, 1250, 0.65);
         }
-        if (t - pr.born < 90) this.burst(c.model.root, "#ffd27a", 6, 0.6);
+
         if (pr.leaving !== null) {
-          const b = clamp01((t - pr.leaving) / 700);
-          k = 1 - easeInOut(b);
-          tri.scale.setScalar(2 * (1 - b) + 0.001);
-          badge.scale.setScalar(0.42 * (1 - b) + 0.001);
+          const b = clamp01((t - pr.leaving) / 1000);
+          tri.scale.setScalar(1.5 * (1 - smooth(b)) + 0.001);
+          badge.scale.setScalar(0.30 * (1 - smooth(b)) + 0.001);
           if (b >= 1) {
             c.model.body.rotation.set(0, 0, 0);
             c.model.root.rotation.y = 0;
             return true;
           }
         }
-        c.model.root.rotation.y = 0.5 * k;
-        c.model.body.rotation.z = 0.06 * k;
+        const pose=collisionPose(t-pr.born,pr.leaving===null?undefined:t-pr.leaving);
+        c.model.root.rotation.y = pose.yaw;
+        c.model.body.rotation.z = pose.roll;
       };
     } else if (kind === "panne") {
       const badge = createBadge(drawFuel, "#f08a1c");
@@ -596,17 +602,13 @@ export class SceneRenderer {
         const jolt = a < 1 ? Math.max(0, Math.sin(a * Math.PI * 6)) * (1 - a) : 0;
         c.model.body.rotation.x = -0.05 * jolt;
         if (a < 1 && Math.sin(a * Math.PI * 6) > 0.95) this.emit(c.model.root, new THREE.Vector3(0, 0.12, -0.55), "#2b2b2e", 0.8, 700, 0.5);
-        const blink = Math.sin(t / 220) > 0 ? 1 : 0.55;
-        badge.scale.setScalar((0.44 * easeOutBack(clamp01((t - pr.born - 600) / 400)) + 0.001) * blink);
-        // a thin plume of smoke from the bonnet while it's stuck
-        if (pr.leaving === null && a >= 1 && t - c.lastPuff > 420) {
-          c.lastPuff = t;
-          this.emit(c.model.root, new THREE.Vector3((Math.random() - 0.5) * 0.1, 0.3, 0.3), "#3a3a3e", 0.5, 1600, 0.7);
-        }
+        const blink = .9+.1*Math.sin(t/420);
+        badge.scale.setScalar((0.30 * smooth((t-pr.born-600)/450) + 0.001) * blink);
         if (pr.leaving !== null) {
           const b = clamp01((t - pr.leaving) / 600);
           (badge.material as THREE.SpriteMaterial).color.set("#4cd07d");
-          badge.scale.setScalar(0.44 * (1 + b * 0.6) * (1 - b) + 0.001);
+          badge.scale.setScalar(0.30 * (1 - smooth(b)) + 0.001);
+          if(b>=1)c.model.body.rotation.x=0;
           return b >= 1;
         }
       };
@@ -617,11 +619,12 @@ export class SceneRenderer {
   // ------------------------------------------------------------ particles
 
   private spawn(world: THREE.Vector3, color: string, opacity: number, life: number, size: number, vel: THREE.Vector3, grow: number, gravity = 0) {
+    if(this.particles.length>=160)return;
     const sprite = createPuff(color, opacity);
     sprite.position.copy(world);
     sprite.scale.setScalar(size);
     this.scene.add(sprite);
-    this.particles.push({ sprite, age: 0, life, vel, grow, baseOpacity: opacity, gravity });
+    this.particles.push({ sprite, age: 0, born:this.frameTime, life, vel, grow, baseOpacity: opacity, gravity });
   }
 
   private emit(parent: THREE.Object3D, local: THREE.Vector3, color: string, opacity: number, life: number, size: number) {
@@ -635,24 +638,6 @@ export class SceneRenderer {
       new THREE.Vector3((Math.random() - 0.5) * 0.2, 0.55, (Math.random() - 0.5) * 0.2).multiplyScalar(scale),
       size * scale * 0.9,
     );
-  }
-
-  private burst(parent: THREE.Object3D, color: string, count: number, size: number) {
-    const scale = parent.getWorldScale(new THREE.Vector3()).x;
-    const origin = parent.getWorldPosition(new THREE.Vector3());
-    origin.y += 0.1 * scale;
-    for (let i = 0; i < count; i++) {
-      const a = Math.random() * Math.PI * 2;
-      this.spawn(
-        origin,
-        color,
-        0.9,
-        650,
-        size * scale * 0.25,
-        new THREE.Vector3(Math.cos(a), 0.4 + Math.random() * 0.6, Math.sin(a)).multiplyScalar(scale * 1.4),
-        size * scale * 0.35,
-      );
-    }
   }
 
   private firework(t: number) {
@@ -685,8 +670,9 @@ export class SceneRenderer {
 
   // ------------------------------------------------------------ frame loop
 
-  private loop(t: number) {
+  private loop(t: number, schedule = true) {
     if (this.disposed) return;
+    this.frameTime=t;
     const dt = Math.min(0.05, (t - (this.last || t)) / 1000);
     this.last = t;
     const positions = new Map<string, CarScreenPos>();
@@ -695,48 +681,53 @@ export class SceneRenderer {
       const prevKm = car.km;
       const m = car.model;
       let swerve = 0;
+      let passingYaw = 0;
       let flameOn = false;
       if (car.km !== car.toKm) {
         const a = clamp01((t - car.moveStart) / car.moveDur);
-        const eased = car.style === "turbo" ? 1 - Math.pow(1 - a, 3) : easeInOut(a);
+        const eased = driveProgress(car.style,a);
         car.km = car.fromKm + (car.toKm - car.fromKm) * eased;
         if (a >= 1) car.km = car.toKm;
         // squat when launching, nose dive when braking
-        const accel = a < 0.25 ? Math.sin((a / 0.25) * Math.PI) : 0;
-        const brake = a > 0.72 ? Math.sin(((a - 0.72) / 0.28) * Math.PI) : 0;
+        const accel = a < 0.25 ? Math.sin(smooth(a / 0.25) * Math.PI) : 0;
+        const brake = a > 0.72 ? Math.sin(smooth((a - 0.72) / 0.28) * Math.PI) : 0;
         const launch = car.style === "turbo" || car.style === "sprint" ? 2 : car.style === "fast" ? 1.4 : 1;
-        m.body.rotation.x = -0.06 * accel * launch + 0.07 * brake;
-        m.brakeLights.emissiveIntensity = 0.3 + brake * 2.4;
+        m.body.rotation.x = -0.035 * accel * launch + 0.045 * brake;
+        m.brakeLights.emissive.set("#ff1f2a");m.brakeLights.emissiveIntensity = 0.3 + brake * 2.4;
         // tyres smoke as it pulls away
-        if (a < 0.16 && t - car.lastSkid > 35) {
+        if (a < 0.16 && t - car.lastSkid > 95) {
           car.lastSkid = t;
           for (const side of [-1, 1]) this.emit(m.root, new THREE.Vector3(side * 0.17, 0.04, -0.36), "#d9d9d9", 0.55 * launch * 0.7, 900, 0.8);
         }
 
         const behind = new THREE.Vector3((Math.random() - 0.5) * 0.3, 0.05, -0.55);
         if (car.style === "turbo") {
-          flameOn = a < 0.85;
-          if (t - car.lastPuff > 40 && a < 0.9) {
+          flameOn = boostEnvelope(a)>.03;
+          if (t - car.lastPuff > 105 && a < 0.86) {
             car.lastPuff = t;
-            this.emit(m.root, behind, Math.random() < 0.5 ? "#63b8ff" : "#cfe9ff", 0.8, 700, 0.9);
+            this.emit(m.root, behind, "#c5dce5", 0.26, 550, 0.46);
           }
         } else if (car.style === "shortcut") {
-          m.body.position.y = Math.abs(Math.sin(a * Math.PI * 7)) * 0.05 * (1 - a);
-          m.body.rotation.z = Math.sin(a * Math.PI * 9) * 0.05 * (1 - a);
-          if (t - car.lastPuff > 45 && a < 0.9) {
+          m.body.position.y = Math.abs(Math.sin(a * Math.PI * 5)) * 0.027 * (1 - a);
+          m.body.rotation.z = Math.sin(a * Math.PI * 7) * 0.028 * (1 - a);
+          if (t - car.lastPuff > 95 && a < 0.9) {
             car.lastPuff = t;
-            this.emit(m.root, behind, "#b88a55", 0.75, 1000, 1.3);
+            this.emit(m.root, behind, "#baab8c", 0.42, 850, 0.75);
           }
         } else if (car.style === "sprint") {
-          if (t - car.lastPuff > 50 && a < 0.95) {
+          if (t - car.lastPuff > 120 && a < 0.90) {
             car.lastPuff = t;
             this.emit(m.root, behind, Math.random() < 0.5 ? "#ffd23f" : "#fff3b0", 0.95, 800, 0.7);
           }
-          if (a >= 1) this.burst(m.root, "#ffd23f", 24, 0.9);
+
         } else {
-          if (car.style === "overtake") swerve = Math.sin(a * Math.PI) * 0.95 * Math.sign(0.001 - car.lateral || 1);
+          if (car.style === "overtake") {
+            const passing=overtakePose(a,car.lateral);
+            swerve=passing.offset;
+            passingYaw=passing.yaw;
+          }
           const gap = car.style === "fast" || car.style === "overtake" ? 45 : 70;
-          if (t - car.lastPuff > gap && a > 0.05 && a < 0.9) {
+          if (car.style !== "overtake" && t - car.lastPuff > gap && a > 0.05 && a < 0.9) {
             car.lastPuff = t;
             this.emit(m.root, behind, "#e9dcc2", 0.55, 900, car.style === "fast" ? 1 : 0.7);
           }
@@ -758,12 +749,12 @@ export class SceneRenderer {
         }
       }
       car.flame.visible = flameOn;
-      if (flameOn) car.flame.scale.set(1, 1, 0.8 + Math.random() * 0.5);
+      if (flameOn) {const a=clamp01((t-car.moveStart)/car.moveDur),power=boostEnvelope(a);car.flame.scale.set(.85,.85,.5+power*.65+Math.sin(t*.043)*.06);}
 
       car.lateral += (car.lateralTarget - car.lateral) * Math.min(1, dt * 5);
       car.along += (car.alongTarget - car.along) * Math.min(1, dt * 5);
       this.place(car, car.km, swerve);
-      m.body.rotation.y = swerve * 0.35;
+      m.body.rotation.y = passingYaw;
       // lean into the bends while driving
       const yaw = car.frame.rotation.y;
       let turn = yaw - car.prevYaw;
@@ -786,7 +777,7 @@ export class SceneRenderer {
       const spin = ((car.km - prevKm) / Math.max(1, this.target)) * 900;
       for (const w of m.wheels) w.rotation[(w.userData.axle as "x" | "y" | "z" | undefined) ?? "x"] += spin;
       // idle engine shimmer
-      if (!car.props.size && car.km === car.toKm) m.body.position.y = Math.sin(t / 90 + car.id.length) * 0.004;
+      if (!car.props.size && car.km === car.toKm) m.body.position.y = Math.sin(t / 140 + car.id.length) * 0.0015;
 
       // the driver's ring breathes; the others stay dim
       const ringMat = car.ring.material as THREE.MeshBasicMaterial;
@@ -799,25 +790,21 @@ export class SceneRenderer {
       if (bubble < 1) {
         const k = pulse(bubble);
         ringMat.color.set("#5dffa0");
-        car.ring.scale.set(1 + k * 0.9, (1 + k * 0.9) * 1.35, 1);
-        ringMat.opacity = 0.95 * (1 - bubble) + 0.3;
-        if (bubble < 0.08) this.burst(m.root, "#8dffbe", 3, 0.6);
+        car.ring.scale.set(1 + k * 0.22, (1 + k * 0.22) * 1.35, 1);
+        ringMat.opacity = 0.68 * (1 - bubble) + 0.28;
+
       } else ringMat.color.set((m.paint.color as THREE.Color).getStyle());
       for (const item of car.equipment.values()) {
         const e = clamp01((t - item.born) / 650);
-        item.root.position.y = (1 - easeOutBack(e)) * 1.2;
+        item.root.position.y = (1 - smooth(e)) * .22;
         if (item.light) item.light.emissiveIntensity = 0.4 + (Math.sin(t / 130) > 0.2 ? 1.6 : 0);
       }
 
-      // GPS stratégique: a column of light from the sky
-      const beamT = clamp01((t - car.beamAt) / 1500);
-      const beamMat = car.beam.material as THREE.MeshBasicMaterial;
-      beamMat.opacity = beamT < 1 ? pulse(beamT) * 0.55 : 0;
-      car.beam.visible = beamT < 1;
-      if (beamT < 1 && t - car.lastPuff > 70) {
-        car.lastPuff = t;
-        this.emit(m.root, new THREE.Vector3((Math.random() - 0.5) * 0.5, 0.2, (Math.random() - 0.5) * 0.5), "#ffe28a", 0.9, 800, 0.5);
-      }
+      // Navigation now reads on the road instead of a beam through the sky.
+      car.effects.update(t,car.km!==car.toKm?{style:car.style,progress:clamp01((t-car.moveStart)/car.moveDur)}:undefined,along=>{
+        const pose=this.stage.place(car.km,this.target,car.lateral,car.along+along);
+        return {position:car.frame.worldToLocal(pose.position),yaw:pose.yaw-car.frame.rotation.y};
+      });
 
       for (const prop of car.props.values()) {
         if (prop.update(prop, t, car)) this.removeProp(car, prop);
@@ -839,7 +826,7 @@ export class SceneRenderer {
 
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
-      p.age += dt * 1000;
+      p.age = Math.max(0,t-p.born);
       const k = p.age / p.life;
       if (k >= 1) {
         this.scene.remove(p.sprite);
@@ -848,21 +835,22 @@ export class SceneRenderer {
         continue;
       }
       p.sprite.position.addScaledVector(p.vel, dt);
-      p.vel.multiplyScalar(0.96);
+      p.vel.multiplyScalar(Math.exp(-2.4*dt));
       p.vel.y -= p.gravity * dt;
       p.sprite.scale.setScalar(p.sprite.scale.x + p.grow * dt);
-      p.sprite.material.opacity = p.baseOpacity * (1 - k);
+      p.sprite.material.opacity = p.baseOpacity * (1 - k) * (1 - k);
     }
 
     this.renderer.render(this.scene, this.stage.camera);
     this.onFrame?.(positions);
     this.onMotion?.([...this.cars.values()].map((c) => ({ id: c.id, km: c.km })));
-    this.raf = requestAnimationFrame(this.loop);
+    if(schedule)this.raf = requestAnimationFrame(this.loop);
   }
 
   dispose() {
     this.disposed = true;
     cancelAnimationFrame(this.raf);
+    for(const car of this.cars.values())car.effects.dispose();
     this.scene.traverse((o) => {
       const m = o as THREE.Mesh;
       m.geometry?.dispose();

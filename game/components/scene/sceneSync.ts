@@ -37,7 +37,8 @@ function cueFor(prev: GameState, next: GameState): { playerId: string; cue: Scen
     return { playerId: after.id, cue: { kind: "move", style } };
   }
   if (def.category === "defense") {
-    return { playerId: after.id, cue: { kind: after.shields.length > before.shields.length ? "shield" : "repair" } };
+    const repaired=(before.hazard!==null&&after.hazard===null)||(before.limited&&!after.limited);
+    return {playerId:after.id,cue:repaired?{kind:"repair",cause:def.counters??before.hazard??"radar"}:{kind:"shield"}};
   }
   if (def.special === "gpsStrategique") return { playerId: after.id, cue: { kind: "gps" } };
   return null;

@@ -1,5 +1,15 @@
 import * as THREE from "three";
+import { Sky } from "three/examples/jsm/objects/Sky.js";
+import { finishTexture, createBoatWakes } from "./coastalFinish";
+import { createAirShow } from "./airShow";
+import { createRoadsideCrowd, placeSpectators } from "./roadsideCrowd";
+import { createDistanceSign, createFinishBanner, decorateStartGantry, createChevronParts, checkerLineTexture, disposeSignGroup } from "./roadFurniture";
+import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
+import { createSailboatParts, createSeaMaterial } from "./coastalMarine";
+import { buildCoastalVillage, selectVillageHouses } from "./coastalArchitecture";
 import type { Placement, ScreenPoint, Shot, Stage, StageCar } from "./stage";
+import { branchingTrunk, treeCrown, layeredCypress, sculptedRock, buildWildPlants } from "./coastalNature";
+import { arrangeVegetation, mountainRange, inlandFoothills, buildVillageGardens, buildGroveBackdrop, groveDensity } from "./coastalLandscape";
 import type { AmbianceId } from "@/game/types/game";
 
 /**
@@ -8,9 +18,9 @@ import type { AmbianceId } from "@/game/types/game";
  * past a village of cream houses with terracotta roofs, cypresses and pines,
  * with mountains in the haze. Units: 1 = one car length.
  *
- * The camera is a racing-game director: it sits behind the pack looking down
- * the road, chases a car while it drives, swings round a car that gets hit,
- * and circles the finish line at the end.
+ * The camera stays behind the active vehicle, looking down the road.
+ * Intro, attacks, shortcuts and the finish retain their animated effects
+ * without changing to overhead or frontal views.
  */
 
 // ---------------------------------------------------------------- the road
@@ -153,42 +163,23 @@ function canvasTexture(w: number, h: number, draw: (g: CanvasRenderingContext2D)
 
 const asphaltTexture = () =>
   canvasTexture(256, 512, (g) => {
-    g.fillStyle = "#33363c";
+    // Fresh motorway asphalt: neutral black with fine, low-contrast aggregate.
+    g.fillStyle = "#111315";
     g.fillRect(0, 0, 256, 512);
     const r = rng(7);
-    // resurfaced patches, a shade darker or lighter
-    for (let i = 0; i < 5; i++) {
-      g.fillStyle = r() > 0.5 ? "rgba(0,0,0,0.12)" : "rgba(255,255,255,0.04)";
-      g.fillRect(20 + r() * 180, r() * 480, 30 + r() * 50, 40 + r() * 90);
+    for (let i = 0; i < 6400; i++) {
+      g.fillStyle = r() > 0.45
+        ? `rgba(180,181,178,${0.015 + r() * 0.025})`
+        : `rgba(0,0,0,${0.04 + r() * 0.04})`;
+      g.fillRect(r() * 256, r() * 512, 0.7, 0.7);
     }
-    // where the tyres run, polished darker
+    // Very restrained wheel tracks; the surface stays visually continuous.
     for (const x of [52, 92, 164, 204]) {
-      const grad = g.createLinearGradient(x - 14, 0, x + 14, 0);
+      const grad = g.createLinearGradient(x - 16, 0, x + 16, 0);
       grad.addColorStop(0, "rgba(0,0,0,0)");
-      grad.addColorStop(0.5, "rgba(0,0,0,0.14)");
+      grad.addColorStop(0.5, "rgba(0,0,0,0.045)");
       grad.addColorStop(1, "rgba(0,0,0,0)");
-      g.fillStyle = grad;
-      g.fillRect(x - 14, 0, 28, 512);
-    }
-    // grain
-    for (let i = 0; i < 4200; i++) {
-      g.fillStyle = `rgba(${r() > 0.5 ? "255,255,255" : "0,0,0"},${0.04 + r() * 0.06})`;
-      g.fillRect(r() * 256, r() * 512, 1.5, 1.5);
-    }
-    // a few tar-sealed cracks
-    g.strokeStyle = "rgba(20,20,24,0.28)";
-    g.lineWidth = 1.2;
-    for (let i = 0; i < 4; i++) {
-      let x = 20 + r() * 216;
-      let y = r() * 512;
-      g.beginPath();
-      g.moveTo(x, y);
-      for (let k = 0; k < 6; k++) {
-        x += (r() - 0.5) * 18;
-        y += 6 + r() * 12;
-        g.lineTo(x, y);
-      }
-      g.stroke();
+      g.fillStyle = grad;g.fillRect(x - 16, 0, 32, 512);
     }
     // edge lines and the dashed centre line
     g.fillStyle = "#f4f4ef";
@@ -235,37 +226,6 @@ const kerbTexture = () =>
     g.fillStyle = "#df3b30";
     g.fillRect(0, 0, 16, 32);
   });
-
-function signTexture(text: string, finish = false) {
-  return canvasTexture(
-    256,
-    128,
-    (g) => {
-      if (finish) {
-        for (let x = 0; x < 16; x++)
-          for (let y = 0; y < 8; y++) {
-            g.fillStyle = (x + y) % 2 ? "#111" : "#fff";
-            g.fillRect(x * 16, y * 16, 16, 16);
-          }
-        g.fillStyle = "#fff";
-        g.fillRect(48, 24, 160, 80);
-        g.fillStyle = "#111";
-      } else {
-        g.fillStyle = "#1f3f7a";
-        g.fillRect(0, 0, 256, 128);
-        g.strokeStyle = "#f2f5fa";
-        g.lineWidth = 12;
-        g.strokeRect(6, 6, 244, 116);
-        g.fillStyle = "#fff";
-      }
-      g.font = "bold 76px Arial, sans-serif";
-      g.textAlign = "center";
-      g.textBaseline = "middle";
-      g.fillText(text, 128, 68);
-    },
-    false,
-  );
-}
 
 const skyTexture = ([top, middle, horizon]: readonly [string, string, string]) =>
   canvasTexture(
@@ -409,8 +369,8 @@ const LOOKS: Record<AmbianceId, Look> = {
   jour: {
     sky: ["#2f86dc", "#8cc6ee", "#dceff8"],
     fog: ["#cfe6f2", 70, 320],
-    hemi: ["#dcecff", "#6f7a45", 0.85],
-    sun: ["#ffe7c4", 2.3, [-26, 40, 18]],
+    hemi: ["#dcecff", "#6c7660", 1.18],
+    sun: ["#fff0d8", 1.72, [-26, 40, 18]],
     exposure: 0.95,
     env: 0.35,
     sea: "#16a2c9",
@@ -500,13 +460,12 @@ export class WorldStage implements Stage {
   private camPos = new THREE.Vector3(0, 6, 36);
   private camLook = new THREE.Vector3(0, 0, 0);
   private placed = false;
+  private cameraFocus: string | null = null;
   private shotSince = 0;
   /** Scratch camera to test a framing before using it. */
   private readonly probe = new THREE.PerspectiveCamera();
   /** Which side of the car the current close-up films (picked on its first frame). */
-  private shotSide = 0;
   /** The driving style the chase cam last framed (an overtake gets its own angle). */
-  private followStyle: string | undefined;
   /** Camera shake: when it started and how hard. */
   private shake = { at: 0, amp: 0 };
   private baseFov = 50;
@@ -544,8 +503,9 @@ export class WorldStage implements Stage {
     sc.bottom = -28;
     sc.near = 1;
     sc.far = 140;
-    this.sun.shadow.bias = -0.0008;
-    this.sun.shadow.normalBias = 0.04;
+    this.sun.shadow.bias = -0.0015;
+    this.sun.shadow.normalBias = 0.08;
+    this.sun.shadow.radius = 2;
     scene.add(this.sun, this.sun.target);
 
     this.bridges = this.findBridges();
@@ -561,6 +521,8 @@ export class WorldStage implements Stage {
     this.buildCelebration(scene);
     this.buildLighthouse(scene);
     this.buildSky(scene);
+    this.airShow = createAirShow(scene,coastX);this.disposables.push(this.airShow);
+    this.wakes = createBoatWakes(scene,this.boats,SEA_LEVEL);this.disposables.push(this.wakes);
   }
 
   // ------------------------------------------------------------ world building
@@ -568,7 +530,9 @@ export class WorldStage implements Stage {
   private terrainHeight(x: number, z: number) {
     const { dist, y: roadY } = this.road.nearest(x, z);
     // hills rise inland (to the left), cliffs drop into the sea on the right
-    const inland = Math.max(0, -x - 4) * 0.32 + Math.max(0, noise2(x, z)) * 2.2 + 0.3;
+    const original = Math.max(0, -x - 4) * 0.32 + Math.max(0, noise2(x, z)) * 2.2 + 0.3;
+    const rolling = Math.max(0, -x - 4) * 0.23 + (noise2(x * 0.38, z * 0.38) + 1.5) * 0.8 + Math.max(0, noise2(x, z)) * 0.7;
+    const inland = THREE.MathUtils.lerp(original, rolling, THREE.MathUtils.smoothstep(dist, HALF_WIDTH + 5, HALF_WIDTH + 10));
     const flat = THREE.MathUtils.smoothstep(dist, HALF_WIDTH + 1.4, HALF_WIDTH + 7);
     let h = THREE.MathUtils.lerp(roadY - 0.1, roadY + inland, flat);
     const toSea = x - coastX(z);
@@ -576,21 +540,24 @@ export class WorldStage implements Stage {
       // the road keeps solid ground under it where it skirts the cliff; only the
       // viaduct over the inlet crosses open water
       const bed = (1 - THREE.MathUtils.smoothstep(dist, HALF_WIDTH + 2.2, HALF_WIDTH + 5)) * (1 - THREE.MathUtils.smoothstep(coveAt(z), 0.15, 0.4));
-      const drop = THREE.MathUtils.smoothstep(toSea, -1.5, 1.5) * (1 - bed);
+      const freedom = THREE.MathUtils.smoothstep(dist, HALF_WIDTH + 5, HALF_WIDTH + 9);
+      const erosion = freedom * (Math.sin(z * 0.43) * 0.2 + Math.sin(z * 0.91 + 1.4) * 0.1);
+      const drop = THREE.MathUtils.smoothstep(toSea + erosion, -1.5, 1.5) * (1 - bed);
       h = THREE.MathUtils.lerp(h, SEA_LEVEL - 2.5, drop);
     }
     return h;
   }
 
   private buildTerrain(scene: THREE.Scene) {
-    const geo = new THREE.PlaneGeometry(150, 250, 110, 190);
+    const geo = new THREE.PlaneGeometry(150, 250, 150, 250);
     geo.rotateX(-Math.PI / 2);
     geo.translate(-5, 0, -60);
     const pos = geo.attributes.position as THREE.BufferAttribute;
     const colors = new Float32Array(pos.count * 3);
     const c = new THREE.Color();
-    const grass = new THREE.Color("#7eab47");
-    const olive = new THREE.Color("#a3a257");
+    const grass = new THREE.Color("#71934b");
+    const olive = new THREE.Color("#a49b6c");
+    const groveShade = new THREE.Color("#57714b");
     const rock = new THREE.Color("#d2c3a1");
     const sand = new THREE.Color("#ecdcae");
     for (let i = 0; i < pos.count; i++) {
@@ -598,10 +565,15 @@ export class WorldStage implements Stage {
       const z = pos.getZ(i);
       const h = this.terrainHeight(x, z);
       pos.setY(i, h);
-      const n = noise2(x * 2.3, z * 2.3);
-      c.copy(grass).lerp(olive, 0.35 + 0.35 * n);
+      const n = noise2(x * 0.4, z * 0.4);
+      c.copy(grass).lerp(olive, THREE.MathUtils.clamp(0.3 + 0.22 * n, 0.08, 0.6));
+      c.lerp(groveShade,groveDensity(x,z)*.18);
       const toSea = x - coastX(z);
-      if (toSea > -2.2) c.lerp(rock, THREE.MathUtils.smoothstep(toSea, -2.2, -0.2));
+      if (toSea > -3.4) {
+        const strata = 0.5 + 0.5 * Math.sin(h * 5 + z * 0.12);
+        rock.set("#c8b692").lerp(new THREE.Color("#e1d4b6"), strata * 0.35);
+        c.lerp(rock, THREE.MathUtils.smoothstep(toSea, -3.4, -0.3));
+      }
       if (h < SEA_LEVEL + 0.35 && toSea > -1) c.copy(sand);
       colors[i * 3] = c.r;
       colors[i * 3 + 1] = c.g;
@@ -610,14 +582,25 @@ export class WorldStage implements Stage {
     geo.setAttribute("color", new THREE.BufferAttribute(colors, 3));
     geo.computeVertexNormals();
     // drawn a hair behind what lies on it, so the road never flickers through the grass
-    const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.95, ...BEHIND }));
+    const ground = canvasTexture(128, 128, (g) => {
+      g.fillStyle = "#eeeadd";
+      g.fillRect(0, 0, 128, 128);
+      const grain = rng(725);
+      for (let i = 0; i < 1300; i++) {
+        g.fillStyle = i % 3 ? "rgba(63,70,33,0.045)" : "rgba(255,255,235,0.14)";
+        g.fillRect(grain() * 128, grain() * 128, 1, 1 + grain() * 2);
+      }
+    });
+    ground.repeat.set(45, 75);
+    this.disposables.push(ground);
+    const mesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({ map: ground, vertexColors: true, roughness: 0.95, ...BEHIND }));
     mesh.receiveShadow = true;
     scene.add(mesh);
     this.disposables.push(geo, mesh.material as THREE.Material);
   }
 
   private buildSea(scene: THREE.Scene) {
-    const geo = new THREE.PlaneGeometry(400, 400);
+    const geo = new THREE.PlaneGeometry(400, 400, 128, 128);
     geo.rotateX(-Math.PI / 2);
     // ripples drift one way and the sun glints sparkle the other
     const ripples = rippleTexture();
@@ -625,38 +608,67 @@ export class WorldStage implements Stage {
     ripples.repeat.set(37, 41);
     glints.repeat.set(70, 70);
     this.seaMaps = [ripples, glints];
-    const sea = new THREE.Mesh(
-      geo,
-      new THREE.MeshStandardMaterial({
-        color: this.look.sea,
-        map: ripples,
-        emissive: this.look.glints[0],
-        emissiveMap: glints,
-        emissiveIntensity: this.look.glints[1],
-        roughness: 0.12,
-        metalness: 0.25,
-        ...BEHIND,
-      }),
-    );
+    this.water = createSeaMaterial(this.look.sea, ripples, glints, this.look.glints[0], this.look.glints[1]);
+    const sea = new THREE.Mesh(geo, this.water.material);
+    this.disposables.push(this.water.normalMap);
     sea.position.set(120, SEA_LEVEL, -80);
     sea.receiveShadow = true;
     scene.add(sea);
+    const waterFade = canvasTexture(128, 4, (g) => {
+      const fade = g.createLinearGradient(0, 0, 128, 0);
+      fade.addColorStop(0, "white"); fade.addColorStop(0.55, "#999999"); fade.addColorStop(1, "black");
+      g.fillStyle = fade; g.fillRect(0, 0, 128, 4);
+    }, false);
+    this.disposables.push(waterFade);
     // lighter shallows along the shore
     const shallow = new THREE.Mesh(
       ribbonCoast(),
-      new THREE.MeshStandardMaterial({ color: this.look.shallows, roughness: 0.2, transparent: true, opacity: 0.8 }),
+      new THREE.MeshStandardMaterial({ color: this.look.shallows, alphaMap: waterFade, roughness: 0.2, transparent: true, opacity: 0.8, depthWrite: false, side: THREE.DoubleSide }),
     );
+    const shallowUvs: number[] = [];
+    const shallowPosition = shallow.geometry.attributes.position;
+    for (let i = 0; i < shallowPosition.count; i++) shallowUvs.push(i % 2, 0.5);
+    shallow.geometry.setAttribute("uv", new THREE.Float32BufferAttribute(shallowUvs, 2));
     shallow.position.y = SEA_LEVEL + 0.02;
     scene.add(shallow);
     this.disposables.push(geo, ripples, glints, sea.material as THREE.Material, shallow.geometry, shallow.material as THREE.Material);
+    const foam = canvasTexture(128, 256, (g) => {
+      g.fillStyle = "#000000"; g.fillRect(0, 0, 128, 256);
+      for (let y = -20; y < 280; y += 32) {
+        g.strokeStyle = "#515151"; g.lineWidth = 5;
+        g.beginPath(); g.moveTo(0, y + 8);
+        g.bezierCurveTo(28, y - 10, 70, y + 30, 110, y + 5); g.stroke();
+        g.strokeStyle = "#ffffff"; g.lineWidth = 1.5; g.stroke();
+      }
+    });
+    foam.repeat.set(1, 30);
+    this.seaMaps.push(foam);
+    const shore = ribbonCoast();
+    const position = shore.attributes.position as THREE.BufferAttribute;
+    const shoreUvs: number[] = [];
+    for (let i = 0; i < position.count; i++) {
+      const z = position.getZ(i);
+      position.setX(i, coastX(z) + (i % 2 ? 3.4 : 0.6));
+      shoreUvs.push(i % 2, (40 - z) / 260);
+    }
+    shore.setAttribute("uv", new THREE.Float32BufferAttribute(shoreUvs, 2));
+    const foamMaterial = new THREE.MeshBasicMaterial({ color: "#f5ffff", alphaMap: foam, transparent: true, opacity: 0.46, depthWrite: false, side: THREE.DoubleSide });
+    this.shoreFoam=foamMaterial;
+    const foamMesh = new THREE.Mesh(shore, foamMaterial);
+    foamMesh.position.y = SEA_LEVEL + 0.045;
+    scene.add(foamMesh);
+    this.disposables.push(foam, shore, foamMaterial);
   }
 
   private buildRoad(scene: THREE.Scene) {
     const asphalt = asphaltTexture();
     const kerb = kerbTexture();
-    const roadMat = new THREE.MeshStandardMaterial({ map: asphalt, roughness: 0.85 });
+    const roadMat = new THREE.MeshStandardMaterial({ map: asphalt, roughness: 0.96, metalness: 0, envMapIntensity: 0.08 });
     const kerbMat = new THREE.MeshStandardMaterial({ map: kerb, roughness: 0.6 });
-    const shoulderMat = new THREE.MeshStandardMaterial({ color: "#d9c79c", roughness: 1 });
+    const aggregate = finishTexture('grain'), gravel = finishTexture('gravel');
+    aggregate.repeat.set(2,16);gravel.repeat.set(1,4);roadMat.bumpMap=aggregate;roadMat.bumpScale=.0025;
+    this.disposables.push(aggregate,gravel);
+    const shoulderMat = new THREE.MeshStandardMaterial({ color: "#c9c1ac", map: gravel, bumpMap: gravel, bumpScale:.008, roughness: 1 });
     const parts: [THREE.BufferGeometry, THREE.Material][] = [
       [ribbon(this.road, -HALF_WIDTH, HALF_WIDTH, 0.03, 10), roadMat],
       [ribbon(this.road, HALF_WIDTH, HALF_WIDTH + 0.28, 0.05, 1.6), kerbMat],
@@ -682,7 +694,7 @@ export class WorldStage implements Stage {
 
     // guard rail on the sea side
     const railGeo = railBand(this.road, HALF_WIDTH + 0.95, 0.32, 0.5);
-    const rail = new THREE.Mesh(railGeo, new THREE.MeshStandardMaterial({ color: "#c9ced6", metalness: 0.7, roughness: 0.3, side: THREE.DoubleSide }));
+    const rail = new THREE.Mesh(railGeo, new THREE.MeshStandardMaterial({ color: "#b6c1c6", metalness: 0.62, roughness: 0.43, side: THREE.DoubleSide }));
     rail.castShadow = true;
     scene.add(rail);
     const posts: { m: THREE.Matrix4 }[] = [];
@@ -706,7 +718,10 @@ export class WorldStage implements Stage {
         c: new THREE.Color().setHSL(0.1, 0.25, 0.7 + r() * 0.08),
       });
     }
-    const wallMesh = instanced(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ roughness: 0.95 }), walls);
+    const masonry = finishTexture('stone');this.disposables.push(masonry);
+    const wallMesh = instanced(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ map:masonry, bumpMap:masonry, bumpScale:.016, roughness: 0.95 }), walls);
+    const capMesh = instanced(new RoundedBoxGeometry(1,1,1,1,.04),new THREE.MeshStandardMaterial({color:'#c6bca5',map:masonry,roughness:.94}),walls.map(w=>({m:w.m.clone().multiply(new THREE.Matrix4().makeTranslation(0,.56,0)).multiply(new THREE.Matrix4().makeScale(1.15,.11,1.04))})));
+    scene.add(capMesh);this.disposables.push(capMesh.geometry,capMesh.material as THREE.Material);
     scene.add(wallMesh);
     this.disposables.push(wallMesh.geometry, wallMesh.material as THREE.Material);
   }
@@ -775,12 +790,11 @@ export class WorldStage implements Stage {
 
   private buildScenery(scene: THREE.Scene) {
     const r = rng(20260929);
+    const detail = rng(731);
     const cypress: { m: THREE.Matrix4; c: THREE.Color }[] = [];
-    const pines: { m: THREE.Matrix4 }[] = [];
+    const pines: { m: THREE.Matrix4; c: THREE.Color }[] = [];
     const trunks: { m: THREE.Matrix4 }[] = [];
     const bushes: { m: THREE.Matrix4; c: THREE.Color }[] = [];
-    const walls: { m: THREE.Matrix4; c: THREE.Color }[] = [];
-    const roofs: { m: THREE.Matrix4; c: THREE.Color }[] = [];
     const boats: { m: THREE.Matrix4 }[] = [];
     const houses: { x: number; y: number; z: number; w: number; h: number; d: number; yaw: number }[] = [];
 
@@ -798,7 +812,7 @@ export class WorldStage implements Stage {
       { x: -10, z: 4, n: 7, spread: 6 },
     ];
     for (const v of villages) {
-      for (let i = 0; i < v.n * 3 && walls.length < 70; i++) {
+      for (let i = 0; i < v.n * 3 && houses.length < 70; i++) {
         const x = v.x + (r() - 0.5) * 2 * v.spread;
         const z = v.z + (r() - 0.5) * 2 * v.spread;
         if (!free(x, z, 3.2)) continue;
@@ -807,11 +821,21 @@ export class WorldStage implements Stage {
         const d = 1.4 + r() * 1.2;
         const h = 1.3 + (r() < 0.4 ? 1.1 : 0) + r() * 0.4;
         const yaw = r() * Math.PI;
-        walls.push({ m: mat4(x, y + h / 2, z, w, h, d, yaw), c: new THREE.Color().setHSL(0.09 + r() * 0.03, 0.45 + r() * 0.2, 0.8 + r() * 0.08) });
+        r(); r(); // preserve the original facade-colour random draws
         houses.push({ x, y, z, w, h, d, yaw });
-        roofs.push({ m: mat4(x, y + h + 0.42, z, w * 0.78, 0.85, d * 0.78, yaw + Math.PI / 4), c: new THREE.Color().setHSL(0.04 + r() * 0.02, 0.6, 0.45 + r() * 0.1) });
+        r(); r(); // keep the original placement random stream
         if (r() < 0.5) bushes.push({ m: mat4(x + w * 0.7, y + 0.35, z + 0.4, 0.7, 0.6, 0.7), c: new THREE.Color("#d9468f") });
       }
+    }
+
+    // A few villas along the first stretch make the new architecture visible
+    // from the driving view. They use the same clearance test as the villages.
+    for (const [x, z, w, h, d, yaw] of [
+      [-4.5, -1, 3.4, 2.1, 2.7, 0.08],
+      [0, -13, 3.2, 2.4, 2.6, -0.12],
+      [-7.5, -28, 3.3, 1.7, 2.7, 0.15],
+    ]) {
+      if (free(x, z, 3.6)) houses.unshift({ x, y: this.terrainHeight(x, z), z, w, h, d, yaw });
     }
 
     // cypresses, umbrella pines and olive bushes everywhere else
@@ -833,11 +857,19 @@ export class WorldStage implements Stage {
       } else if (kind < 0.55) {
         const h = 2 + r() * 1.2;
         trunks.push({ m: mat4(x, y + h / 2, z, 0.14, h, 0.14) });
-        pines.push({ m: mat4(x, y + h + 0.1, z, 1.9 + r() * 0.8, 0.8, 1.9 + r() * 0.8, r() * 3) });
+        const crown = mat4(x, y + h + 0.1, z, 1.9 + r() * 0.8, 1.45, 1.9 + r() * 0.8, r() * 3);
+        pines.push({ m: crown, c: new THREE.Color().setHSL(0.25 + detail() * 0.05, 0.32, 0.27 + detail() * 0.08) });
       } else if (kind < 0.9) {
         const s = behindStart ? 0.4 + r() * 0.3 : 0.5 + r() * 0.7;
         bushes.push({ m: mat4(x, y + s * 0.4, z, s * 1.2, s * 0.9, s * 1.2), c: new THREE.Color().setHSL(0.24 + r() * 0.06, 0.45, 0.24 + r() * 0.1) });
       }
+    }
+
+    for (const [x, z, h, radius] of [[-6.5, 4, 2.6, 2.7], [-7.5, -25, 2.5, 2.6]]) {
+      if (!free(x, z, 4.5) || houses.some(house => Math.hypot(house.x - x, house.z - z) < 3.5)) continue;
+      const y = this.terrainHeight(x, z);
+      trunks.push({ m: mat4(x, y + h / 2, z, 0.15, h, 0.15) });
+      pines.push({ m: mat4(x, y + h + 0.1, z, radius, 1.45, radius), c: new THREE.Color("#b3c58c") });
     }
 
     // sailboats
@@ -854,50 +886,108 @@ export class WorldStage implements Stage {
       scene.add(mesh);
       this.disposables.push(geo, material);
     };
-    add(new THREE.ConeGeometry(0.5, 1, 7), new THREE.MeshStandardMaterial({ roughness: 0.9 }), cypress);
-    add(new THREE.CylinderGeometry(1, 1, 1, 6), new THREE.MeshStandardMaterial({ color: "#6b4a2e", roughness: 1 }), trunks);
-    add(new THREE.SphereGeometry(0.6, 9, 6), new THREE.MeshStandardMaterial({ color: "#2f6a2c", roughness: 0.9, flatShading: true }), pines);
-    add(new THREE.IcosahedronGeometry(0.6, 1), new THREE.MeshStandardMaterial({ roughness: 0.9, flatShading: true }), bushes);
-    add(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ roughness: 0.85 }), walls);
-    add(new THREE.ConeGeometry(0.72, 1, 4), new THREE.MeshStandardMaterial({ roughness: 0.8, flatShading: true }), roofs);
-
-    // lit windows after dark
-    if (this.look.lights > 0) {
-      const lit = rng(808);
-      const windows: { m: THREE.Matrix4 }[] = [];
-      for (const hs of houses) {
-        const q = new THREE.Quaternion().setFromEuler(new THREE.Euler(0, hs.yaw, 0));
-        for (const [lx, lz, face] of [
-          [-0.22, 0.5, 0],
-          [0.22, 0.5, 0],
-          [-0.22, -0.5, Math.PI],
-          [0.5, 0.15, Math.PI / 2],
-          [-0.5, -0.15, -Math.PI / 2],
-        ] as const) {
-          if (lit() > 0.55 * this.look.lights + 0.1) continue;
-          const local = new THREE.Vector3(Math.abs(lx) === 0.5 ? lx * hs.w + Math.sign(lx) * 0.01 : lx * hs.w, hs.h * 0.6, Math.abs(lz) === 0.5 ? lz * hs.d + Math.sign(lz) * 0.01 : lz * hs.d).applyQuaternion(q);
-          windows.push({
-            m: new THREE.Matrix4().compose(
-              local.add(new THREE.Vector3(hs.x, hs.y, hs.z)),
-              new THREE.Quaternion().setFromEuler(new THREE.Euler(0, hs.yaw + face, 0)),
-              new THREE.Vector3(0.28, 0.36, 1),
-            ),
-          });
+    const planting = arrangeVegetation(pines, trunks, cypress, bushes, selectVillageHouses(houses));
+    pines.splice(0, pines.length, ...planting.pines);trunks.splice(0, trunks.length, ...planting.trunks);
+    cypress.splice(0, cypress.length, ...planting.cypress);bushes.splice(0, bushes.length, ...planting.bushes);
+    // Shared geometry, but recognisably different pine and olive silhouettes.
+    const olives = pines.filter((_, i) => i % 3 === 0);
+    const needlePines = pines.filter((_, i) => i % 3 !== 0);
+    needlePines.forEach(item => item.c.set("#b3c58c"));
+    olives.forEach(item => {
+      item.c.set("#d5dbc5");
+      item.m.multiply(new THREE.Matrix4().makeScale(0.95, 1.5, 0.95));
+    });
+    const bark = canvasTexture(128, 256, (g) => {
+      g.fillStyle = "#b2a08c";
+      g.fillRect(0, 0, 128, 256);
+      const grain = rng(162);
+      for (let i = 0; i < 90; i++) {
+        const x = grain() * 128, y = grain() * 256;
+        g.strokeStyle = `rgba(52,34,22,${0.12 + grain() * 0.25})`;
+        g.lineWidth = 1 + grain() * 2;
+        g.beginPath(); g.moveTo(x, y);
+        g.bezierCurveTo(x - 3, y + 15, x + 3, y + 28, x - 1, y + 48);
+        g.stroke();
+      }
+    });
+    const leaves = canvasTexture(128, 128, (g) => {
+      // Alpha-tested leaf clusters break up the solid plastic silhouette.
+      const leaf = rng(1472);
+      for (let i = 0; i < 380; i++) {
+        const x = leaf() * 128, y = leaf() * 128;
+        g.save(); g.translate(x, y); g.rotate(leaf() * Math.PI);
+        g.fillStyle = ["#fffde8", "#d8dfc6", "#aebf91", "#e9ebd0"][i % 4];
+        g.beginPath(); g.ellipse(0, 0, 3 + leaf() * 4, 1.2 + leaf() * 2, 0, 0, Math.PI * 2); g.fill();
+        g.restore();
+      }
+    }, false);
+    this.disposables.push(bark, leaves);
+    const leafMaterial = () => {
+      const material = new THREE.MeshStandardMaterial({ map: leaves, alphaTest: .45, alphaToCoverage: true, side: THREE.DoubleSide, roughness: 1, vertexColors: true });
+      material.onBeforeCompile = shader => {
+        shader.uniforms.uCoastalWind = this.windTime;
+        shader.vertexShader = `uniform float uCoastalWind;\n${shader.vertexShader}`;
+        shader.vertexShader = shader.vertexShader.replace('#include <begin_vertex>', `#include <begin_vertex>
+          vec4 foliageCentre = vec4(position,1.0);
+          #ifdef USE_INSTANCING
+            foliageCentre = instanceMatrix * foliageCentre;
+          #endif
+          float breeze = uCoastalWind * 1.35 + foliageCentre.x * .31 + foliageCentre.z * .27;
+          transformed.x += sin(breeze) * .012 * max(0.0,position.y);
+          transformed.z += cos(breeze * .81) * .009 * max(0.0,position.y);
+        `);
+      };material.customProgramCacheKey=()=> 'coastal-foliage-breeze-v1';return material;
+    };
+    add(layeredCypress(), leafMaterial(), cypress);
+    add(branchingTrunk(), new THREE.MeshStandardMaterial({ color: "#88735b", map: bark, bumpMap: bark, bumpScale: 0.04, roughness: 1 }), trunks);
+    add(treeCrown(), leafMaterial(), needlePines);
+    add(treeCrown(true), leafMaterial(), olives);
+    add(treeCrown(true).translate(0, -0.15, 0), leafMaterial(), bushes);
+    // Small shared maps give plaster and terracotta a tactile finish without
+    // loading external assets or adding per-house draw calls on mobile.
+    const plaster = canvasTexture(128, 128, (g) => {
+      g.fillStyle = "#ffffff";
+      g.fillRect(0, 0, 128, 128);
+      const grain = rng(24);
+      for (let i = 0; i < 1800; i++) {
+        g.fillStyle = `rgba(91,74,50,${grain() * 0.07})`;
+        g.fillRect(grain() * 128, grain() * 128, 1, 1);
+      }
+    });
+    const tiles = canvasTexture(128, 128, (g) => {
+      g.fillStyle = "#f6e6d7";
+      g.fillRect(0, 0, 128, 128);
+      for (let row = 0; row < 8; row++) {
+        const y = row * 16;
+        g.fillStyle = "rgba(86,43,25,0.22)";
+        g.fillRect(0, y + 14, 128, 2);
+        for (let col = -1; col < 8; col++) {
+          const x = col * 20 + (row % 2) * 10;
+          g.fillStyle = "rgba(255,255,255,0.24)";
+          g.fillRect(x + 2, y + 2, 3, 12);
+          g.fillStyle = "rgba(86,43,25,0.15)";
+          g.fillRect(x + 18, y, 2, 16);
         }
       }
-      add(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: "#ffcf73", side: THREE.DoubleSide }), windows, false);
-    }
+    });
+    this.disposables.push(plaster, tiles);
+    const visibleHomes = buildCoastalVillage(scene, houses, plaster, tiles, this.look.lights, this.disposables);
+    this.spectatorObstacles = [
+      ...visibleHomes.map(h => ({ x: h.x, z: h.z, radius: Math.hypot(h.w, h.d) * .5 + .45 })),
+      ...[...trunks,...cypress].map(item => { const p = new THREE.Vector3().setFromMatrixPosition(item.m); return { x:p.x, z:p.z, radius:.5 }; }),
+    ];
+    buildGroveBackdrop(scene,(x,z)=>this.terrainHeight(x,z),(x,z)=>this.road.nearest(x,z).dist>11 && x<coastX(z)-6,visibleHomes,this.disposables,leaves);
+    buildVillageGardens(scene, visibleHomes, (x, z) => this.terrainHeight(x, z), (x, z) => free(x, z, 1.5), this.disposables);
 
-    // boat = hull + sail
-    const hull = new THREE.BoxGeometry(0.6, 0.25, 1.8);
-    const sail = new THREE.ConeGeometry(0.55, 2, 3);
-    sail.translate(0, 1.2, 0);
-    this.boatMeshes = [instanced(hull, new THREE.MeshStandardMaterial({ color: "#ffffff" }), boats, false), instanced(sail, new THREE.MeshStandardMaterial({ color: "#fbfbf6", flatShading: true }), boats, false)];
-    for (const m of this.boatMeshes) {
-      m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-      scene.add(m);
-      this.disposables.push(m.geometry, m.material as THREE.Material);
-    }
+    // All boat parts share the existing sailing and rocking transforms.
+    this.boatMeshes = createSailboatParts().map(part => {
+      const mesh = instanced(part.geometry, part.material, boats, false);
+      if (part.hull) boats.forEach((_, i) => mesh.setColorAt(i, new THREE.Color(["#f2f2e9", "#456b87", "#e8dfcc"][i % 3])));
+      mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
+      scene.add(mesh);
+      this.disposables.push(part.geometry, part.material);
+      return mesh;
+    });
   }
 
   /** The things that make a road feel driven on: posts, signs, lamps, rocks, flowers. */
@@ -914,6 +1004,11 @@ export class WorldStage implements Stage {
     const rocks: { m: THREE.Matrix4; c: THREE.Color }[] = [];
     const tufts: { m: THREE.Matrix4; c: THREE.Color }[] = [];
     const start = this.road.startLen - 6;
+
+    const studs:{m:THREE.Matrix4}[]=[];
+    for(let l=Math.ceil(this.road.startLen/5)*5+.35;l<this.road.finishLen;l+=5){const {point,forward}=this.road.at(l);studs.push({m:mat4(point.x,point.y+.052,point.z,.065,.022,.075,yawAt(forward))});}
+    const studMesh=instanced(new RoundedBoxGeometry(1,1,1,1,.12),new THREE.MeshStandardMaterial({color:'#ddd7ad',emissive:'#a89e6a',emissiveIntensity:this.look.lights*.3,roughness:.4}),studs,false);
+    scene.add(studMesh);this.disposables.push(studMesh.geometry,studMesh.material as THREE.Material);
 
     // white edge posts with a red reflector on the hill side, as on French country roads
     for (let l = start; l < this.road.total; l += 6) {
@@ -985,7 +1080,7 @@ export class WorldStage implements Stage {
       const z = point.z + right.z * k + (r() - 0.5) * 0.4;
       const y = this.terrainHeight(x, z);
       const flower = r() < 0.3;
-      const s = 0.18 + r() * 0.2;
+      const s = 0.35 + r() * 0.25;
       tufts.push({
         m: mat4(x, y + s * 0.5, z, s * 0.9, s, s * 0.9, r() * 6),
         c: flower ? new THREE.Color(flowerColors[Math.floor(r() * flowerColors.length)]) : new THREE.Color().setHSL(0.24 + r() * 0.05, 0.5, 0.3 + r() * 0.1),
@@ -997,36 +1092,17 @@ export class WorldStage implements Stage {
       scene.add(instanced(geo, material, items, shadows));
       this.disposables.push(geo, material);
     };
-    add(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: "#f2f2ee", roughness: 0.6 }), posts);
-    add(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: "#d11f1f", emissive: "#ff2a1a", emissiveIntensity: 0.35 }), reflectors, false);
-    const chevronTex = canvasTexture(
-      128,
-      96,
-      (g) => {
-        g.fillStyle = "#d42a20";
-        g.fillRect(0, 0, 128, 96);
-        g.fillStyle = "#ffffff";
-        for (const x0 of [22, 66]) {
-          g.beginPath();
-          g.moveTo(x0, 14);
-          g.lineTo(x0 + 18, 14);
-          g.lineTo(x0 + 46, 48);
-          g.lineTo(x0 + 18, 82);
-          g.lineTo(x0, 82);
-          g.lineTo(x0 + 28, 48);
-          g.closePath();
-          g.fill();
-        }
-      },
-      false,
-    );
-    add(new THREE.PlaneGeometry(1, 1), new THREE.MeshStandardMaterial({ map: chevronTex, roughness: 0.5, side: THREE.DoubleSide }), chevrons);
-    this.disposables.push(chevronTex);
-    add(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: "#7d838b", metalness: 0.5, roughness: 0.4 }), chevronPoles);
+    add(new RoundedBoxGeometry(1, 1, 1, 2, 0.08), new THREE.MeshStandardMaterial({ color: "#f2f2ee", roughness: 0.6 }), posts);
+    add(new RoundedBoxGeometry(1, 1, 1, 2, 0.08), new THREE.MeshStandardMaterial({ color: "#d11f1f", emissive: "#ff2a1a", emissiveIntensity: 0.35 }), reflectors, false);
+    for (const part of createChevronParts(this.look.lights)) {
+      add(part.geometry, part.material, chevrons);
+      if (part.material.map) this.disposables.push(part.material.map);
+    }
+    add(new THREE.CylinderGeometry(0.5, 0.5, 1, 12), new THREE.MeshStandardMaterial({ color: "#7d838b", metalness: 0.5, roughness: 0.4 }), chevronPoles);
     const lampMetal = new THREE.MeshStandardMaterial({ color: "#3b4048", metalness: 0.6, roughness: 0.35 });
     add(new THREE.CylinderGeometry(0.5, 0.6, 1, 6), lampMetal, lampPoles);
-    add(new THREE.BoxGeometry(1, 1, 1), lampMetal.clone(), lampArms);
-    add(new THREE.BoxGeometry(1, 1, 1), new THREE.MeshStandardMaterial({ color: "#fff3c4", emissive: "#ffd98a", emissiveIntensity: 0.6 + this.look.lights * 3 }), lampHeads, false);
+    add(new RoundedBoxGeometry(1, 1, 1, 2, 0.08), lampMetal.clone(), lampArms);
+    add(new RoundedBoxGeometry(1, 1, 1, 2, 0.08), new THREE.MeshStandardMaterial({ color: "#fff3c4", emissive: "#ffd98a", emissiveIntensity: 0.6 + this.look.lights * 3 }), lampHeads, false);
     // after dark, each lamp lays a warm pool of light on the road
     if (this.look.lights > 0) {
       const glow = glowTexture();
@@ -1047,16 +1123,34 @@ export class WorldStage implements Stage {
       add(new THREE.PlaneGeometry(1, 1), pool, pools, false);
       this.disposables.push(glow);
     }
-    add(new THREE.DodecahedronGeometry(0.6, 0), new THREE.MeshStandardMaterial({ roughness: 0.95, flatShading: true }), rocks);
-    add(new THREE.ConeGeometry(0.5, 1, 5), new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true }), tufts, false);
+    const stone = canvasTexture(128, 128, (g) => {
+      g.fillStyle = "#ddd5c2"; g.fillRect(0, 0, 128, 128);
+      const grain = rng(286);
+      for (let i = 0; i < 500; i++) {
+        g.fillStyle = `rgba(84,77,64,${grain() * 0.16})`;
+        g.fillRect(grain() * 128, grain() * 128, 1 + grain() * 3, 1);
+      }
+      g.strokeStyle = "rgba(90,80,60,0.14)";
+      for (let y = 10; y < 128; y += 25) {
+        g.beginPath(); g.moveTo(0, y); g.bezierCurveTo(35, y - 9, 80, y + 13, 128, y - 4); g.stroke();
+      }
+    });
+    this.disposables.push(stone);
+    add(sculptedRock(), new THREE.MeshStandardMaterial({ map: stone, bumpMap: stone, bumpScale: 0.08, roughness: 0.95 }), rocks);
+    buildWildPlants(scene, tufts, this.disposables);
   }
 
+  private shoreFoam: THREE.MeshBasicMaterial | null = null;
+  private water: ReturnType<typeof createSeaMaterial> | null = null;
   private seaMaps: THREE.Texture[] = [];
   private clouds: THREE.InstancedMesh | null = null;
   private boats: { x: number; z: number; yaw: number; radius: number; speed: number; phase: number }[] = [];
   private boatMeshes: THREE.InstancedMesh[] = [];
-  private crowd: { x: number; y: number; z: number; yaw: number; phase: number; flag: boolean }[] = [];
-  private crowdMeshes: { body: THREE.InstancedMesh; head: THREE.InstancedMesh; flag: THREE.InstancedMesh } | null = null;
+  private windTime = { value:0 };
+  private wakes: ReturnType<typeof createBoatWakes> | null = null;
+  private airShow: ReturnType<typeof createAirShow> | null = null;
+  private spectators: ReturnType<typeof createRoadsideCrowd> | null = null;
+  private spectatorObstacles: { x: number; z: number; radius: number }[] = [];
   private pennants: { base: THREE.Matrix4; phase: number }[] = [];
   private pennantMesh: THREE.InstancedMesh | null = null;
   private beacon: THREE.MeshStandardMaterial | null = null;
@@ -1066,40 +1160,14 @@ export class WorldStage implements Stage {
   private beam: THREE.Group | null = null;
 
   /**
-   * Start and finish feel like an event: bunting across the road and a few
-   * spectators on the hillside, cheering and waving flags.
+   * Bunting at the start/finish and dense spectator groups along the course.
    */
   private buildCelebration(scene: THREE.Scene) {
-    const r = rng(404);
-    const people: { m: THREE.Matrix4; c: THREE.Color }[] = [];
-    const heads: { m: THREE.Matrix4; c: THREE.Color }[] = [];
-    const flags: { m: THREE.Matrix4; c: THREE.Color }[] = [];
     const shirts = ["#e8352b", "#1f86ea", "#ffc21a", "#2fae55", "#f04aa6", "#ffffff", "#8e4cf0", "#ff7a1a"];
-    const skins = ["#f1c7a5", "#d9a37c", "#a8714b", "#6e4429"];
     const poles: { m: THREE.Matrix4 }[] = [];
     const pennants: { m: THREE.Matrix4; c: THREE.Color }[] = [];
 
-    for (const [at, from, to] of [
-      [this.road.startLen, -3, 7],
-      [this.road.finishLen, -7, 3],
-    ] as const) {
-      // spectators behind the wall, facing the road
-      for (let i = 0; i < 16; i++) {
-        const l = at + from + r() * (to - from);
-        const { point, right } = this.road.at(l);
-        const k = -(HALF_WIDTH + 2.1 + r() * 1.8);
-        const x = point.x + right.x * k;
-        const z = point.z + right.z * k;
-        const y = this.terrainHeight(x, z);
-        const yaw = Math.atan2(right.x, right.z);
-        const flag = r() < 0.4;
-        this.crowd.push({ x, y, z, yaw, phase: r() * Math.PI * 2, flag });
-        const shirt = new THREE.Color(shirts[Math.floor(r() * shirts.length)]);
-        people.push({ m: new THREE.Matrix4(), c: shirt });
-        heads.push({ m: new THREE.Matrix4(), c: new THREE.Color(skins[Math.floor(r() * skins.length)]) });
-        flags.push({ m: new THREE.Matrix4(), c: flag ? new THREE.Color(shirts[Math.floor(r() * 5)]) : shirt });
-      }
-
+    for (const at of [this.road.startLen, this.road.finishLen]) {
       // bunting on two striped masts across the road
       // past the start line (the camera waits behind it), a few metres before the finish arch
       const { point, right, forward } = this.road.at(at + (at === this.road.startLen ? 9 : -5.5));
@@ -1121,19 +1189,17 @@ export class WorldStage implements Stage {
       }
     }
 
-    const body = new THREE.CapsuleGeometry(0.13, 0.3, 3, 8);
-    body.translate(0, 0.28, 0);
-    const head = new THREE.SphereGeometry(0.1, 10, 8);
-    head.translate(0, 0.6, 0);
-    const flag = new THREE.BoxGeometry(0.02, 0.2, 0.28);
-    flag.translate(0, 0.95, 0.14);
-    const mat = () => new THREE.MeshStandardMaterial({ roughness: 0.8 });
-    this.crowdMeshes = { body: instanced(body, mat(), people), head: instanced(head, mat(), heads), flag: instanced(flag, mat(), flags, false) };
-    for (const m of Object.values(this.crowdMeshes)) {
-      m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-      scene.add(m);
-      this.disposables.push(m.geometry, m.material as THREE.Material);
-    }
+    const spots = placeSpectators({
+      start: this.road.startLen, finish: this.road.finishLen,
+      at: distance => this.road.at(distance),
+      ground: (x,z) => this.terrainHeight(x,z),
+      allowed: (x,z,distance) => !this.onBridge(distance)
+        && this.road.nearest(x,z).dist > HALF_WIDTH + 1.75
+        && x < coastX(z) - 1.5 && this.terrainHeight(x,z) > SEA_LEVEL + .6
+        && !this.spectatorObstacles.some(o => Math.hypot(x-o.x,z-o.z) < o.radius),
+    });
+    this.spectators = createRoadsideCrowd(scene, spots);
+    this.disposables.push(this.spectators);
 
     const pennant = new THREE.BufferGeometry();
     pennant.setAttribute("position", new THREE.Float32BufferAttribute([-0.13, 0, 0, 0.13, 0, 0, 0, -0.3, 0], 3));
@@ -1154,12 +1220,12 @@ export class WorldStage implements Stage {
     const white = new THREE.MeshStandardMaterial({ color: "#f4f1ea", roughness: 0.6 });
     const red = new THREE.MeshStandardMaterial({ color: "#c8302a", roughness: 0.6 });
     const parts: [THREE.BufferGeometry, THREE.Material, number][] = [
-      [new THREE.CylinderGeometry(1.6, 2.1, 1.2, 12), new THREE.MeshStandardMaterial({ color: "#9a8f7c", roughness: 1 }), 0.6],
-      [new THREE.CylinderGeometry(0.9, 1.25, 3, 12), white, 2.7],
-      [new THREE.CylinderGeometry(0.75, 0.9, 2.2, 12), red, 5.3],
-      [new THREE.CylinderGeometry(0.65, 0.75, 2, 12), white, 7.4],
-      [new THREE.CylinderGeometry(1, 1, 0.2, 12), red, 8.5],
-      [new THREE.ConeGeometry(0.75, 0.9, 12), red, 9.75],
+      [new THREE.CylinderGeometry(1.6, 2.1, 1.2, 32), new THREE.MeshStandardMaterial({ color: "#9a8f7c", roughness: 1 }), 0.6],
+      [new THREE.CylinderGeometry(0.9, 1.25, 3, 32), white, 2.7],
+      [new THREE.CylinderGeometry(0.75, 0.9, 2.2, 32), red, 5.3],
+      [new THREE.CylinderGeometry(0.65, 0.75, 2, 32), white, 7.4],
+      [new THREE.CylinderGeometry(1, 1, 0.2, 32), red, 8.5],
+      [new THREE.ConeGeometry(0.75, 0.9, 32), red, 9.75],
     ];
     for (const [geo, material, h] of parts) {
       const m = new THREE.Mesh(geo, material);
@@ -1168,7 +1234,7 @@ export class WorldStage implements Stage {
       g.add(m);
       this.disposables.push(geo, material);
     }
-    const lamp = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.8, 12), new THREE.MeshStandardMaterial({ color: "#fff6c8", emissive: "#ffe9a0", emissiveIntensity: 1.2 }));
+    const lamp = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.8, 32), new THREE.MeshStandardMaterial({ color: "#fff6c8", emissive: "#ffe9a0", emissiveIntensity: 1.2 }));
     lamp.position.y = 9;
     g.add(lamp);
     // after dark the lamp sweeps the sea
@@ -1222,12 +1288,16 @@ export class WorldStage implements Stage {
     });
   }
 
-  private animateWorld(t: number) {
+  private animateWorld(t: number, cars: readonly StageCar[] = []) {
     const s = t / 1000;
+    this.windTime.value = s;this.wakes?.update(s);
+    if(this.shoreFoam)this.shoreFoam.opacity=.38+Math.sin(s*.7)*.07;
     // the sea moves
+    this.water?.update(s);
     if (this.seaMaps.length) {
       this.seaMaps[0].offset.set(s * 0.018, s * 0.011);
       this.seaMaps[1].offset.set(-s * 0.03, s * 0.022);
+      if (this.seaMaps[2]) this.seaMaps[2].offset.y = s * 0.025;
     }
     // the clouds drift
     if (this.clouds) this.clouds.position.x = Math.sin(s * 0.012) * 24;
@@ -1245,23 +1315,8 @@ export class WorldStage implements Stage {
       for (const mesh of this.boatMeshes) mesh.setMatrixAt(i, m);
     });
     for (const mesh of this.boatMeshes) mesh.instanceMatrix.needsUpdate = true;
-    // the crowd cheers: little hops in waves, flags waving
-    if (this.crowdMeshes) {
-      const { body, head, flag } = this.crowdMeshes;
-      const fm = new THREE.Matrix4();
-      this.crowd.forEach((c, i) => {
-        const excite = 0.5 + 0.5 * Math.sin(s * 0.7 + c.phase);
-        const hop = Math.max(0, Math.sin(s * 9 + c.phase * 3)) * 0.12 * excite;
-        v.set(c.x, c.y + hop, c.z);
-        m.compose(v, q.setFromEuler(e.set(0, c.yaw + Math.sin(s * 1.5 + c.phase) * 0.3, 0)), one);
-        body.setMatrixAt(i, m);
-        head.setMatrixAt(i, m);
-        if (c.flag) fm.compose(v, q.setFromEuler(e.set(Math.sin(s * 6 + c.phase) * 0.5, c.yaw, 0)), one);
-        else fm.makeScale(0, 0, 0);
-        flag.setMatrixAt(i, fm);
-      });
-      body.instanceMatrix.needsUpdate = head.instanceMatrix.needsUpdate = flag.instanceMatrix.needsUpdate = true;
-    }
+    // Independent spectators applaud, take photos and wave to passing cars.
+    this.spectators?.update(s,cars);
     // bunting flutters in the breeze
     if (this.pennantMesh) {
       const sway = new THREE.Matrix4();
@@ -1296,7 +1351,7 @@ export class WorldStage implements Stage {
         bird.add(w);
         return w;
       });
-      const body = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.08, 0.36), mat);
+      const body = new THREE.Mesh(new RoundedBoxGeometry(0.1, 0.08, 0.36, 3, 0.035), mat);
       bird.add(body);
       this.disposables.push(body.geometry);
       scene.add(bird);
@@ -1329,8 +1384,14 @@ export class WorldStage implements Stage {
   /** Stars, and the low sun or the moon where the light comes from. */
   private buildSky(scene: THREE.Scene) {
     const look = this.look;
-    if (!look.stars && !look.disc) return;
     const sky = new THREE.Group();
+    if(look.lights===0){
+      const atmosphere=new Sky();atmosphere.name='daylight-atmosphere';atmosphere.scale.setScalar(450);
+      const uniforms=atmosphere.material.uniforms;uniforms.turbidity.value=2.2;uniforms.rayleigh.value=2.2;uniforms.mieCoefficient.value=.002;uniforms.mieDirectionalG.value=.82;uniforms.sunPosition.value.copy(this.sunOffset).normalize();
+      uniforms.cloudCoverage.value=.18;uniforms.cloudDensity.value=.22;uniforms.time=this.windTime;
+      atmosphere.material.fragmentShader=atmosphere.material.fragmentShader.replace('gl_FragColor = vec4( texColor, 1.0 );','gl_FragColor = vec4( texColor * vec3(.24,.29,.36), 1.0 );');
+      atmosphere.renderOrder=5;sky.add(atmosphere);this.disposables.push(atmosphere.geometry,atmosphere.material);
+    }
     if (look.stars) {
       const r = rng(99);
       const pos: number[] = [];
@@ -1358,7 +1419,7 @@ export class WorldStage implements Stage {
       sky.add(halo, disc);
       this.disposables.push(glow, disc.material, halo.material);
     }
-    sky.renderOrder = -1;
+    sky.renderOrder = 5;
     scene.add(sky);
     this.sky = sky;
   }
@@ -1420,31 +1481,14 @@ export class WorldStage implements Stage {
 
   private buildMountainsAndClouds(scene: THREE.Scene) {
     const r = rng(3);
-    const mountains: { m: THREE.Matrix4; c: THREE.Color }[] = [];
-    for (let i = 0; i < 16; i++) {
-      const z = -200 - r() * 80;
-      const x = -130 + i * 16 + (r() - 0.5) * 10;
-      const h = 30 + r() * 38;
-      mountains.push({ m: mat4(x, h / 2 - 4, z, 22 + r() * 18, h, 22 + r() * 18, r() * 3), c: new THREE.Color().setHSL(0.58, 0.18, 0.55 + r() * 0.08) });
+    for (const geometry of [mountainRange(), inlandFoothills()]) {
+      const material = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 1 });
+      const mesh = new THREE.Mesh(geometry, material);mesh.name = "landscape-ridge";mesh.receiveShadow = true;
+      scene.add(mesh);this.disposables.push(geometry, material);
     }
-    // closer hills behind the village on the left
-    for (let i = 0; i < 8; i++) {
-      const z = 10 - i * 26;
-      const h = 12 + r() * 14;
-      mountains.push({ m: mat4(-58 - r() * 10, h / 2 - 2, z, 26, h, 26, r() * 3), c: new THREE.Color().setHSL(0.26, 0.3, 0.38 + r() * 0.06) });
-    }
-    const mGeo = new THREE.ConeGeometry(1, 1, 7);
-    const mMat = new THREE.MeshStandardMaterial({ roughness: 1, flatShading: true });
-    const mMesh = instanced(mGeo, mMat, mountains, false);
-    scene.add(mMesh);
 
-    const cloudMat = new THREE.MeshStandardMaterial({
-      color: this.look.clouds[0],
-      roughness: 1,
-      emissive: this.look.clouds[0],
-      emissiveIntensity: this.look.clouds[1],
-      fog: false,
-    });
+    const cloudMap = finishTexture('cloud');this.disposables.push(cloudMap);
+    const cloudMat = new THREE.MeshBasicMaterial({ map:cloudMap, color:this.look.clouds[0], transparent:true, opacity:this.look.stars ? .32 : .8, depthWrite:false, fog:false, side:THREE.DoubleSide });
     const puffs: { m: THREE.Matrix4 }[] = [];
     for (let i = 0; i < 9; i++) {
       const cx = -120 + r() * 260;
@@ -1455,10 +1499,10 @@ export class WorldStage implements Stage {
         puffs.push({ m: mat4(cx + (k - 2) * 7 + r() * 3, cy + r() * 3, cz + r() * 4, s * 1.4, s, s) });
       }
     }
-    const cloudMesh = instanced(new THREE.SphereGeometry(1, 10, 7), cloudMat, puffs, false);
+    const cloudMesh = instanced(new THREE.PlaneGeometry(2.6,1.5), cloudMat, puffs, false);
     scene.add(cloudMesh);
     this.clouds = cloudMesh;
-    this.disposables.push(mGeo, mMat, cloudMesh.geometry, cloudMat);
+    this.disposables.push(cloudMesh.geometry, cloudMat);
   }
 
   private buildStartAndFinish(scene: THREE.Scene) {
@@ -1480,19 +1524,20 @@ export class WorldStage implements Stage {
 
     // start gantry: five lamps over the line, lit one pair at a time by the countdown
     const gantry = new THREE.Group();
+    gantry.name = "start-gantry";
     const metal = new THREE.MeshStandardMaterial({ color: "#2b2f36", metalness: 0.5, roughness: 0.45 });
     const span = HALF_WIDTH + 0.55;
-    const poleGeo = new THREE.BoxGeometry(0.12, 3.9, 0.12);
+    const poleGeo = new RoundedBoxGeometry(0.12, 3.9, 0.12, 2, 0.035);
     for (const side of [-1, 1]) {
       const pole = new THREE.Mesh(poleGeo, metal);
       pole.position.set(side * span, 1.95, 0);
       pole.castShadow = true;
       gantry.add(pole);
     }
-    const beam = new THREE.Mesh(new THREE.BoxGeometry(span * 2 + 0.12, 0.12, 0.12), metal);
+    const beam = new THREE.Mesh(new RoundedBoxGeometry(span * 2 + 0.12, 0.12, 0.12, 2, 0.035), metal);
     beam.position.y = 3.85;
     gantry.add(beam);
-    const panel = new THREE.Mesh(new THREE.BoxGeometry(2.1, 0.42, 0.1), new THREE.MeshStandardMaterial({ color: "#111317", roughness: 0.6 }));
+    const panel = new THREE.Mesh(new RoundedBoxGeometry(2.1, 0.42, 0.1, 2, 0.025), new THREE.MeshStandardMaterial({ color: "#111317", roughness: 0.6 }));
     panel.position.set(0, 3.55, -0.04);
     gantry.add(panel);
     const lampGeo = new THREE.CircleGeometry(0.14, 20);
@@ -1506,6 +1551,8 @@ export class WorldStage implements Stage {
       this.startLamps.push(lamp);
       this.disposables.push(lamp);
     }
+    const gantryDetails = decorateStartGantry(gantry, span);
+    this.disposables.push({ dispose: () => disposeSignGroup(gantryDetails) });
     // a few metres past the line, so it stands over the road ahead of the grid
     // rather than right in front of the camera
     const at = this.road.at(this.road.startLen + 6);
@@ -1523,26 +1570,14 @@ export class WorldStage implements Stage {
   private buildSigns(target: number) {
     if (!this.signs) return;
     this.finishTarget = target;
-    this.signs.traverse((o) => {
-      const m = o as THREE.Mesh;
-      m.geometry?.dispose();
-      const material = m.material as THREE.MeshStandardMaterial | undefined;
-      material?.map?.dispose();
-      material?.dispose();
-    });
+    disposeSignGroup(this.signs);
     this.signs.clear();
     const post = new THREE.MeshStandardMaterial({ color: "#a7adb6", metalness: 0.5, roughness: 0.4 });
     for (let i = 0; i < 5; i++) {
       const km = Math.round((target * i) / 5);
       const { point, right, forward } = this.road.at(this.road.kmToLen(km, target));
       const k = -(HALF_WIDTH + 1.9);
-      const g = new THREE.Group();
-      const board = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.8, 0.08), new THREE.MeshStandardMaterial({ map: signTexture(String(km)) }));
-      board.position.y = 1.9;
-      board.castShadow = true;
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 1.9, 6), post);
-      pole.position.y = 0.95;
-      g.add(board, pole);
+      const g = createDistanceSign(km, this.look.lights);
       g.position.set(point.x + right.x * k, point.y, point.z + right.z * k);
       g.rotation.y = Math.atan2(forward.x, forward.z) + Math.PI;
       this.signs.add(g);
@@ -1550,19 +1585,19 @@ export class WorldStage implements Stage {
     // finish arch
     const { point, right, forward } = this.road.at(this.road.finishLen);
     const arch = new THREE.Group();
+    arch.name = "finish-gantry";
     for (const side of [-1, 1]) {
-      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 4.2, 8), post);
+      const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.12, 0.12, 4.2, 20), post);
       pole.position.set(side * (HALF_WIDTH + 0.6), 2.1, 0);
       pole.castShadow = true;
       arch.add(pole);
     }
-    const banner = new THREE.Mesh(new THREE.BoxGeometry(HALF_WIDTH * 2 + 1.4, 1.1, 0.1), new THREE.MeshStandardMaterial({ map: signTexture(String(target), true) }));
+    const banner = createFinishBanner(HALF_WIDTH * 2 + 1.4, target, this.look.lights);
     banner.position.y = 3.9;
-    banner.castShadow = true;
     arch.add(banner);
     const line = new THREE.Mesh(
       new THREE.PlaneGeometry(HALF_WIDTH * 2, 0.6),
-      new THREE.MeshStandardMaterial({ map: signTexture("", true), roughness: 0.7, ...IN_FRONT }),
+      new THREE.MeshStandardMaterial({ map: checkerLineTexture(), roughness: 0.7, ...IN_FRONT }),
     );
     line.rotation.x = -Math.PI / 2;
     line.position.y = 0.06;
@@ -1673,7 +1708,6 @@ export class WorldStage implements Stage {
       this.shotSince = performance.now();
       // a new race opens: the lamps go dark again for the countdown
       if (shot.kind === "intro") this.startGreen = false;
-      this.shotSide = 0;
       // cut in on an attack, and cut back out of it rather than drifting through the scenery
       if (
         shot.kind === "intro" ||
@@ -1688,156 +1722,44 @@ export class WorldStage implements Stage {
         this.shake = { at: this.shotSince + (shot.hazard === "barrage" ? 650 : 60), amp: shot.hazard === "barrage" ? 0.1 : 0.16 };
       }
     }
-    if (shot.kind !== "follow") this.followStyle = undefined;
     this.shot = shot;
-  }
-
-  /** Close-ups for each attack, framed in the car's own axes. */
-  private hazardShot(car: StageCar, hazard: string, cars: StageCar[], wantPos: THREE.Vector3, wantLook: THREE.Vector3) {
-    const fwd = new THREE.Vector3(Math.sin(car.yaw), 0, Math.cos(car.yaw));
-    const side = new THREE.Vector3(Math.cos(car.yaw), 0, -Math.sin(car.yaw));
-    // film from the side with no other car in the way
-    if (!this.shotSide) {
-      const clearance = (s: number) => {
-        const probe = car.position.clone().addScaledVector(side, s * 1.6);
-        return Math.min(99, ...cars.filter((c) => c.id !== car.id).map((c) => c.position.distanceTo(probe)));
-      };
-      this.shotSide = clearance(1) >= clearance(-1) ? 1 : -1;
-    }
-    const k = this.shotSide;
-    const e = (performance.now() - this.shotSince) / 1000;
-    const at = (f: number, s: number, up: number) => car.position.clone().addScaledVector(fwd, f).addScaledVector(side, s * k).add(new THREE.Vector3(0, up, 0));
-    switch (hazard) {
-      case "collision":
-        // low, in front, pushing in on the impact
-        wantPos.copy(at(4.4 - Math.min(e, 1.5) * 0.6, 2.4, 1.05));
-        wantLook.copy(at(0, 0, 0.3));
-        return 7;
-      case "crevaison":
-        // down at the wheel
-        wantPos.copy(at(1.7, 1.75, 0.4));
-        wantLook.copy(at(0.3, 0.3, 0.12));
-        return 7;
-      case "radar":
-        // from behind the speed camera: the flash goes off right at us
-        wantPos.copy(at(1.8 + e * 0.15, 2.6, 1.5));
-        wantLook.copy(at(0, 0, 0.35));
-        return 7;
-      case "barrage":
-        // in front, low: the barrier drops between us and the car
-        wantPos.copy(at(4.8, 0.7, 1.7));
-        wantLook.copy(at(0.6, 0, 0.45));
-        return 7;
-      case "panne":
-      default:
-        // profile, the car coughing to a stop
-        wantPos.copy(at(0.3 + e * 0.25, 3.8, 1.5));
-        wantLook.copy(at(0.2, 0, 0.3));
-        return 5;
-    }
   }
 
   frame(dt: number, t: number, cars: StageCar[], target: number) {
     this.flyGulls(t);
-    this.animateWorld(t);
+    this.animateWorld(t,cars);
     this.lightStart();
     const wantPos = new THREE.Vector3();
     const wantLook = new THREE.Vector3();
     const byId = new Map(cars.map((c) => [c.id, c]));
     const shot = this.shot;
-    let stiffness = 2.2;
-
+    let stiffness = 3;
     let kick = 0;
-    if (shot.kind === "follow" && byId.has(shot.id)) {
-      const car = byId.get(shot.id)!;
-      const fwd = new THREE.Vector3(Math.sin(car.yaw), 0, Math.cos(car.yaw));
-      const side = new THREE.Vector3(Math.cos(car.yaw), 0, -Math.sin(car.yaw));
-      // a new kind of move gets its own angle, with a cut
-      if (car.style && car.style !== this.followStyle && ["overtake", "turbo", "shortcut"].includes(car.style)) this.placed = false;
-      if (car.style) this.followStyle = car.style;
-      const style = this.followStyle;
-      if (style === "overtake") {
-        // tracking shot alongside, low, as it pulls out and past the others
-        const left = this.road.at(this.road.kmToLen(car.km, target)).right.clone().negate();
-        wantPos.copy(car.position).addScaledVector(left, 4.6).addScaledVector(fwd, -0.4).add(new THREE.Vector3(0, 1.6, 0));
-        wantLook.copy(car.position).addScaledVector(fwd, 1.9).add(new THREE.Vector3(0, 0.25, 0));
-        stiffness = 9;
-      } else if (style === "turbo") {
-        // tucked in low behind it, the lens widening with the speed
-        wantPos.copy(car.position).addScaledVector(fwd, -4.2).add(new THREE.Vector3(0, 1.35, 0));
-        wantLook.copy(car.position).addScaledVector(fwd, 7).add(new THREE.Vector3(0, 0.4, 0));
-        stiffness = 10;
-        kick = car.style === "turbo" ? 1 : 0;
-      } else if (style === "shortcut") {
-        // crane shot: high above, watching it cut across
-        wantPos.copy(car.position).addScaledVector(fwd, -3).addScaledVector(side, 2).add(new THREE.Vector3(0, 10, 0));
-        wantLook.copy(car.position).addScaledVector(fwd, 3);
-        stiffness = 4;
-      } else {
-        // chase cam: behind and above the car, looking down the road ahead
-        wantPos.copy(car.position).addScaledVector(fwd, -10).add(new THREE.Vector3(0, 5.2, 0));
-        wantLook.copy(car.position).addScaledVector(fwd, 12);
-        wantLook.y = wantPos.y - 22 * Math.tan(THREE.MathUtils.degToRad(17));
-        stiffness = 4;
-      }
-    } else if (shot.kind === "car" && shot.hazard && byId.has(shot.id)) {
-      stiffness = this.hazardShot(byId.get(shot.id)!, shot.hazard, cars, wantPos, wantLook);
-    } else if (shot.kind === "car" && byId.has(shot.id)) {
-      // three-quarter view on a car something happens to
-      const car = byId.get(shot.id)!;
-      const fwd = new THREE.Vector3(Math.sin(car.yaw), 0, Math.cos(car.yaw));
-      const side = new THREE.Vector3(fwd.z, 0, -fwd.x);
-      const lean = this.road.at(this.road.kmToLen(car.km, target)).point.x > 4 ? -1 : 1;
-      wantPos.copy(car.position).addScaledVector(fwd, 6.5).addScaledVector(side, 6.5 * lean).add(new THREE.Vector3(0, 5.5, 0));
-      wantLook.copy(car.position).setY(car.position.y + 0.4);
-      stiffness = 3;
-    } else if (shot.kind === "overview") {
-      // the whole road from start to finish, seen from high above the coast
-      const a = this.road.at(this.road.startLen).point;
-      const b = this.road.at(this.road.finishLen).point;
-      // a little closer to the start: the cars begin there and the finish reads far off
-      const centre = a.clone().lerp(b, 0.44);
-      const length = a.distanceTo(b) + 60;
-      const vHalf = THREE.MathUtils.degToRad(this.camera.fov / 2);
-      const visible = Math.max(1, this.height - (this.virtualHeight - this.height));
-      const hHalf = Math.atan(Math.tan(vHalf) * (this.width / visible));
-      const pitch = THREE.MathUtils.degToRad(62);
-      const dist = Math.max((length * Math.sin(pitch)) / 2 / Math.tan(vHalf), 22 / Math.tan(hHalf));
-      wantPos.set(centre.x + 4, centre.y + Math.sin(pitch) * dist, centre.z + Math.cos(pitch) * dist);
-      wantLook.copy(centre);
-      stiffness = 2.4;
-    } else if (shot.kind === "intro") {
-      // over the sea with the whole coast in view, then a long swoop down to the grid
-      const e = (performance.now() - this.shotSince) / 1000;
+    // Keep every event behind the vehicle, including shortcut, hazards and the
+    // introduction. Their effects still animate; the camera never flies overhead.
+    const focus = shot.kind === "follow" || shot.kind === "car"
+      ? byId.get(shot.id)
+      : shot.kind === "finish" && shot.winnerId ? byId.get(shot.winnerId) : undefined;
+    const lead = focus ?? cars.find(c => c.active) ?? cars[0];
+    const focusId = lead?.id ?? null;
+    if (focusId !== this.cameraFocus) {
+      this.cameraFocus = focusId;
+      this.placed = false;
+    }
+    if (lead && shot.kind === "pack") {
       const pack = this.packShot(cars, target);
-      const a0 = new THREE.Vector3(46, 21, -98);
-      const a1 = new THREE.Vector3(32, 12, 6);
-      const l0 = new THREE.Vector3(4, 0, -64);
-      const l1 = new THREE.Vector3(2, 0, -22);
-      if (e < 3) {
-        const k = THREE.MathUtils.smoothstep(e, 0, 3);
-        wantPos.lerpVectors(a0, a1, k);
-        wantLook.lerpVectors(l0, l1, k);
-      } else {
-        const k = THREE.MathUtils.smootherstep(e, 3, 6.2);
-        wantPos.lerpVectors(a1, pack.pos, k);
-        wantLook.lerpVectors(l1, pack.look, k);
-      }
-      stiffness = 60;
-    } else if (shot.kind === "finish" && shot.winnerId && byId.has(shot.winnerId) && performance.now() - this.shotSince < 2900) {
-      // trackside, low, just past the line: the winner comes at us and crosses
-      const car = byId.get(shot.winnerId)!;
-      // (on the sea side, behind the rail: the crowd and the arch fill the background)
-      const f = this.road.at(this.road.finishLen);
-      wantPos.copy(f.point).addScaledVector(f.right, HALF_WIDTH + 2.2).addScaledVector(f.forward, 4.5).setY(f.point.y + 0.95);
-      wantLook.copy(car.position).setY(car.position.y + 0.35);
-      stiffness = 9;
-    } else if (shot.kind === "finish") {
-      const f = this.road.at(this.road.finishLen);
-      const a = performance.now() / 4200;
-      wantPos.set(f.point.x + Math.sin(a) * 11, f.point.y + 5.5, f.point.z + Math.cos(a) * 11);
-      wantLook.copy(f.point).setY(f.point.y + 1.2);
-      stiffness = 2;
+      wantPos.copy(pack.pos);
+      wantLook.copy(pack.look);
+    } else if (lead) {
+      const forward = new THREE.Vector3(Math.sin(lead.yaw), 0, Math.cos(lead.yaw));
+      const turbo = shot.kind === "follow" && lead.style === "turbo";
+      const back = turbo ? 5.2 : 10;
+      const height = turbo ? 1.6 : 5.2;
+      wantPos.copy(lead.position).addScaledVector(forward, -back).add(new THREE.Vector3(0, height, 0));
+      wantLook.copy(lead.position).addScaledVector(forward, 12);
+      wantLook.y = wantPos.y - (back + 12) * Math.tan(THREE.MathUtils.degToRad(17));
+      stiffness = shot.kind === "follow" ? 6 : 3;
+      kick = turbo ? 1 : 0;
     } else {
       const pack = this.packShot(cars, target);
       wantPos.copy(pack.pos);
@@ -1873,17 +1795,13 @@ export class WorldStage implements Stage {
     this.sun.position.copy(p).add(this.sunOffset);
     if (this.sky) this.sky.position.copy(this.camera.position);
     this.updateHeadlights(cars);
+    this.airShow?.update(t / 1000);
     this.sun.target.updateMatrixWorld();
   }
 
   dispose() {
     this.disposables.forEach((d) => d.dispose());
-    if (this.signs) {
-      this.signs.traverse((o) => {
-        const m = o as THREE.Mesh;
-        m.geometry?.dispose();
-      });
-    }
+    if (this.signs) disposeSignGroup(this.signs);
     void this.scene;
   }
 }
@@ -1893,7 +1811,7 @@ function ribbonCoast() {
   const positions: number[] = [];
   const index: number[] = [];
   let row = 0;
-  for (let z = 40; z >= -220; z -= 2) {
+  for (let z = 40; z >= -220; z -= 1) {
     const x = coastX(z);
     positions.push(x - 1, 0, z, x + 5, 0, z);
     if (row > 0) {
