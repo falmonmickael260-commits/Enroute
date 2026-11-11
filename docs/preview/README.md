@@ -1,5 +1,11 @@
 # Kilomax — décor, voitures et finition de la course
 
+## Deuxième map : Grand Boulevard
+
+[Découvrir la ville et ses aperçus](map-ville.md). Le circuit se choisit avant la partie, en conservant la map côtière et toute la dynamique de conduite.
+
+![Grand Boulevard](ville-boulevard.webp)
+
 ## Animations des bonus et malus
 
 [Voir les onze séquences animées](animations-cartes.mp4)

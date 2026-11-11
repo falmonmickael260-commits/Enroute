@@ -1,6 +1,7 @@
 "use client";
 
-import { use } from "react";
+import { use, useEffect } from "react";
+import { setRaceMap } from "@/game/lib/store/raceMapStore";
 import { useRouter } from "next/navigation";
 import type { NewGameOptions } from "@/game/lib/engine/gameReducer";
 import type { PlayerColor } from "@/game/types/game";
@@ -18,9 +19,10 @@ const DISTANCES = [700, 1000, 1500];
  * distance, `?demo=1` deals hands with every kind of card so each effect can
  * be tried right away.
  */
-export default function Scene3DPage({ searchParams }: { searchParams: Promise<{ n?: string; demo?: string; km?: string }> }) {
+export default function Scene3DPage({ searchParams }: { searchParams: Promise<{ n?: string; demo?: string; km?: string; map?: string }> }) {
   const params = use(searchParams);
   const router = useRouter();
+  useEffect(() => { if (params.map === "city" || params.map === "coast") setRaceMap(params.map); }, [params.map]);
   const n = Math.max(2, Math.min(MAX_PLAYERS, Number(params.n) || 2));
   const demo = params.demo === "1";
   const target = DISTANCES.includes(Number(params.km)) ? Number(params.km) : 1000;
