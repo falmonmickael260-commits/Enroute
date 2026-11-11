@@ -18,7 +18,9 @@ Les effets expirent et leurs ressources sont libérées. Le nombre de particules
 ![Ravitaillement](animation-carburant.webp)
 ![Bonus turbo](animation-turbo.webp)
 
-Validation : six profils de déplacement monotones avec distance exacte et départ/arrêt progressifs ; dix-neuf cas de déclenchement des cartes ; onze scénarios rendus dans Chromium sans erreur JavaScript, dont la restauration des roues et la disparition des malus après réparation. Vérifications TypeScript, ESLint et compilation de production.
+Validation : six profils de déplacement monotones avec distance exacte et départ/arrêt progressifs ; dix-neuf cas de déclenchement des cartes ; onze scénarios rendus dans Chromium sans erreur JavaScript, dont la restauration des roues et la disparition des malus après réparation. Vérifications TypeScript, ESLint et compilation de production. Dans l’interface mobile de production, l’enchaînement crevaison sur le joueur 2 → roue de secours → turbo passe sans erreur JavaScript : les deux routes sont libres et le joueur 1 atteint 100 km.
+
+![Partie mobile après crevaison, réparation et turbo](animations-mobile.webp)
 
 ## Finition globale et avion REVANCHE GAME
 
