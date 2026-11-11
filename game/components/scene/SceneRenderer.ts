@@ -1,6 +1,6 @@
 import * as THREE from "three";
 import { createCardEffects } from "./cardEffects";
-import { driveProgress, boostEnvelope, punctureAmount, collisionPose, smooth, type MotionStyle } from "./cardAnimation";
+import { driveProgress, boostEnvelope, punctureAmount, collisionPose, overtakePose, smooth, type MotionStyle } from "./cardAnimation";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import type { DefenseType, HazardType } from "@/game/types/game";
 import type { Stage, Shot, StageCar } from "./stage";
@@ -292,7 +292,7 @@ export class SceneRenderer {
         car.style = car.pendingStyle ?? (dist >= target * 0.15 ? "fast" : "drive");
         car.pendingStyle = null;
         const base = Math.min(2600, 950 + (dist / Math.max(1, target)) * 5200);
-        car.moveDur = car.style === "turbo" ? Math.max(1400,base * 0.8) : car.style === "overtake" ? Math.max(1900, base) : car.style === "sprint" ? base * 1.15 : base;
+        car.moveDur = car.style === "turbo" ? Math.max(1400,base * 0.8) : car.style === "overtake" ? Math.max(3200, base) : car.style === "sprint" ? base * 1.15 : base;
       }
       car.active = p.active;
       this.syncHazards(car, p, now);
@@ -681,6 +681,7 @@ export class SceneRenderer {
       const prevKm = car.km;
       const m = car.model;
       let swerve = 0;
+      let passingYaw = 0;
       let flameOn = false;
       if (car.km !== car.toKm) {
         const a = clamp01((t - car.moveStart) / car.moveDur);
@@ -720,9 +721,13 @@ export class SceneRenderer {
           }
 
         } else {
-          if (car.style === "overtake") swerve = Math.sin(smooth(a) * Math.PI) * 0.55 * Math.sign(0.001 - car.lateral || 1);
+          if (car.style === "overtake") {
+            const passing=overtakePose(a,car.lateral);
+            swerve=passing.offset;
+            passingYaw=passing.yaw;
+          }
           const gap = car.style === "fast" || car.style === "overtake" ? 45 : 70;
-          if (t - car.lastPuff > gap && a > 0.05 && a < 0.9) {
+          if (car.style !== "overtake" && t - car.lastPuff > gap && a > 0.05 && a < 0.9) {
             car.lastPuff = t;
             this.emit(m.root, behind, "#e9dcc2", 0.55, 900, car.style === "fast" ? 1 : 0.7);
           }
@@ -749,7 +754,7 @@ export class SceneRenderer {
       car.lateral += (car.lateralTarget - car.lateral) * Math.min(1, dt * 5);
       car.along += (car.alongTarget - car.along) * Math.min(1, dt * 5);
       this.place(car, car.km, swerve);
-      m.body.rotation.y = swerve * 0.35;
+      m.body.rotation.y = passingYaw;
       // lean into the bends while driving
       const yaw = car.frame.rotation.y;
       let turn = yaw - car.prevYaw;

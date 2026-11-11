@@ -4,6 +4,8 @@
 
 [Voir les onze séquences animées](animations-cartes.mp4)
 
+Le dépassement a depuis été renforcé : sortie de file progressive, maintien sur la voie de dépassement, puis rabattement avec orientation inversée de la voiture. La manœuvre dure au moins 3,2 secondes et ne produit plus de poussière. Le passage « dépassement » dans cette première vidéo montre la version précédente. Contrôle dans l’interface mobile : le joueur 2 utilise DÉPASSEMENT pour passer le joueur 1 de 200 à 210 km, sans erreur JavaScript.
+
 Cette vidéo est une inspection des animations avec les voitures du moteur, sur une route de test. Son cadrage fixe sert à montrer les détails : la caméra de conduite du jeu reste inchangée. Les images sont calculées à pas fixe ; ce film ne mesure pas les performances sur téléphone.
 
 - Crevaison : pneu arrière qui se dégonfle, jante ronde et caisse légèrement affaissée. La roue retrouve sa forme après réparation.

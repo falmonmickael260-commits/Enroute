@@ -15,3 +15,12 @@ export function collisionPose(age:number,recoveryAge?:number){
   const impact=smooth(age/95),settle=1-Math.exp(-Math.max(0,age)/260),recover=recoveryAge===undefined?1:1-smooth(recoveryAge/1000);
   return {yaw:(.12*settle+.08*Math.sin(age/105)*Math.exp(-age/350)*impact)*recover,roll:(.025*settle+.065*Math.sin(age/85)*Math.exp(-age/300)*impact)*recover};
 }
+
+/** Pull out, hold the passing lane, then merge back; steering reverses on return. */
+export function overtakePose(progress:number,lane:number){
+  const t=unit(progress),destination=lane>=0?-.65:.65;
+  const enter=unit((t-.04)/.24),leave=unit((t-.86)/.14);
+  const offset=(destination-lane)*(smooth(enter)-smooth(leave));
+  const steering=(destination-lane)*(6*enter*(1-enter)/.24-6*leave*(1-leave)/.14);
+  return {offset,yaw:Math.atan(steering*.022)};
+}
