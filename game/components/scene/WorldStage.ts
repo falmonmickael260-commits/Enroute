@@ -1,4 +1,5 @@
 import * as THREE from "three";
+import { createRoadsideCrowd, placeSpectators } from "./roadsideCrowd";
 import { createDistanceSign, createFinishBanner, decorateStartGantry, createChevronParts, checkerLineTexture, disposeSignGroup } from "./roadFurniture";
 import { RoundedBoxGeometry } from "three/examples/jsm/geometries/RoundedBoxGeometry.js";
 import { createSailboatParts, createSeaMaterial } from "./coastalMarine";
@@ -942,6 +943,10 @@ export class WorldStage implements Stage {
     });
     this.disposables.push(plaster, tiles);
     const visibleHomes = buildCoastalVillage(scene, houses, plaster, tiles, this.look.lights, this.disposables);
+    this.spectatorObstacles = [
+      ...visibleHomes.map(h => ({ x: h.x, z: h.z, radius: Math.hypot(h.w, h.d) * .5 + .45 })),
+      ...[...trunks,...cypress].map(item => { const p = new THREE.Vector3().setFromMatrixPosition(item.m); return { x:p.x, z:p.z, radius:.5 }; }),
+    ];
     buildVillageGardens(scene, visibleHomes, (x, z) => this.terrainHeight(x, z), (x, z) => free(x, z, 1.5), this.disposables);
 
     // All boat parts share the existing sailing and rocking transforms.
@@ -1105,8 +1110,8 @@ export class WorldStage implements Stage {
   private clouds: THREE.InstancedMesh | null = null;
   private boats: { x: number; z: number; yaw: number; radius: number; speed: number; phase: number }[] = [];
   private boatMeshes: THREE.InstancedMesh[] = [];
-  private crowd: { x: number; y: number; z: number; yaw: number; phase: number; flag: boolean }[] = [];
-  private crowdMeshes: { body: THREE.InstancedMesh; head: THREE.InstancedMesh; flag: THREE.InstancedMesh } | null = null;
+  private spectators: ReturnType<typeof createRoadsideCrowd> | null = null;
+  private spectatorObstacles: { x: number; z: number; radius: number }[] = [];
   private pennants: { base: THREE.Matrix4; phase: number }[] = [];
   private pennantMesh: THREE.InstancedMesh | null = null;
   private beacon: THREE.MeshStandardMaterial | null = null;
@@ -1116,40 +1121,14 @@ export class WorldStage implements Stage {
   private beam: THREE.Group | null = null;
 
   /**
-   * Start and finish feel like an event: bunting across the road and a few
-   * spectators on the hillside, cheering and waving flags.
+   * Bunting at the start/finish and dense spectator groups along the course.
    */
   private buildCelebration(scene: THREE.Scene) {
-    const r = rng(404);
-    const people: { m: THREE.Matrix4; c: THREE.Color }[] = [];
-    const heads: { m: THREE.Matrix4; c: THREE.Color }[] = [];
-    const flags: { m: THREE.Matrix4; c: THREE.Color }[] = [];
     const shirts = ["#e8352b", "#1f86ea", "#ffc21a", "#2fae55", "#f04aa6", "#ffffff", "#8e4cf0", "#ff7a1a"];
-    const skins = ["#f1c7a5", "#d9a37c", "#a8714b", "#6e4429"];
     const poles: { m: THREE.Matrix4 }[] = [];
     const pennants: { m: THREE.Matrix4; c: THREE.Color }[] = [];
 
-    for (const [at, from, to] of [
-      [this.road.startLen, -3, 7],
-      [this.road.finishLen, -7, 3],
-    ] as const) {
-      // spectators behind the wall, facing the road
-      for (let i = 0; i < 16; i++) {
-        const l = at + from + r() * (to - from);
-        const { point, right } = this.road.at(l);
-        const k = -(HALF_WIDTH + 2.1 + r() * 1.8);
-        const x = point.x + right.x * k;
-        const z = point.z + right.z * k;
-        const y = this.terrainHeight(x, z);
-        const yaw = Math.atan2(right.x, right.z);
-        const flag = r() < 0.4;
-        this.crowd.push({ x, y, z, yaw, phase: r() * Math.PI * 2, flag });
-        const shirt = new THREE.Color(shirts[Math.floor(r() * shirts.length)]);
-        people.push({ m: new THREE.Matrix4(), c: shirt });
-        heads.push({ m: new THREE.Matrix4(), c: new THREE.Color(skins[Math.floor(r() * skins.length)]) });
-        flags.push({ m: new THREE.Matrix4(), c: flag ? new THREE.Color(shirts[Math.floor(r() * 5)]) : shirt });
-      }
-
+    for (const at of [this.road.startLen, this.road.finishLen]) {
       // bunting on two striped masts across the road
       // past the start line (the camera waits behind it), a few metres before the finish arch
       const { point, right, forward } = this.road.at(at + (at === this.road.startLen ? 9 : -5.5));
@@ -1171,19 +1150,17 @@ export class WorldStage implements Stage {
       }
     }
 
-    const body = new THREE.CapsuleGeometry(0.13, 0.3, 3, 8);
-    body.translate(0, 0.28, 0);
-    const head = new THREE.SphereGeometry(0.1, 10, 8);
-    head.translate(0, 0.6, 0);
-    const flag = new THREE.BoxGeometry(0.02, 0.2, 0.28);
-    flag.translate(0, 0.95, 0.14);
-    const mat = () => new THREE.MeshStandardMaterial({ roughness: 0.8 });
-    this.crowdMeshes = { body: instanced(body, mat(), people), head: instanced(head, mat(), heads), flag: instanced(flag, mat(), flags, false) };
-    for (const m of Object.values(this.crowdMeshes)) {
-      m.instanceMatrix.setUsage(THREE.DynamicDrawUsage);
-      scene.add(m);
-      this.disposables.push(m.geometry, m.material as THREE.Material);
-    }
+    const spots = placeSpectators({
+      start: this.road.startLen, finish: this.road.finishLen,
+      at: distance => this.road.at(distance),
+      ground: (x,z) => this.terrainHeight(x,z),
+      allowed: (x,z,distance) => !this.onBridge(distance)
+        && this.road.nearest(x,z).dist > HALF_WIDTH + 1.75
+        && x < coastX(z) - 1.5 && this.terrainHeight(x,z) > SEA_LEVEL + .6
+        && !this.spectatorObstacles.some(o => Math.hypot(x-o.x,z-o.z) < o.radius),
+    });
+    this.spectators = createRoadsideCrowd(scene, spots);
+    this.disposables.push(this.spectators);
 
     const pennant = new THREE.BufferGeometry();
     pennant.setAttribute("position", new THREE.Float32BufferAttribute([-0.13, 0, 0, 0.13, 0, 0, 0, -0.3, 0], 3));
@@ -1297,23 +1274,8 @@ export class WorldStage implements Stage {
       for (const mesh of this.boatMeshes) mesh.setMatrixAt(i, m);
     });
     for (const mesh of this.boatMeshes) mesh.instanceMatrix.needsUpdate = true;
-    // the crowd cheers: little hops in waves, flags waving
-    if (this.crowdMeshes) {
-      const { body, head, flag } = this.crowdMeshes;
-      const fm = new THREE.Matrix4();
-      this.crowd.forEach((c, i) => {
-        const excite = 0.5 + 0.5 * Math.sin(s * 0.7 + c.phase);
-        const hop = Math.max(0, Math.sin(s * 9 + c.phase * 3)) * 0.12 * excite;
-        v.set(c.x, c.y + hop, c.z);
-        m.compose(v, q.setFromEuler(e.set(0, c.yaw + Math.sin(s * 1.5 + c.phase) * 0.3, 0)), one);
-        body.setMatrixAt(i, m);
-        head.setMatrixAt(i, m);
-        if (c.flag) fm.compose(v, q.setFromEuler(e.set(Math.sin(s * 6 + c.phase) * 0.5, c.yaw, 0)), one);
-        else fm.makeScale(0, 0, 0);
-        flag.setMatrixAt(i, fm);
-      });
-      body.instanceMatrix.needsUpdate = head.instanceMatrix.needsUpdate = flag.instanceMatrix.needsUpdate = true;
-    }
+    // Independent spectators applaud, take photos and wave to passing cars.
+    this.spectators?.update(s);
     // bunting flutters in the breeze
     if (this.pennantMesh) {
       const sway = new THREE.Matrix4();

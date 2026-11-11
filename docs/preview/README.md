@@ -1,5 +1,21 @@
 # Décor de Kilomax — aperçu de travail
 
+## Foule et personnages au bord de la route
+
+Le parcours accueille 193 spectateurs au lieu de 32 : des groupes plus denses au départ et à l'arrivée, ainsi que plusieurs groupes sur le parcours. Leur placement reste derrière le muret, sur la terre ferme, avec un espacement minimal et en évitant maisons, troncs et portions de viaduc.
+
+Les anciens corps en capsule sont remplacés par un torse, des jambes, des chaussures arrondies, une tête avec visage et oreilles, des cheveux et parfois une casquette. Les tailles, vêtements et carnations varient. Bras, avant-bras et mains sont articulés : applaudissements, encouragements, photos et drapeaux qui flottent, avec des rythmes décalés. Les personnages restent stylisés pour correspondre au jeu.
+
+![Personnages et poses](personnages-detail.webp)
+
+![Foule derrière les barrières dans le décor du jeu](foule-bord-route.webp)
+
+| Ancienne foule | Nouvelle foule en vue de jeu |
+| --- | --- |
+| ![Avant](foule-avant.webp) | ![Après](foule-en-course.webp) |
+
+Les personnages partagent leurs géométries et utilisent 15 lots d'instances pour l'ensemble de la foule. La caméra de conduite, les voitures et la route ne changent pas dans cette passe. La capture vidéo utilise le rendu logiciel Chromium et ne constitue pas une mesure de performances sur téléphone.
+
 ## Voitures inspirées des modèles de série
 
 Les carrosseries ont maintenant un capot et un coffre plus plats, des flancs avec une ligne d'épaule et des passages de roues moins bombés. L'habitacle est peint, avec des montants visibles, une lunette arrière, un pare-brise et des vitres latérales distinctes. Les blocs de feux, les pare-chocs, les plaques et les rétroviseurs sont plus discrets. Les matériaux présentent des reflets atténués. Ces modèles restent stylisés pour le jeu mobile ; ce ne sont pas des reproductions de marques automobiles.
