@@ -1,5 +1,25 @@
 # Kilomax — décor, voitures et finition de la course
 
+## Animations des bonus et malus
+
+[Voir les onze séquences animées](animations-cartes.mp4)
+
+Cette vidéo est une inspection des animations avec les voitures du moteur, sur une route de test. Son cadrage fixe sert à montrer les détails : la caméra de conduite du jeu reste inchangée. Les images sont calculées à pas fixe ; ce film ne mesure pas les performances sur téléphone.
+
+- Crevaison : pneu arrière qui se dégonfle, jante ronde et caisse légèrement affaissée. La roue retrouve sa forme après réparation.
+- Réparations : petit mécanicien, cric et roue de secours, outil pour la carrosserie, bidon et écoulement pour le carburant.
+- Collision : secousse amortie et petits débris ; barrage qui glisse latéralement ; radar avec deux éclairs courts.
+- Bonus : accélération et freinage progressifs, turbo plus discret, protection translucide et flèches GPS qui suivent le relief de la route. Raccourci, dépassement et sprint ont des mouvements distincts.
+
+Les effets expirent et leurs ressources sont libérées. Le nombre de particules est plafonné. Les règles, les distances, la largeur de route et l’avion au large restent inchangés.
+
+![Pneu arrière dégonflé](animation-crevaison.webp)
+![Réparation avec mécanicien et roue de secours](animation-reparation.webp)
+![Ravitaillement](animation-carburant.webp)
+![Bonus turbo](animation-turbo.webp)
+
+Validation : six profils de déplacement monotones avec distance exacte et départ/arrêt progressifs ; dix-neuf cas de déclenchement des cartes ; onze scénarios rendus dans Chromium sans erreur JavaScript, dont la restauration des roues et la disparition des malus après réparation. Vérifications TypeScript, ESLint et compilation de production.
+
 ## Finition globale et avion REVANCHE GAME
 
 Cette passe travaille l'ensemble du décor avec une palette de bord de mer, des matières plus fines et des animations discrètes. Le tracé, la largeur de route, les gabarits des voitures et la vue arrière de conduite sont conservés.
