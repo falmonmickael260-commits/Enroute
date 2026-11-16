@@ -18,6 +18,7 @@ Puis ouvrir http://localhost:3000.
   rechargement ; si le pilote dont c'est le tour se déconnecte, l'hôte peut passer son tour
   (automatique au bout de 45 s).
 - **Sur cet appareil** — on se passe l'écran.
+- **Contre des bots** — un pilote humain affronte de 1 à 5 adversaires contrôlés par l'ordinateur.
 
 ## Multijoueur en ligne (Supabase)
 
