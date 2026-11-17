@@ -13,9 +13,10 @@ cet endpoint avec la clé de signature. Aucun secret de siège ou compte de joue
 n’est nécessaire pour observer.
 
 Déployer cet adaptateur en coordination avec `revanchegames/apps/admin` et ses
-migrations du 17 novembre 2026. Pour Kilomax, appliquer également la migration
-`20261117000000_admin_public_observer.sql` dans la base de parties existante ;
-`GAME_SUPABASE_SERVICE_ROLE_KEY` reste exclusivement côté serveur.
+migrations du 17 novembre 2026. Kilomax lit la table de parties existante côté serveur et applique une projection
+publique stricte ; aucune migration distante supplémentaire n’est nécessaire.
+`GAME_SUPABASE_SERVICE_ROLE_KEY` reste exclusivement côté serveur. La migration
+SQL de projection fournie est optionnelle, et n’est pas appelée par la route.
 
 Cette livraison n’ajoute pas la fermeture/exclusion native ni la propagation des
 sanctions aux sockets déjà ouvertes. Elle ne doit pas être annoncée comme une
