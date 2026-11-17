@@ -21,7 +21,17 @@ try {
   await assert.rejects(call({ ...admission, proof: { ...c.proof, secret: randomUUID() } }), /ami/);
   for (let i = 0; i < 4; i++) await db.query("select join_room($1,$2,'Invité')",[room.code,randomUUID()]);
   await assert.rejects(call({ ...admission, uid: randomUUID() }), /complète/);
+  const privateState={phase:'draw',turn:1,target:1500,currentPlayerIndex:0,winnerId:null,deck:[{uid:'HIDDEN-DECK',defId:'SECRET'}],
+    players:[{id:hostId,name:'Alice',hand:[{uid:'HIDDEN-HAND',defId:'SECRET'}],distance:100,hazard:null,connected:true}],discard:[]};
+  await db.query("update rooms set state=$2,status='playing' where code=$1",[room.code,privateState]);
+  const before=(await db.query('select version,updated_at from rooms where code=$1',[room.code])).rows[0];
+  const observed=(await db.query('select platform_observer($1,$2) as result',[room.code,snapshot.instance])).rows[0].result;
+  assert.equal(observed.players[0].cardCount,1);assert.equal(observed.players[0].distance,100);
+  assert.equal(JSON.stringify(observed).includes('HIDDEN'),false);assert.equal('deck' in observed,false);
+  assert.deepEqual((await db.query('select version,updated_at from rooms where code=$1',[room.code])).rows[0],before);
+  assert.equal((await db.query('select platform_observer($1,$2) as result',[room.code,'replaced'])).rows[0].result,null);
   await db.exec('set role anon');
   await assert.rejects(call(c), /permission/);
+  await assert.rejects(db.query('select platform_observer($1,$2)',[room.code,snapshot.instance]),/permission/);
   console.log('Kilomax : identité, admission sans code, idempotence, invité, capacité, instance et permissions SQL vérifiés.');
 } finally { await db.close(); }
