@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import { publicRoomSnapshot } from '../admin-observer/projection.mjs';
+const room={code:'ABCD',created_at:'2026-11-17T12:34:56.123400+00:00',version:10,status:'playing',players:[],state:{phase:'draw',deck:['SECRET-DECK'],players:[{id:'p',name:'Test',secret:'SEAT-TOKEN',hand:['HIDDEN-HAND'],distance:200}],discard:[]}};
+const before=JSON.stringify(room);
+const result=publicRoomSnapshot(room,'ABCD','ABCD:2026-11-17 12:34:56.1234+00');
+assert.equal(result.players[0].cardCount,1);assert.equal(result.players[0].distance,200);
+assert.doesNotMatch(JSON.stringify(result),/SECRET|HIDDEN|TOKEN|hand|deck/);
+assert.equal(JSON.stringify(room),before);
+assert.equal(publicRoomSnapshot(room,'ABCD','ABCD:2026-11-17 12:34:56.1235+00'),null);
+assert.equal(publicRoomSnapshot(room,'WRONG','ABCD:2026-11-17 12:34:56.1234+00'),null);
+console.log('PASS Kilomax: public projection, microsecond instance validation, hidden state excluded, no mutation');
