@@ -209,7 +209,7 @@ export async function loadCarModel(id: string, color: string, repaint: boolean, 
   const all: THREE.Mesh[] = [];
   scene.traverse((o) => {
     // the four road wheels only (a spare wheel on the tailgate is part of the body)
-    if (spec.wheels.test(o.name)) wheels.push(o);
+    if (spec.wheels.test(o.name) && !(o.parent && spec.wheels.test(o.parent.name))) wheels.push(o);
     else if (o.name === "body")
       o.traverse((m) => {
         if ((m as THREE.Mesh).isMesh && !m.name.startsWith("wheel")) bodies.push(m as THREE.Mesh);
