@@ -65,10 +65,12 @@ export function normalizeCode(raw: string): string {
   return `ENR-${suffix.slice(0, 4)}`;
 }
 
+const RPC_PREFIX = process.env.NEXT_PUBLIC_KILOMAX_SHARED_DATABASE === "true" ? "kilomax_" : "";
+
 async function call<T>(fn: string, args: Record<string, unknown>): Promise<T> {
   let result;
   try {
-    result = await supabase().rpc(fn, args);
+    result = await supabase().rpc(RPC_PREFIX + fn, args);
   } catch {
     throw new OnlineError("Connexion impossible. Vérifiez votre réseau.", "network");
   }

@@ -37,6 +37,14 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
 
 Seule la clé **publishable** va dans le client — jamais la clé `service_role`.
 
+Pour le Supabase partagé de Revanche Games, appliquer la migration
+`kilomax_online_rooms` du dépôt plateforme et définir aussi
+`NEXT_PUBLIC_KILOMAX_SHARED_DATABASE=true`. Exporter et importer les lignes
+de `public.rooms` et `public.room_members` de la base d’origine vers
+`kilomax_online.rooms` et `kilomax_online.room_members` avant la bascule.
+Préserver les codes et les secrets de siège pour que les invitations et
+les sessions existantes restent valides.
+
 ## Mise en ligne
 
 Railway détecte Next.js et utilise les scripts `npm run build` et `npm start`.
