@@ -1,6 +1,8 @@
 "use client";
 
 import type { AmbianceId, AnimationEvent, GameState, PlayerColor } from "@/game/types/game";
+import { isPremiumVehicle } from "@/game/lib/garage";
+import { authorizeVehicle } from "./kilomaxShop";
 import { supabase } from "./client";
 
 export type RoomStatus = "lobby" | "playing" | "finished";
@@ -102,7 +104,16 @@ export function setReady(code: string, seat: Seat, ready: boolean) {
   return call<void>("set_ready", { p_code: code, p_player_id: seat.playerId, p_secret: seat.secret, p_ready: ready });
 }
 
-export function setCar(code: string, seat: Seat, car: string) {
+export async function setCar(code: string, seat: Seat, car: string) {
+  if (isPremiumVehicle(car)) {
+    let permit: Awaited<ReturnType<typeof authorizeVehicle>>;
+    try { permit = await authorizeVehicle(code, seat, car); }
+    catch (error) { throw new OnlineError(error instanceof Error ? error.message : "Véhicule indisponible.", "rejected"); }
+    return call<void>("set_premium_car", {
+      p_code: code, p_player_id: seat.playerId, p_secret: seat.secret, p_car: car,
+      p_expires: permit.expires, p_signature: permit.signature,
+    });
+  }
   return call<void>("set_car", { p_code: code, p_player_id: seat.playerId, p_secret: seat.secret, p_car: car });
 }
 

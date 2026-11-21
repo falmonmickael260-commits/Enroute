@@ -5,6 +5,7 @@ import type { GameState } from "@/game/types/game";
 import type { GameAction } from "@/game/lib/engine/gameReducer";
 import type { ConnectionState, RoomMeta } from "@/game/hooks/useOnlineRoom";
 import { useGameControls } from "@/game/hooks/useGameEngine";
+import { RaceChest } from "@/game/components/table/RaceChest";
 import { GameScreen } from "@/game/components/table/GameScreen";
 
 /** An absent player's turn is passed automatically after this long. */
@@ -99,7 +100,10 @@ export function OnlineGame({
       consumeAnimation={consumeAnimation}
       viewerId={playerId}
       offlineIds={offlineIds}
-      headerExtra={headerExtra}
+      headerExtra={<>
+        {headerExtra}
+        {connection === "online" && <RaceChest state={game} viewerId={playerId} apply={receipt => dispatch({ type: "REDEEM_CHEST", receipt })} />}
+      </>}
       notice={notice}
       onExit={onExit}
       onReplay={isHost ? onReplay : undefined}

@@ -41,3 +41,30 @@ Seule la clé **publishable** va dans le client — jamais la clé `service_role
 
 Importer le dépôt sur Vercel (framework Next.js détecté automatiquement) et déployer. Aucune
 variable d'environnement n'est obligatoire.
+
+## Boutique Revanche Games
+
+Le bouton **Boutique** ouvre le garage premium. Les véhicules vendus à 500 pièces
+sont conservés sur le compte Revanche Games. Une voiture premium choisie dans
+un salon en ligne exige une autorisation signée et liée à la place du pilote.
+
+Le bouton **Coffre** est visible en course sur le plateau classique et en 3D.
+Après avoir pioché pendant son tour, chaque pilote peut obtenir un GPS
+stratégique ou retirer un malus actif pour 300 pièces. Le portefeuille conserve
+le reçu par compte, pilote et course. En cas de resynchronisation, le bouton
+**Récupérer mon achat** permet de réappliquer le reçu pendant un tour éligible
+de cette même course. Le reçu est vérifié côté base en multijoueur.
+
+### Configuration avant publication
+
+- Appliquer la migration `kilomax_shop` au projet Supabase de Revanche Games et
+  la migration `premium_garage` au projet Supabase d'Enroute.
+- Provisionner la même clé aléatoire dédiée côté serveur dans
+  `KILOMAX_COMMERCE_SECRET` sur Revanche Games et dans
+  `kilomax_commerce.signing_key` sur la base Enroute. Cette clé est distincte du
+  jeton de lancement et n'est jamais une variable `NEXT_PUBLIC_*`.
+- `NEXT_PUBLIC_REVANCHE_ORIGIN` indique l'origine de la plateforme si elle est
+  différente de sa production Railway. Pour un aperçu hébergé, permettre
+  l'origine exacte d'Enroute avec `KILOMAX_SHOP_ORIGIN` côté plateforme.
+- Les crédits des véhicules et de leurs aperçus figurent dans
+  `public/models/cars/CREDITS.md`.

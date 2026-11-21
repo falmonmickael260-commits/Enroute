@@ -81,5 +81,5 @@ export function useGameEngine(initialOptions: NewGameOptions) {
   const consumeAnimation = useCallback(() => dispatch({ type: "CLEAR_ANIMATION" }), []);
   const newGame = useCallback((options: NewGameOptions) => dispatch({ type: "NEW_GAME", options }), []);
 
-  return { state, controls, consumeAnimation, newGame };
+  return { state, controls, consumeAnimation, newGame, dispatch };
 }

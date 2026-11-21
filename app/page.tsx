@@ -24,10 +24,10 @@ const TILES: { href: string; title: string; sub: string; icon: Icon; tone: strin
 ];
 
 /** Not built yet: shown so the layout is complete, and says so when tapped. */
-const DOCK: { label: string; icon: Icon }[] = [
+const DOCK: { label: string; icon: Icon; href?: string }[] = [
   { label: "Classement", icon: TrophyIcon },
   { label: "Statistiques", icon: ChartIcon },
-  { label: "Boutique", icon: CartIcon },
+  { label: "Boutique", icon: CartIcon, href: "/boutique" },
   { label: "Succès", icon: MedalIcon },
 ];
 
@@ -125,7 +125,12 @@ export default function Home() {
               ) : null}
             </AnimatePresence>
             <div className="menu-dock">
-              {DOCK.map((d) => (
+              {DOCK.map((d) => d.href ? (
+                <Link href={d.href} key={d.label} className="menu-dock-item">
+                  <span className="menu-ring home-dock-ring"><d.icon className="h-7 w-7" /></span>
+                  <span className="font-menu text-[clamp(0.7rem,3.1vw,0.9rem)] font-bold uppercase tracking-[0.02em]">{d.label}</span>
+                </Link>
+              ) : (
                 <button key={d.label} className="menu-dock-item" onClick={() => showSoon(d.label)} aria-label={`${d.label} (bientôt)`}>
                   <span className="menu-ring home-dock-ring">
                     <d.icon className="h-7 w-7" />

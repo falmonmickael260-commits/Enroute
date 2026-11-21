@@ -18,10 +18,11 @@ const gltfCache = new Map<string, Promise<GLTF | null>>();
 const paintCache = new Map<string, Promise<THREE.Texture | null>>();
 
 function loadGltf(id: string): Promise<GLTF | null> {
-  let p = gltfCache.get(id);
+  const file = id === "concept-gt" ? "supercar" : id;
+  let p = gltfCache.get(file);
   if (!p) {
-    p = new GLTFLoader().loadAsync(`/models/cars/${id}.glb`).catch(() => null);
-    gltfCache.set(id, p);
+    p = new GLTFLoader().loadAsync(`/models/cars/${file}.glb`).catch(() => null);
+    gltfCache.set(file, p);
   }
   return p;
 }
@@ -166,10 +167,16 @@ interface CarSpec {
 }
 
 const KENNEY: CarSpec = { wheels: /^wheel-(front|back)-(left|right)$/ };
+const CONCEPT: CarSpec = { wheels: /^Wheel(Front|Rear)[LR]$/, paintMaterial: "Paint 1 Carmine", length: 1.18 };
 const SPECS: Record<string, CarSpec> = {
   // Car Concept (Khronos glTF sample, CC-BY 4.0) and Toy Car (CC0): see CREDITS.md
-  supercar: { wheels: /^Wheel(Front|Rear)[LR]$/, paintMaterial: "Paint 1 Carmine", length: 1.18 },
+  supercar: CONCEPT,
+  "concept-gt": CONCEPT,
   retro: { wheels: /^$^/, length: 1.12 },
+  "gt-circuit": { wheels: /^$^/, length: 1.16 },
+  "pickup-classic": { wheels: /^$^/, length: 1.20 },
+  "moto-amethyste": { wheels: /^$^/, length: 0.94 },
+  chenille: { wheels: /^$^/, length: 1.24 },
 };
 
 /** Which of the node's own axes points along `world` (in the car's frame). */

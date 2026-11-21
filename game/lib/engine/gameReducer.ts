@@ -17,6 +17,7 @@ import {
   canPlayDistance,
   canPlaySpecial,
 } from "./rules";
+import { raceWalletKey, type ChestReceipt } from "../garage";
 import { uid } from "@/game/utils/array";
 
 export interface NewGameOptions {
@@ -86,6 +87,7 @@ function pushAnim(state: GameState, event: DistributiveOmit<AnimationEvent, "id"
 }
 
 export type GameAction =
+  | { type: "REDEEM_CHEST"; receipt: ChestReceipt }
   | { type: "DRAW_CARD" }
   | { type: "PLAY_DISTANCE"; cardUid: string }
   | { type: "PLAY_ATTACK"; cardUid: string; targetId: string }
@@ -181,6 +183,27 @@ export function gameReducer(state: GameState, action: GameAction): GameState {
   const player = draft.players[draft.currentPlayerIndex];
 
   switch (action.type) {
+    case "REDEEM_CHEST": {
+      const receipt = action.receipt;
+      if (draft.phase !== "action" || player.isBot || receipt.player !== player.id ||
+          receipt.match !== raceWalletKey(draft) || !/^[a-f0-9]{64}$/.test(receipt.proof) ||
+          draft.usedChestReceipts?.some(entry => entry.id === receipt.id || entry.player === player.id)) return draft;
+      if (receipt.reward === "repair") {
+        if (!player.hazard && !player.limited) return draft;
+        const hazard = player.hazard ?? "radar";
+        player.hazard = null;
+        player.limited = false;
+        player.blockedTurns = 0;
+        pushAnim(draft, { kind: "shield", playerId: player.id, defense: HAZARD_TO_DEFENSE[hazard] });
+        log(draft, player.id, `${player.name} retire son malus grâce au coffre.`, "special");
+      } else if (receipt.reward === "purple") {
+        player.hand.push({ uid: `chest-${receipt.id}`, defId: "gpsStrategique" });
+        log(draft, player.id, `${player.name} a récupéré un GPS stratégique dans le coffre.`, "special");
+      } else return draft;
+      (draft.usedChestReceipts ??= []).push({ id: receipt.id, player: player.id, reward: receipt.reward, proof: receipt.proof });
+      return draft;
+    }
+
     case "DRAW_CARD": {
       if (draft.phase !== "draw") return draft;
 

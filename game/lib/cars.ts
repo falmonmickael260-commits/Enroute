@@ -23,6 +23,11 @@ export const CARS = [
   { id: "taxi", label: "Taxi", repaint: false },
   { id: "police", label: "Police", repaint: false },
   { id: "kilomax", label: "KILOMAX", repaint: true },
+  { id: "concept-gt", label: "Concept GT", repaint: false },
+  { id: "gt-circuit", label: "GT Circuit", repaint: false },
+  { id: "pickup-classic", label: "Pick-up Vintage", repaint: false },
+  { id: "moto-amethyste", label: "Moto Violette", repaint: false },
+  { id: "chenille", label: "Chenille", repaint: false },
 ] as const;
 
 export type CarId = (typeof CARS)[number]["id"];

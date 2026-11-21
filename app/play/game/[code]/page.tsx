@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useSetupStore } from "@/game/lib/store/setupStore";
 import { useGameEngine } from "@/game/hooks/useGameEngine";
 import type { NewGameOptions } from "@/game/lib/engine/gameReducer";
+import { RaceChest } from "@/game/components/table/RaceChest";
 import { GameScreen } from "@/game/components/table/GameScreen";
 import { TableBackdrop } from "@/game/components/ui/TableBackdrop";
 
@@ -56,10 +57,11 @@ function LocalGame({
   onExit: () => void;
   onNewGame: () => void;
 }) {
-  const { state, controls, consumeAnimation, newGame } = useGameEngine(options);
+  const { state, controls, consumeAnimation, newGame, dispatch } = useGameEngine(options);
   return (
     <GameScreen
       state={state}
+      headerExtra={<RaceChest state={state} apply={receipt => dispatch({ type: "REDEEM_CHEST", receipt })} />}
       controls={controls}
       consumeAnimation={consumeAnimation}
       onExit={onExit}

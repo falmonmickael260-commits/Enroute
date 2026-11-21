@@ -4,6 +4,8 @@ import { useEffect } from "react";
 import clsx from "clsx";
 import type { PlayerColor } from "@/game/types/game";
 import { CARS, carInfo, carThumb, type CarId } from "@/game/lib/cars";
+import { isPremiumVehicle } from "@/game/lib/garage";
+import { loadGarage, useKilomaxWallet } from "@/game/lib/online/kilomaxShop";
 import { prefetchCar } from "@/game/components/scene/carModels";
 
 /**
@@ -23,8 +25,11 @@ export function CarPicker({
   disabled?: boolean;
   compact?: boolean;
 }) {
-  const index = Math.max(0, CARS.findIndex((c) => c.id === value));
-  const step = (d: number) => onChange(CARS[(index + d + CARS.length) % CARS.length].id);
+  const wallet = useKilomaxWallet(state => state.wallet);
+  useEffect(() => { void loadGarage().catch(() => undefined); }, []);
+  const garage = CARS.filter(car => !isPremiumVehicle(car.id) || wallet?.owned.includes(car.id));
+  const index = garage.findIndex(car => car.id === value);
+  const step = (d: number) => onChange(garage[(index < 0 ? 0 : (index + d + garage.length) % garage.length)].id);
   const car = carInfo(value);
 
   // the car file starts loading as soon as it's chosen, so the race opens with it

@@ -46,3 +46,14 @@ suv-luxury, van, truck, taxi, police and kilomax models are built in
 `game/components/scene/roadVehicles.ts`. Their garage thumbnails are renders
 of those procedural models. The original GLB assets remain here with their
 original attribution. Race, race-future, kart and tractor still use GLBs.
+
+## Garage premium Kilomax
+
+- Concept GT — reuses `supercar.glb` (Car Concept by Eric Chadwick, CC BY 4.0, see above). The boutique preview is a new render.
+
+- GT Circuit — [Sports Car by Quaternius](https://poly.pizza/m/1mkmFkAz5v), CC0.
+- Pick-up Vintage — [Pickup Truck by Quaternius](https://poly.pizza/m/qn4grQgHm8), CC0.
+- Moto Violette — [Cartoony Purple Motorcycle by AliceCassie](https://poly.pizza/m/j20srJUjpB), CC0.
+- Chenille — [Tank by Quaternius](https://poly.pizza/m/Dc4k4CooN3), CC0.
+
+The garage previews use the corresponding public model thumbnails from Poly Pizza.

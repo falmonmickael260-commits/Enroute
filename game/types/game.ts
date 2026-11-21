@@ -91,6 +91,7 @@ export interface GameState {
   ambiance: AmbianceId;
   startedAt: number;
   animationQueue: AnimationEvent[];
+  usedChestReceipts?: { id: string; player: string; reward: string; proof: string }[];
 }
 
 /** Lighting mood of the board. The route itself always crosses every zone
