@@ -3,6 +3,7 @@ import { createRoadVehicle, isRoadCar } from "./roadVehicles";
 import { GLTFLoader, type GLTF } from "three/examples/jsm/loaders/GLTFLoader.js";
 import type { CarModel } from "./models";
 import { lacquer } from "./vehicleFinish";
+import { isPremiumVehicle } from "@/game/lib/garage";
 import { BUILT_CARS } from "@/game/lib/cars";
 
 /**
@@ -164,6 +165,9 @@ interface CarSpec {
   paintMaterial?: string;
   /** Length on the board, in scene units (default: Kenney's units × SCALE). */
   length?: number;
+  /** Wheel geometry is authored in vehicle coordinates, with its origin off the axle. */
+  wheelBoundsPivot?: boolean;
+  yaw?: number;
 }
 
 const KENNEY: CarSpec = { wheels: /^wheel-(front|back)-(left|right)$/ };
@@ -173,10 +177,10 @@ const SPECS: Record<string, CarSpec> = {
   supercar: CONCEPT,
   "concept-gt": CONCEPT,
   retro: { wheels: /^$^/, length: 1.12 },
-  "gt-circuit": { wheels: /^$^/, length: 1.16 },
-  "pickup-classic": { wheels: /^$^/, length: 1.20 },
-  "moto-amethyste": { wheels: /^$^/, length: 0.94 },
-  chenille: { wheels: /^$^/, length: 1.24 },
+  "gt-circuit": { wheels: /^SportsCar2_(BackWheels|FrontLeftWheel|FrontRightWheel)_/, length: 1.16, wheelBoundsPivot: true },
+  "pickup-classic": { wheels: /^(BackWheels|FrontWheel_[RL])$/, length: 1.20, wheelBoundsPivot: true },
+  "moto-amethyste": { wheels: /^RollingWheel[1-2]$/, length: 0.94, wheelBoundsPivot: true, yaw: Math.PI },
+  chenille: { wheels: /^RollingWheel[1-6]$/, length: 1.24, wheelBoundsPivot: true },
 };
 
 /** Which of the node's own axes points along `world` (in the car's frame). */
@@ -198,6 +202,7 @@ export async function loadCarModel(id: string, color: string, repaint: boolean, 
   if (!gltf) return null;
   const scene = gltf.scene.clone(true);
   const spec = SPECS[id] ?? KENNEY;
+  if (spec.yaw) scene.rotation.y = spec.yaw;
 
   const wheels: THREE.Object3D[] = [];
   const bodies: THREE.Mesh[] = [];
@@ -223,7 +228,9 @@ export async function loadCarModel(id: string, color: string, repaint: boolean, 
       const hub = new THREE.Group();
       hub.name = `${w.name}-hub`;
       parent.add(hub);
-      hub.position.copy(w.position);
+      hub.position.copy(spec.wheelBoundsPivot
+        ? parent.worldToLocal(new THREE.Box3().setFromObject(w).getCenter(new THREE.Vector3()))
+        : w.position);
       hub.quaternion.copy(parent.getWorldQuaternion(new THREE.Quaternion()).invert());
       hub.updateMatrixWorld(true);
       hub.attach(w);
@@ -280,8 +287,11 @@ export async function loadCarModel(id: string, color: string, repaint: boolean, 
     inner.scale.setScalar(spec.length / Math.max(raw.z, 1e-6));
   } else inner.scale.setScalar(SCALE);
   const box = new THREE.Box3().setFromObject(inner);
-  inner.position.y = -box.min.y;
-  box.translate(new THREE.Vector3(0, -box.min.y, 0));
+  if (isPremiumVehicle(id)) {
+    const center = box.getCenter(new THREE.Vector3());
+    inner.position.set(-center.x, -box.min.y, -center.z);
+  } else inner.position.y = -box.min.y;
+  box.translate(inner.position);
   const size = box.getSize(new THREE.Vector3());
 
   const root = new THREE.Group();

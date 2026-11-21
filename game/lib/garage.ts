@@ -1,4 +1,4 @@
-export const VEHICLE_PRICE = 500;
+export const VEHICLE_PRICE = 1500;
 export const CHEST_PRICE = 300;
 
 export const PREMIUM_VEHICLES = [

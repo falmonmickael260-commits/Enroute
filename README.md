@@ -44,7 +44,7 @@ variable d'environnement n'est obligatoire.
 
 ## Boutique Revanche Games
 
-Le bouton **Boutique** ouvre le garage premium. Les véhicules vendus à 500 pièces
+Le bouton **Boutique** ouvre le garage premium. Les véhicules vendus à 1 500 pièces
 sont conservés sur le compte Revanche Games. Une voiture premium choisie dans
 un salon en ligne exige une autorisation signée et liée à la place du pilote.
 

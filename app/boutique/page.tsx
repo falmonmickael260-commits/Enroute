@@ -44,13 +44,13 @@ export default function Boutique() {
                   : confirm === vehicle.id ? (
                     <div className="mt-4 flex flex-wrap gap-2">
                       <button type="button" disabled={pending !== null} onClick={() => void buy(vehicle.id)} className="btn-enroute-primary">
-                        Confirmer · {VEHICLE_PRICE} pièces
+                        Confirmer · {VEHICLE_PRICE.toLocaleString("fr-FR")} pièces
                       </button>
                       <button type="button" disabled={pending !== null} onClick={() => setConfirm(null)} className="btn-enroute-secondary">Annuler</button>
                     </div>
                   ) : <button type="button" disabled={!wallet || wallet.balance < VEHICLE_PRICE || pending !== null}
                     className="btn-enroute-primary mt-4 disabled:opacity-50" onClick={() => setConfirm(vehicle.id)}>
-                    Acheter · {VEHICLE_PRICE} pièces
+                    Acheter · {VEHICLE_PRICE.toLocaleString("fr-FR")} pièces
                   </button>}
               </div>
             </article>

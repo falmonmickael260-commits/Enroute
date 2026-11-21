@@ -57,3 +57,5 @@ original attribution. Race, race-future, kart and tractor still use GLBs.
 - Chenille — [Tank by Quaternius](https://poly.pizza/m/Dc4k4CooN3), CC0.
 
 The garage previews use the corresponding public model thumbnails from Poly Pizza.
+
+Moto Violette and Chenille were split into separate wheel meshes for in-game rotation.
