@@ -39,8 +39,9 @@ Seule la clé **publishable** va dans le client — jamais la clé `service_role
 
 ## Mise en ligne
 
-Importer le dépôt sur Vercel (framework Next.js détecté automatiquement) et déployer. Aucune
-variable d'environnement n'est obligatoire.
+Railway détecte Next.js et utilise les scripts `npm run build` et `npm start`.
+Les résultats des joueurs connectés sont envoyés à l’API de Revanche Games,
+qui vérifie le jeton du joueur et enregistre le résultat.
 
 ## Boutique Revanche Games
 
